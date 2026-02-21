@@ -1,5 +1,5 @@
 {
-  "name": "users-benholmes-projects-hubble-md-apps-www",
+  "name": "@hubble.md/www",
   "type": "module",
   "version": "0.0.1",
   "scripts": {

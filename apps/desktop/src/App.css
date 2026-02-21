@@ -40,12 +40,78 @@
   overflow: auto;
   padding: 0.75rem;
 }
+.editorRoot {
+  height: 100%;
+}
 
-.rawText {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 0.875rem;
-  line-height: 1.5;
+.editorInput {
+  min-height: 100%;
+  outline: none;
+}
+
+.ProseMirror {
+  white-space: break-spaces;
+  word-wrap: break-word;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+}
+
+.ProseMirror > * {
+  margin-left: 1rem;
+}
+
+.ProseMirror h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.ProseMirror h2 {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.ProseMirror h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror :is(ul, ol) li {
+  margin-inline-start: 1.3rem;
+}
+
+.ProseMirror ul > li[data-checked] {
+  list-style-type: none;
+  margin-inline-start: 0;
+  align-items: flex-start;
+  display: flex;
+}
+
+.ProseMirror ul > li[data-checked] > label {
+  flex: 0 0 auto;
+  margin-right: 0.55rem;
+  user-select: none;
+}
+
+.ProseMirror ul > li[data-checked] > div {
+  flex: 1 1 auto;
+}
+
+.ProseMirror blockquote {
+  margin-inline-start: calc(1rem - 2px);
+  border-inline-start: 2px solid #ccc;
+  border-radius: 1px;
+  padding-inline-start: 1rem;
+}
+
+.pm-fake-selection {
+  background: rgba(0, 122, 255, 0.35);
+  border-radius: 2px;
 }

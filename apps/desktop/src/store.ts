@@ -55,6 +55,32 @@ function getInitialState(): ViewerState {
   }
 }
 
+export async function savePathContent(path: string, content: string) {
+  viewerStore.set((current) => {
+    if (current.currentPath !== path) return current;
+    return {
+      ...current,
+      content,
+      status: "ready",
+      error: null,
+    };
+  });
+
+  try {
+    await invoke("write_file_text", { path, content });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    viewerStore.set((current) => {
+      if (current.currentPath !== path) return current;
+      return {
+        ...current,
+        status: "error",
+        error: message,
+      };
+    });
+  }
+}
+
 export const viewerStore = store<ViewerState>(getInitialState(), {
   middleware: [persistentStateMiddleware],
 });

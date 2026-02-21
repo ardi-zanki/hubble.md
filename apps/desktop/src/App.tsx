@@ -1,10 +1,14 @@
-import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { open } from "@tauri-apps/plugin-dialog";
 import { keymatch } from "keymatch";
 import { useStoreValue } from "@simplestack/store/react";
-import { loadPath, viewerStore } from "./store";
+import { useEditor, EditorContent, type JSONContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { TaskItem } from "@tiptap/extension-list";
+import { listExtensions, markdownToTiptapDoc, tiptapDocToMarkdown } from "@hubble.md/editor";
+import { useEffect, useMemo, useRef } from "react";
+import { loadPath, savePathContent, viewerStore } from "./store";
 import "./App.css";
 
 function App() {
@@ -95,11 +99,64 @@ function App() {
         {state.status === "loading" && <p>Loading…</p>}
         {state.status === "error" && <p>{state.error ?? "Failed to open file."}</p>}
         {state.status !== "loading" && state.status !== "error" && !state.currentPath && (
-          <p>Open a markdown file to view raw text.</p>
+          <p>Open a markdown file to edit.</p>
         )}
-        {state.status === "ready" && <pre className="rawText">{state.content}</pre>}
+        {state.status === "ready" && state.currentPath && (
+          <MarkdownEditor key={state.currentPath} path={state.currentPath} initialMarkdown={state.content} />
+        )}
       </section>
     </main>
+  );
+}
+const SAVE_DEBOUNCE_MS = 120;
+
+function MarkdownEditor({ path, initialMarkdown }: { path: string; initialMarkdown: string }) {
+  const latestMarkdownRef = useRef(initialMarkdown);
+  const saveTimerRef = useRef<number | null>(null);
+  const initialDoc = useMemo(() => markdownToTiptapDoc(initialMarkdown), [initialMarkdown]);
+
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        listItem: false,
+      }),
+      ...listExtensions,
+      TaskItem.configure({
+        nested: true,
+      }),
+    ],
+    content: initialDoc,
+    onUpdate: ({ editor: currentEditor }) => {
+      const markdown = tiptapDocToMarkdown(currentEditor.getJSON() as JSONContent);
+      latestMarkdownRef.current = markdown;
+
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+      saveTimerRef.current = window.setTimeout(() => {
+        void savePathContent(path, latestMarkdownRef.current);
+      }, SAVE_DEBOUNCE_MS);
+    },
+    editorProps: {
+      attributes: {
+        class: "editorInput",
+      },
+    },
+  });
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current !== null) {
+        window.clearTimeout(saveTimerRef.current);
+      }
+      void savePathContent(path, latestMarkdownRef.current);
+    };
+  }, [path]);
+
+  return (
+    <div className="editorRoot">
+      <EditorContent editor={editor} />
+    </div>
   );
 }
 

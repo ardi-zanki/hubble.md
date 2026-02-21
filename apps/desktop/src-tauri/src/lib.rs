@@ -36,7 +36,6 @@ where
 {
     args.into_iter().find_map(|arg| {
         let path = PathBuf::from(arg.as_ref());
-        let path = PathBuf::from(arg);
         if path.is_file() {
             Some(path_to_string(&path))
         } else {
@@ -48,6 +47,10 @@ where
 #[tauri::command]
 fn read_file_text(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|err| format!("Failed to read file at {}: {}", path, err))
+}
+#[tauri::command]
+fn write_file_text(path: String, content: String) -> Result<(), String> {
+    fs::write(&path, content).map_err(|err| format!("Failed to write file at {}: {}", path, err))
 }
 
 #[tauri::command]
@@ -67,7 +70,11 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![read_file_text, get_launch_file_path])
+        .invoke_handler(tauri::generate_handler![
+            read_file_text,
+            write_file_text,
+            get_launch_file_path
+        ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");
 
