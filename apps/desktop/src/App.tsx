@@ -6,7 +6,12 @@ import { useStoreValue } from "@simplestack/store/react";
 import { useEditor, EditorContent, type JSONContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TaskItem } from "@tiptap/extension-list";
-import { listExtensions, markdownToTiptapDoc, tiptapDocToMarkdown } from "@hubble.md/editor";
+import {
+  listExtensions,
+  markdownToTiptapDoc,
+  MarkdownRolloverExtension,
+  tiptapDocToMarkdown,
+} from "@hubble.md/editor";
 import { useEffect, useMemo, useRef } from "react";
 import { loadPath, savePathContent, viewerStore } from "./store";
 import { createAppMenu } from "./appMenu";
@@ -120,6 +125,7 @@ function MarkdownEditor({ path, initialMarkdown }: { path: string; initialMarkdo
       StarterKit.configure({
         listItem: false,
       }),
+      MarkdownRolloverExtension,
       ...listExtensions,
       TaskItem.configure({
         nested: true,
