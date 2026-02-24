@@ -3,8 +3,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Editor } from "@tiptap/core";
 import { keymatch } from "keymatch";
 import { type RefObject, useEffect, useRef, useState } from "react";
-
-type LinkStatus = "idle" | "focused";
+import { FOCUS_LINK_POPOVER_EVENT } from "./SmartLinkExtension";
 
 export function LinkPopover({
 	editor,
@@ -13,7 +12,6 @@ export function LinkPopover({
 	editor: Editor | null;
 	containerRef: RefObject<HTMLDivElement | null>;
 }) {
-	const [status, setStatus] = useState<LinkStatus>("idle");
 	const [left, setLeft] = useState(0);
 	const [top, setTop] = useState(0);
 	const [hrefValue, setHrefValue] = useState("");
@@ -21,6 +19,7 @@ export function LinkPopover({
 	// We scope dismissal to the active link range key (`from:to`) so moving
 	// out of a link and back in (or to a different link) shows the popover again.
 	const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+	const [shouldFocusInput, setShouldFocusInput] = useState(false);
 	const [activeLink, setActiveLink] = useState<{
 		from: number;
 		to: number;
@@ -73,7 +72,7 @@ export function LinkPopover({
 			window.removeEventListener("resize", update);
 			window.removeEventListener("scroll", update, true);
 		};
-	}, [editor, containerRef, status]);
+	}, [editor, containerRef]);
 	const activeKey = activeLink ? `${activeLink.from}:${activeLink.to}` : null;
 	const isDismissedForCurrent =
 		activeKey !== null && dismissedKey === activeKey;
@@ -81,7 +80,6 @@ export function LinkPopover({
 	useEffect(() => {
 		if (!activeKey) {
 			setDismissedKey(null);
-			setStatus("idle");
 			return;
 		}
 		if (dismissedKey && dismissedKey !== activeKey) {
@@ -90,21 +88,29 @@ export function LinkPopover({
 	}, [activeKey, dismissedKey]);
 
 	useEffect(() => {
-		if (!editor || !activeLink || isDismissedForCurrent) return;
+		const onFocusRequest = () => {
+			if (isDismissedForCurrent) {
+				setDismissedKey(null);
+			}
+			setShouldFocusInput(true);
+		};
+		window.addEventListener(
+			FOCUS_LINK_POPOVER_EVENT,
+			onFocusRequest as EventListener,
+		);
+		return () => {
+			window.removeEventListener(
+				FOCUS_LINK_POPOVER_EVENT,
+				onFocusRequest as EventListener,
+			);
+		};
+	}, [isDismissedForCurrent]);
+
+	useEffect(() => {
+		if (!editor || !activeLink) return;
 		const onKeyDown = (event: KeyboardEvent) => {
 			const isInputFocused = document.activeElement === inputRef.current;
 			const editorFocused = editor.isFocused;
-
-			if (status !== "focused" && keymatch(event, "Tab")) {
-				event.preventDefault();
-				setStatus("focused");
-				queueMicrotask(() => {
-					inputRef.current?.focus();
-					inputRef.current?.select();
-				});
-				return;
-			}
-
 			if (
 				isInputFocused &&
 				(keymatch(event, "Enter") || keymatch(event, "Escape"))
@@ -134,7 +140,17 @@ export function LinkPopover({
 
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [editor, activeLink, status, isDismissedForCurrent, activeKey]);
+	}, [editor, activeLink, activeKey]);
+
+	useEffect(() => {
+		if (!shouldFocusInput) return;
+		if (!activeLink || isDismissedForCurrent) return;
+		queueMicrotask(() => {
+			inputRef.current?.focus();
+			inputRef.current?.select();
+		});
+		setShouldFocusInput(false);
+	}, [shouldFocusInput, activeLink, isDismissedForCurrent]);
 
 	if (!editor || !activeLink || isDismissedForCurrent) return null;
 
@@ -158,14 +174,11 @@ export function LinkPopover({
 		>
 			<div className="link-popover-inner">
 				<div className="link-input-container">
-					{status === "idle" && <span className="link-tab-label">Tab</span>}
 					<input
 						ref={inputRef}
 						type="text"
 						value={hrefValue}
 						onChange={(event) => handleInput(event.target.value)}
-						onFocus={() => setStatus("focused")}
-						onBlur={() => setStatus("idle")}
 					/>
 				</div>
 				<button

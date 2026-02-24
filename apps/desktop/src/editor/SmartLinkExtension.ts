@@ -1,5 +1,6 @@
 import { Extension } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
+export const FOCUS_LINK_POPOVER_EVENT = "hubble:focus-link-popover";
 
 function findWordRangeAtCursor(
 	state: EditorState,
@@ -46,10 +47,15 @@ function toggleLinkAtSelection() {
 			if (!range || range.from >= range.to) return false;
 
 			const hasLink = state.doc.rangeHasMark(range.from, range.to, linkType);
-			const tr = hasLink
-				? state.tr.removeMark(range.from, range.to, linkType)
-				: state.tr.addMark(range.from, range.to, linkType.create({ href: "" }));
-			dispatch?.(tr);
+			if (!hasLink) {
+				const tr = state.tr.addMark(
+					range.from,
+					range.to,
+					linkType.create({ href: "" }),
+				);
+				dispatch?.(tr);
+			}
+			window.dispatchEvent(new CustomEvent(FOCUS_LINK_POPOVER_EVENT));
 			return true;
 		};
 }
