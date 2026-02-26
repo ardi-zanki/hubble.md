@@ -2,9 +2,75 @@ import { getActiveLinkRange } from "@hubble.md/editor";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Editor } from "@tiptap/core";
 import { keymatch } from "keymatch";
-import { type RefObject, useEffect, useRef, useState } from "react";
-import MingcuteArrowRightFill from "~icons/mingcute/arrow-right-fill";
+import { type RefObject, useEffect, useReducer, useRef, useState } from "react";
 import { FOCUS_LINK_POPOVER_EVENT } from "./SmartLinkExtension";
+
+type PopoverMode = "hidden" | "preview" | "actionsFocused" | "actions";
+type MachineState = {
+	mode: PopoverMode;
+	activeKey: string | null;
+	dismissedKey: string | null;
+};
+type MachineEvent =
+	| { type: "LINK_SESSION_CHANGED"; activeKey: string | null }
+	| { type: "OPEN_ACTIONS" }
+	| { type: "ESC" }
+	| { type: "CMD_K" }
+	| { type: "INPUT_BLUR" };
+
+const INITIAL_MACHINE_STATE: MachineState = {
+	mode: "hidden",
+	activeKey: null,
+	dismissedKey: null,
+};
+
+function machineReducer(
+	state: MachineState,
+	event: MachineEvent,
+): MachineState {
+	switch (event.type) {
+		case "LINK_SESSION_CHANGED": {
+			const { activeKey } = event;
+			if (!activeKey) {
+				return INITIAL_MACHINE_STATE;
+			}
+			if (state.activeKey !== activeKey) {
+				return { mode: "preview", activeKey, dismissedKey: null };
+			}
+			return { ...state, activeKey };
+		}
+		case "OPEN_ACTIONS": {
+			if (!state.activeKey) return state;
+			return { ...state, mode: "actionsFocused", dismissedKey: null };
+		}
+		case "ESC": {
+			if (state.mode === "actionsFocused" || state.mode === "actions") {
+				return { ...state, mode: "preview" };
+			}
+			if (state.mode === "preview" && state.activeKey) {
+				return {
+					...state,
+					mode: "hidden",
+					dismissedKey: state.activeKey,
+				};
+			}
+			return state;
+		}
+		case "CMD_K": {
+			if (!state.activeKey) return state;
+			if (state.mode === "actionsFocused" || state.mode === "actions") {
+				return { ...state, mode: "preview" };
+			}
+			return { ...state, mode: "actionsFocused", dismissedKey: null };
+		}
+		case "INPUT_BLUR": {
+			if (state.mode !== "actionsFocused") return state;
+			return { ...state, mode: "actions" };
+		}
+		default:
+			return state;
+	}
+}
 
 export function LinkPopover({
 	editor,
@@ -13,20 +79,20 @@ export function LinkPopover({
 	editor: Editor | null;
 	containerRef: RefObject<HTMLDivElement | null>;
 }) {
-	const [left, setLeft] = useState(0);
+	const [anchorLeft, setAnchorLeft] = useState(0);
 	const [top, setTop] = useState(0);
 	const [hrefValue, setHrefValue] = useState("");
-	// Escape should dismiss only the current link rollover session.
-	// We scope dismissal to the active link range key (`from:to`) so moving
-	// out of a link and back in (or to a different link) shows the popover again.
-	const [dismissedKey, setDismissedKey] = useState<string | null>(null);
-	const [shouldFocusInput, setShouldFocusInput] = useState(false);
 	const [activeLink, setActiveLink] = useState<{
 		from: number;
 		to: number;
 		href: string;
 	} | null>(null);
+	const [machineState, dispatch] = useReducer(
+		machineReducer,
+		INITIAL_MACHINE_STATE,
+	);
 	const inputRef = useRef<HTMLInputElement | null>(null);
+	const popoverWidth = machineState.mode === "preview" ? 165 : 238;
 
 	useEffect(() => {
 		if (!editor) return;
@@ -36,22 +102,23 @@ export function LinkPopover({
 			if (link) {
 				setHrefValue(link.href);
 			}
+			const nextActiveKey = link ? `${link.from}:${link.to}` : null;
+			dispatch({ type: "LINK_SESSION_CHANGED", activeKey: nextActiveKey });
 			const container = containerRef.current;
 			if (!container || !link) return;
 			const coords = editor.view.coordsAtPos(editor.state.selection.from);
 			const containerRect = container.getBoundingClientRect();
-			const popoverWidth = 300;
 			const inlinePadding = 8;
-			const desiredLeft = coords.left - containerRect.left;
-			const clampedLeft = Math.max(
-				inlinePadding,
-				Math.min(
-					desiredLeft,
-					containerRect.width - popoverWidth - inlinePadding,
-				),
+			const minCenter = inlinePadding + popoverWidth / 2;
+			const maxCenter = containerRect.width - inlinePadding - popoverWidth / 2;
+			const desiredCenter =
+				(coords.left + coords.right) / 2 - containerRect.left;
+			const clampedCenter = Math.max(
+				minCenter,
+				Math.min(desiredCenter, maxCenter),
 			);
 			const desiredTop = coords.top - containerRect.top - 38;
-			setLeft(clampedLeft);
+			setAnchorLeft(clampedCenter);
 			setTop(
 				desiredTop < 0 ? coords.bottom - containerRect.top + 8 : desiredTop,
 			);
@@ -73,27 +140,11 @@ export function LinkPopover({
 			window.removeEventListener("resize", update);
 			window.removeEventListener("scroll", update, true);
 		};
-	}, [editor, containerRef]);
-	const activeKey = activeLink ? `${activeLink.from}:${activeLink.to}` : null;
-	const isDismissedForCurrent =
-		activeKey !== null && dismissedKey === activeKey;
-
-	useEffect(() => {
-		if (!activeKey) {
-			setDismissedKey(null);
-			return;
-		}
-		if (dismissedKey && dismissedKey !== activeKey) {
-			setDismissedKey(null);
-		}
-	}, [activeKey, dismissedKey]);
+	}, [editor, containerRef, popoverWidth]);
 
 	useEffect(() => {
 		const onFocusRequest = () => {
-			if (isDismissedForCurrent) {
-				setDismissedKey(null);
-			}
-			setShouldFocusInput(true);
+			dispatch({ type: "OPEN_ACTIONS" });
 		};
 		window.addEventListener(
 			FOCUS_LINK_POPOVER_EVENT,
@@ -105,55 +156,85 @@ export function LinkPopover({
 				onFocusRequest as EventListener,
 			);
 		};
-	}, [isDismissedForCurrent]);
+	}, []);
+
+	useEffect(() => {
+		if (machineState.mode !== "actionsFocused") return;
+		queueMicrotask(() => {
+			inputRef.current?.focus();
+			inputRef.current?.select();
+		});
+	}, [machineState.mode]);
 
 	useEffect(() => {
 		if (!editor || !activeLink) return;
 		const onKeyDown = (event: KeyboardEvent) => {
 			const isInputFocused = document.activeElement === inputRef.current;
-			const editorFocused = editor.isFocused;
-			if (
-				isInputFocused &&
-				(keymatch(event, "Enter") || keymatch(event, "Escape"))
-			) {
+			const isVisible = machineState.mode !== "hidden";
+
+			if (isInputFocused && keymatch(event, "Enter")) {
 				event.preventDefault();
+				dispatch({ type: "ESC" });
 				editor.commands.focus(undefined, { scrollIntoView: false });
 				return;
 			}
 
-			if (editorFocused && keymatch(event, "Escape")) {
+			if ((isVisible || editor.isFocused) && keymatch(event, "Escape")) {
 				event.preventDefault();
-				setDismissedKey(activeKey);
+				const shouldReturnFocusToEditor =
+					machineState.mode === "preview" ||
+					machineState.mode === "actions" ||
+					machineState.mode === "actionsFocused";
+				dispatch({ type: "ESC" });
+				if (shouldReturnFocusToEditor) {
+					queueMicrotask(() => {
+						editor.commands.focus(undefined, { scrollIntoView: false });
+					});
+				}
+				return;
+			}
+			if (keymatch(event, "CmdOrCtrl+K")) {
+				if (editor.isFocused) {
+					// Let SmartLinkExtension own Cmd+K when editor has focus.
+					return;
+				}
+				if (!isVisible) return;
+				event.preventDefault();
+				if (machineState.mode === "preview") {
+					dispatch({ type: "OPEN_ACTIONS" });
+				} else if (machineState.mode === "actions") {
+					dispatch({ type: "CMD_K" });
+				}
 				return;
 			}
 
+			if (
+				machineState.mode !== "actions" &&
+				machineState.mode !== "actionsFocused"
+			) {
+				return;
+			}
 			if (keymatch(event, "CmdOrCtrl+Enter")) {
 				event.preventDefault();
 				void visitLink(activeLink.href);
 				return;
 			}
-
 			if (keymatch(event, "CmdOrCtrl+Shift+C")) {
 				event.preventDefault();
 				void navigator.clipboard.writeText(activeLink.href);
+				return;
+			}
+			if (keymatch(event, "CmdOrCtrl+Backspace")) {
+				event.preventDefault();
+				removeActiveLink(editor, activeLink.from, activeLink.to);
 			}
 		};
 
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [editor, activeLink, activeKey]);
+	}, [editor, activeLink, machineState.mode]);
 
-	useEffect(() => {
-		if (!shouldFocusInput) return;
-		if (!activeLink || isDismissedForCurrent) return;
-		queueMicrotask(() => {
-			inputRef.current?.focus();
-			inputRef.current?.select();
-		});
-		setShouldFocusInput(false);
-	}, [shouldFocusInput, activeLink, isDismissedForCurrent]);
-
-	if (!editor || !activeLink || isDismissedForCurrent) return null;
+	if (!editor || !activeLink || machineState.mode === "hidden") return null;
 
 	const handleInput = (href: string) => {
 		setHrefValue(href);
@@ -170,30 +251,87 @@ export function LinkPopover({
 
 	return (
 		<div
-			className="link-popover"
-			style={{ insetInlineStart: `${left}px`, insetBlockStart: `${top}px` }}
+			className="absolute z-[2]"
+			style={{
+				insetInlineStart: `${anchorLeft}px`,
+				insetBlockStart: `${top}px`,
+				transform: "translateX(-50%)",
+			}}
 		>
-			<div className="link-popover-inner">
-				<div className="link-input-container">
+			{machineState.mode === "preview" ? (
+				<button
+					type="button"
+					className="flex h-7 w-[165px] cursor-pointer overflow-hidden rounded-[2px] border border-zinc-300 bg-gradient-to-b from-white to-zinc-50 text-left shadow-[0_1px_3px_rgba(0,0,0,0.1)]"
+					onClick={() => dispatch({ type: "OPEN_ACTIONS" })}
+				>
+					<span className="min-w-0 flex-1 overflow-hidden px-2 py-[5px] text-[11px] leading-[16px] text-zinc-700 text-clip whitespace-nowrap">
+						{activeLink.href}
+					</span>
+					<span className="flex h-full items-center bg-accent px-[10px] text-[11px] font-semibold leading-[16px] tracking-[0.12em] text-white">
+						⌘K
+					</span>
+				</button>
+			) : (
+				<div className="w-[238px] overflow-hidden rounded-[2px] border border-zinc-300 bg-gradient-to-b from-white to-zinc-50 shadow-[0_1px_3px_rgba(0,0,0,0.1)]">
 					<input
 						ref={inputRef}
 						type="text"
 						value={hrefValue}
 						onChange={(event) => handleInput(event.target.value)}
+						onBlur={() => dispatch({ type: "INPUT_BLUR" })}
+						className="block w-full border-none bg-transparent px-2 py-[5px] text-[11px] leading-[16px] text-black outline-none"
 					/>
+					<div className="border-block-start border-zinc-300">
+						<div className="grid h-[30px] grid-cols-[1fr_1fr_63px] items-stretch text-[11px] leading-[16px]">
+							<button
+								type="button"
+								className="flex items-center justify-center gap-1 font-semibold text-zinc-700"
+								onClick={() =>
+									removeActiveLink(editor, activeLink.from, activeLink.to)
+								}
+							>
+								<span>Remove</span>
+								<span className="text-[9px] leading-[14px] tracking-[0.12em] text-zinc-500">
+									⌘⌫
+								</span>
+							</button>
+							<button
+								type="button"
+								className="flex items-center justify-center gap-1 font-semibold text-zinc-700"
+								onClick={() => {
+									void navigator.clipboard.writeText(activeLink.href);
+								}}
+							>
+								<span>Copy</span>
+								<span className="text-[9px] leading-[14px] tracking-[0.12em] text-zinc-500">
+									⌘⇧C
+								</span>
+							</button>
+							<button
+								type="button"
+								className="flex items-center justify-center gap-1 bg-accent font-semibold text-white"
+								onClick={() => {
+									void visitLink(activeLink.href);
+								}}
+							>
+								<span>Visit</span>
+								<span className="text-[9px] leading-[14px] tracking-[0.12em] text-green-200">
+									⌘↩
+								</span>
+							</button>
+						</div>
+					</div>
 				</div>
-				<button
-					type="button"
-					aria-label="Visit link"
-					onClick={() => {
-						void visitLink(activeLink.href);
-					}}
-				>
-					<MingcuteArrowRightFill />
-				</button>
-			</div>
+			)}
 		</div>
 	);
+}
+
+function removeActiveLink(editor: Editor, from: number, to: number) {
+	const linkType = editor.state.schema.marks.link;
+	if (!linkType) return;
+	const tr = editor.state.tr.removeMark(from, to, linkType);
+	editor.view.dispatch(tr);
 }
 
 async function visitLink(href: string) {
