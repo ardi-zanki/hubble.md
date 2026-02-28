@@ -12,6 +12,7 @@ import { keymatch } from "keymatch";
 import MingcutePencilFill from "~icons/mingcute/pencil-fill";
 import { type RefObject, useEffect, useReducer, useRef, useState } from "react";
 import { toast } from "sonner";
+import { cn } from "../lib/utils";
 import { FOCUS_LINK_POPOVER_EVENT } from "./SmartLinkExtension";
 import { useEditorInputMode } from "./useEditorInputMode";
 
@@ -353,12 +354,22 @@ export function LinkPopover({
 					</span>
 					<span className="relative flex h-full w-[42px] items-center justify-center overflow-hidden rounded-ee-[2px] rounded-se-[2px] bg-accent text-white">
 						<span
-							className={`absolute inset-0 flex items-center justify-center text-[11px] font-semibold leading-[16px] tracking-[0.12em] transition-transform duration-200 ${inputMode === "keyboard" ? "translate-y-0" : "-translate-y-[120%]"}`}
+							className={cn(
+								"absolute inset-0 flex items-center justify-center text-[11px] font-semibold leading-[16px] tracking-[0.12em] transition-transform duration-200",
+								inputMode === "keyboard"
+									? "translate-y-0"
+									: "-translate-y-[120%]",
+							)}
 						>
 							⌘K
 						</span>
 						<span
-							className={`absolute inset-0 flex items-center justify-center transition-transform duration-200 ${inputMode === "keyboard" ? "translate-y-[120%]" : "translate-y-0"}`}
+							className={cn(
+								"absolute inset-0 flex items-center justify-center transition-transform duration-200",
+								inputMode === "keyboard"
+									? "translate-y-[120%]"
+									: "translate-y-0",
+							)}
 						>
 							<MingcutePencilFill aria-label="Edit link" className="h-3 w-3" />
 						</span>

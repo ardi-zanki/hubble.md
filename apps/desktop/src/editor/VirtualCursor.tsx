@@ -1,6 +1,7 @@
 import { getMarkdownRolloverBoundaryState } from "@hubble.md/editor";
 import type { Editor } from "@tiptap/core";
 import { type RefObject, useEffect, useRef, useState } from "react";
+import { cn } from "../lib/utils";
 import { useEditorInputMode } from "./useEditorInputMode";
 
 type CursorStyle = "hidden" | "solid" | "blinking";
@@ -118,7 +119,11 @@ export function VirtualCursor({
 
 	return (
 		<span
-			className={`pm-virtual-cursor ${cursorStyle === "blinking" ? "blinking" : ""} ${animatePosition ? "" : "no-position-transition"}`}
+			className={cn(
+				"pm-virtual-cursor",
+				cursorStyle === "blinking" && "blinking",
+				!animatePosition && "no-position-transition",
+			)}
 			aria-hidden="true"
 			style={{
 				left: `${cursorPosition.left}px`,
