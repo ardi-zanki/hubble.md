@@ -1,4 +1,3 @@
-import { getMarkdownRolloverBoundaryState } from "@hubble.md/editor";
 import type { Editor } from "@tiptap/core";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { cn } from "../lib/utils";
@@ -63,25 +62,9 @@ export function VirtualCursor({
 
 			const rootRect = container.getBoundingClientRect();
 			const coords = view.coordsAtPos(state.selection.head);
-			let left = coords.left - rootRect.left;
-			let top = coords.top - rootRect.top;
-			let height = Math.max(coords.bottom - coords.top, 1);
-
-			const boundary = getMarkdownRolloverBoundaryState(state);
-			if (boundary && boundary.boundaryPos === state.selection.from) {
-				const delimiter = view.dom.querySelector(
-					`.pm-md-delimiter[data-pos="${boundary.boundaryPos}"][data-mark="${boundary.markName}"][data-boundary="${boundary.boundary}"]`,
-				) as HTMLElement | null;
-				if (delimiter) {
-					const rect = delimiter.getBoundingClientRect();
-					const useRightEdge =
-						(boundary.boundary === "start" && boundary.side === "inside") ||
-						(boundary.boundary === "end" && boundary.side === "outside");
-					left = (useRightEdge ? rect.right : rect.left) - rootRect.left;
-					top = rect.top - rootRect.top;
-					height = Math.max(rect.height, height);
-				}
-			}
+			const left = coords.left - rootRect.left;
+			const top = coords.top - rootRect.top;
+			const height = Math.max(coords.bottom - coords.top, 1);
 
 			const scaledHeight = height * CURSOR_SCALE;
 			const topOffset = (scaledHeight - height) / 2;
@@ -113,7 +96,7 @@ export function VirtualCursor({
 			window.removeEventListener("scroll", updateCursor, true);
 			clearBlinkTimeout();
 		};
-	}, [editor, containerRef]);
+	}, [editor, containerRef, inputModeRef]);
 
 	if (!cursorPosition || cursorStyle === "hidden") return null;
 

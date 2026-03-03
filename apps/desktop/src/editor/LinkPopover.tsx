@@ -258,15 +258,14 @@ export function LinkPopover({
 			}
 
 			if ((isVisible || editor.isFocused) && keymatch(event, "Escape")) {
-				event.preventDefault();
 				const shouldReturnFocusToEditor =
 					machineState.mode === "preview" || machineState.mode === "actions";
-				dispatchMachineEvent({ type: "ESCAPE_REQUESTED" });
-				if (shouldReturnFocusToEditor) {
-					queueMicrotask(() => {
+				queueMicrotask(() => {
+					dispatchMachineEvent({ type: "ESCAPE_REQUESTED" });
+					if (shouldReturnFocusToEditor) {
 						editor.commands.focus(undefined, { scrollIntoView: false });
-					});
-				}
+					}
+				});
 				return;
 			}
 

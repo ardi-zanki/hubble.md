@@ -1,7 +1,10 @@
 import { Schema } from "@tiptap/pm/model";
-import { EditorState, TextSelection, type Transaction } from "@tiptap/pm/state";
+import { EditorState, TextSelection } from "@tiptap/pm/state";
 import { describe, expect, it } from "vitest";
-import { __testing } from "./MarkdownRolloverExtension";
+import {
+	__testing,
+	getCaretFormattingState,
+} from "./MarkdownRolloverExtension";
 
 const schema = new Schema({
 	nodes: {
@@ -18,25 +21,32 @@ const schema = new Schema({
 		bold: { parseDOM: [{ tag: "strong" }], toDOM: () => ["strong", 0] },
 		italic: { parseDOM: [{ tag: "em" }], toDOM: () => ["em", 0] },
 		code: { parseDOM: [{ tag: "code" }], toDOM: () => ["code", 0] },
-		strike: { parseDOM: [{ tag: "s" }, { tag: "del" }], toDOM: () => ["s", 0] },
+		strike: {
+			parseDOM: [{ tag: "s" }, { tag: "del" }],
+			toDOM: () => ["s", 0],
+		},
+		link: {
+			attrs: { href: {} },
+			inclusive: true,
+			parseDOM: [{ tag: "a[href]" }],
+			toDOM: () => ["a", 0],
+		},
 	},
 });
 
 function buildDoc() {
 	const bold = schema.marks.bold.create();
+	const link = schema.marks.link.create({ href: "https://example.com" });
 	return schema.node("doc", null, [
 		schema.node("paragraph", null, [
 			schema.text("This is "),
 			schema.text("bolded text", [bold]),
 			schema.text(" done"),
+			schema.text(" and "),
+			schema.text("linked", [link]),
+			schema.text(" tail"),
 		]),
 	]);
-}
-
-function transactionWithSelectionSet(selectionSet: boolean) {
-	// inferSideFromCursorMotion only reads Transaction.selectionSet in these tests.
-	// We pass the minimal shape and cast to avoid constructing a full ProseMirror Transaction.
-	return { selectionSet } as unknown as Transaction;
 }
 
 function stateAt(pos: number) {
@@ -58,100 +68,57 @@ function getMarkRange(state: EditorState, markName: string) {
 		if (from == null) from = pos;
 		to = pos + node.nodeSize;
 	});
-	if (from == null || to == null)
+	if (from == null || to == null) {
 		throw new Error(`mark range missing: ${markName}`);
+	}
 	return { from, to };
 }
 
 const range = getMarkRange(stateAt(2), "bold");
 const BOLD_START = range.from;
 const BOLD_END = range.to;
+const linkRange = getMarkRange(stateAt(2), "link");
+const LINK_START = linkRange.from;
+const LINK_END = linkRange.to;
 
-describe("markdown rollover side transitions", () => {
-	it("start boundary: left from inside toggles outside", () => {
-		expect(
-			__testing.getNextSideForArrow({
-				boundary: "start",
-				currentSide: "inside",
-				key: "ArrowLeft",
-			}),
-		).toBe("outside");
+describe("markdown rollover esc-only behavior", () => {
+	it("can escape at bold boundary when bold mark is active for insertion", () => {
+		const base = stateAt(BOLD_END);
+		const state = base.apply(base.tr.addStoredMark(schema.marks.bold.create()));
+		expect(__testing.canEscapeBoundaryAtCursor(state, null)).toBe(true);
 	});
 
-	it("end boundary: right from inside toggles outside", () => {
-		expect(
-			__testing.getNextSideForArrow({
-				boundary: "end",
-				currentSide: "inside",
-				key: "ArrowRight",
-			}),
-		).toBe("outside");
+	it("cannot escape at bold boundary when bold mark is not active", () => {
+		const state = stateAt(BOLD_END + 1);
+		expect(__testing.canEscapeBoundaryAtCursor(state, null)).toBe(false);
 	});
 
-	it("Escape from inside toggles outside", () => {
-		expect(__testing.getNextSideForEscape("inside")).toBe("outside");
+	it("reports active caret marks from stored marks", () => {
+		const base = stateAt(BOLD_END + 1);
+		const withStored = base.apply(
+			base.tr.addStoredMark(schema.marks.italic.create()),
+		);
+		expect(getCaretFormattingState(withStored).activeMarkNames).toEqual([
+			"italic",
+		]);
 	});
 
-	it("Escape from outside is a no-op", () => {
-		expect(__testing.getNextSideForEscape("outside")).toBeNull();
+	it("reports canEscapeBoundary false for non-empty selections", () => {
+		const doc = buildDoc();
+		const state = EditorState.create({
+			schema,
+			doc,
+			selection: TextSelection.create(doc, BOLD_START, BOLD_END),
+		});
+		expect(getCaretFormattingState(state).canEscapeBoundary).toBe(false);
 	});
 
-	it("regression: ArrowLeft from inside into start boundary stays inside", () => {
-		const oldState = stateAt(BOLD_START + 1);
-		const newState = stateAt(BOLD_START);
-		expect(
-			__testing.inferSideFromCursorMotion(
-				oldState,
-				newState,
-				transactionWithSelectionSet(true),
-				{ markType: schema.marks.bold, boundary: "start" },
-			),
-		).toBe("inside");
-	});
-
-	it("regression: ArrowRight into start boundary from outside resolves inside", () => {
-		const oldState = stateAt(BOLD_START - 1);
-		const newState = stateAt(BOLD_START);
-		expect(
-			__testing.inferSideFromCursorMotion(
-				oldState,
-				newState,
-				transactionWithSelectionSet(true),
-				{ markType: schema.marks.bold, boundary: "start" },
-			),
-		).toBe("inside");
-	});
-
-	it("returns null when selection was not set by transaction", () => {
-		const oldState = stateAt(BOLD_START - 1);
-		const newState = stateAt(BOLD_START);
-		expect(
-			__testing.inferSideFromCursorMotion(
-				oldState,
-				newState,
-				transactionWithSelectionSet(false),
-				{ markType: schema.marks.bold, boundary: "start" },
-			),
-		).toBeNull();
-	});
-
-	it("end boundary: moving from outside to boundary resolves inside", () => {
-		const oldState = stateAt(BOLD_END + 1);
-		const newState = stateAt(BOLD_END);
-		expect(
-			__testing.inferSideFromCursorMotion(
-				oldState,
-				newState,
-				transactionWithSelectionSet(true),
-				{ markType: schema.marks.bold, boundary: "end" },
-			),
-		).toBe("inside");
-	});
-
-	it("identifies right-of-delimiter positions correctly", () => {
-		expect(__testing.isCursorRightOfDelimiter("start", "inside")).toBe(true);
-		expect(__testing.isCursorRightOfDelimiter("end", "outside")).toBe(true);
-		expect(__testing.isCursorRightOfDelimiter("start", "outside")).toBe(false);
-		expect(__testing.isCursorRightOfDelimiter("end", "inside")).toBe(false);
+	it("treats both link edges as active formatting by default", () => {
+		const atStart = getCaretFormattingState(stateAt(LINK_START));
+		const atEnd = getCaretFormattingState(stateAt(LINK_END));
+		expect(atStart.activeMarkNames).toContain("link");
+		expect(atEnd.activeMarkNames).toContain("link");
+		expect(atStart.canEscapeBoundary).toBe(true);
+		expect(atEnd.canEscapeBoundary).toBe(true);
 	});
 });

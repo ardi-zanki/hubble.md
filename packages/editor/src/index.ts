@@ -14,9 +14,7 @@ export {
 export {
 	type CaretFormattingState,
 	getCaretFormattingState,
-	getMarkdownRolloverBoundaryState,
 	MarkdownRolloverExtension,
-	type RolloverBoundaryState,
 } from "./MarkdownRolloverExtension";
 export { markdownToTiptapDoc } from "./markdownToProsemirror";
 export { tiptapDocToMarkdown } from "./prosemirrorToMarkdown";
