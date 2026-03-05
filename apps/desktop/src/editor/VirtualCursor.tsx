@@ -17,9 +17,11 @@ const BLINK_DELAY_MS = 500;
 export function VirtualCursor({
 	editor,
 	containerRef,
+	viewportRef,
 }: {
 	editor: Editor | null;
 	containerRef: RefObject<HTMLDivElement | null>;
+	viewportRef: RefObject<HTMLDivElement | null>;
 }) {
 	const [cursorStyle, setCursorStyle] = useState<CursorStyle>("hidden");
 	const [cursorPosition, setCursorPosition] = useState<CursorPosition | null>(
@@ -27,10 +29,11 @@ export function VirtualCursor({
 	);
 	const [animatePosition, setAnimatePosition] = useState(true);
 	const blinkTimeoutRef = useRef<number | null>(null);
-	const { inputModeRef } = useEditorInputMode({ editor, containerRef });
+	const { inputMode } = useEditorInputMode({ editor, containerRef });
 
 	useEffect(() => {
 		if (!editor) return;
+		const scrollContainer = viewportRef.current;
 
 		const clearBlinkTimeout = () => {
 			if (blinkTimeoutRef.current !== null) {
@@ -48,7 +51,7 @@ export function VirtualCursor({
 		};
 
 		const updateCursor = () => {
-			const container = containerRef.current;
+			const container = scrollContainer;
 			if (!container || !editor.view) {
 				setCursorStyle("hidden");
 				return;
@@ -62,8 +65,8 @@ export function VirtualCursor({
 
 			const rootRect = container.getBoundingClientRect();
 			const coords = view.coordsAtPos(state.selection.head);
-			const left = coords.left - rootRect.left;
-			const top = coords.top - rootRect.top;
+			const left = coords.left - rootRect.left + container.scrollLeft;
+			const top = coords.top - rootRect.top + container.scrollTop;
 			const height = Math.max(coords.bottom - coords.top, 1);
 
 			const scaledHeight = height * CURSOR_SCALE;
@@ -75,7 +78,7 @@ export function VirtualCursor({
 				width,
 				height: scaledHeight,
 			});
-			setAnimatePosition(inputModeRef.current === "keyboard");
+			setAnimatePosition(inputMode === "keyboard");
 			queueBlink();
 		};
 
@@ -84,19 +87,21 @@ export function VirtualCursor({
 		editor.on("transaction", updateCursor);
 		editor.on("focus", updateCursor);
 		editor.on("blur", updateCursor);
+		scrollContainer?.addEventListener("scroll", updateCursor, {
+			passive: true,
+		});
 		window.addEventListener("resize", updateCursor);
-		window.addEventListener("scroll", updateCursor, true);
 
 		return () => {
 			editor.off("selectionUpdate", updateCursor);
 			editor.off("transaction", updateCursor);
 			editor.off("focus", updateCursor);
 			editor.off("blur", updateCursor);
+			scrollContainer?.removeEventListener("scroll", updateCursor);
 			window.removeEventListener("resize", updateCursor);
-			window.removeEventListener("scroll", updateCursor, true);
 			clearBlinkTimeout();
 		};
-	}, [editor, containerRef, inputModeRef]);
+	}, [editor, inputMode, viewportRef]);
 
 	if (!cursorPosition || cursorStyle === "hidden") return null;
 

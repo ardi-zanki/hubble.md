@@ -149,8 +149,13 @@ function MarkdownEditor({
 	const latestMarkdownRef = useRef(initialMarkdown);
 	const saveTimerRef = useRef<number | null>(null);
 	const editorRootRef = useRef<HTMLDivElement | null>(null);
+	const editorViewportRef = useRef<HTMLDivElement | null>(null);
 	const [editorViewportEl, setEditorViewportEl] =
 		useState<HTMLDivElement | null>(null);
+	const setEditorViewport = useCallback((node: HTMLDivElement | null) => {
+		editorViewportRef.current = node;
+		setEditorViewportEl(node);
+	}, []);
 	const initialDoc = useMemo(
 		() => markdownToTiptapDoc(initialMarkdown),
 		[initialMarkdown],
@@ -211,11 +216,15 @@ function MarkdownEditor({
 
 	return (
 		<div className="editorRoot" ref={editorRootRef}>
-			<div className="editorViewport" ref={setEditorViewportEl}>
+			<div className="editorViewport" ref={setEditorViewport}>
 				<EditorContent editor={editor} />
+				<VirtualCursor
+					editor={editor}
+					containerRef={editorRootRef}
+					viewportRef={editorViewportRef}
+				/>
 			</div>
 			<LinkPopover editor={editor} containerRef={editorRootRef} />
-			<VirtualCursor editor={editor} containerRef={editorRootRef} />
 			<FormattingPalette editor={editor} scrollContainer={editorViewportEl} />
 		</div>
 	);

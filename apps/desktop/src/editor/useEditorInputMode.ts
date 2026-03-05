@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/core";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import { type RefObject, useEffect, useState } from "react";
 
 export type EditorInputMode = "pointer" | "keyboard";
 
@@ -10,13 +10,10 @@ export function useEditorInputMode({
 	editor: Editor | null;
 	containerRef: RefObject<HTMLDivElement | null>;
 }) {
-	const inputModeRef = useRef<EditorInputMode>("keyboard");
 	const [inputMode, setInputMode] = useState<EditorInputMode>("keyboard");
 
 	useEffect(() => {
 		const setMode = (nextMode: EditorInputMode) => {
-			if (inputModeRef.current === nextMode) return;
-			inputModeRef.current = nextMode;
 			setInputMode(nextMode);
 		};
 
@@ -47,6 +44,5 @@ export function useEditorInputMode({
 
 	return {
 		inputMode,
-		inputModeRef,
 	};
 }
