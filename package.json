@@ -7,6 +7,7 @@
 		"check:fix": "biome check . --write",
 		"typecheck": "pnpm -r --if-present typecheck",
 		"build": "pnpm check && pnpm typecheck && pnpm -r --if-present build",
+		"bundle:desktop": "pnpm build && pnpm --filter \"./apps/desktop\" tauri build",
 		"dev:desktop": "pnpm -r --parallel --stream --filter \"./packages/**\" --if-present dev & pnpm --filter \"./apps/desktop\" tauri dev"
 	},
 	"devDependencies": {
