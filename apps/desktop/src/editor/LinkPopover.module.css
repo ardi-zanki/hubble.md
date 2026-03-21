@@ -1,14 +1,18 @@
-@import "open-props/easings";
-
 .previewButton {
 	--link-popover-preview-inline-size-start: 100px;
-	--link-popover-preview-inline-size-end: 165px;
+	--link-popover-preview-inline-size-end: 174px;
 	inline-size: var(--link-popover-preview-inline-size-end);
-	transition: inline-size 200ms var(--ease-spring-2);
+	transition:
+		inline-size var(--default-transition-duration) var(--ease-spring-snappy),
+		transform var(--default-transition-duration) var(--ease-spring-snappy),
+		opacity var(--default-transition-duration) var(--ease-spring-snappy);
+	will-change: inline-size, transform, opacity;
 }
 
 .previewButtonEnter {
 	inline-size: var(--link-popover-preview-inline-size-start);
+	opacity: 0.82;
+	transform: translateY(2px) scale(0.985);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -1,3 +1,4 @@
+import { fileURLToPath, URL } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import icons from "unplugin-icons/vite";
@@ -18,6 +19,11 @@ export default defineConfig(async () => ({
 		}),
 		tailwindcss(),
 	],
+	resolve: {
+		alias: {
+			"@": fileURLToPath(new URL("./src", import.meta.url)),
+		},
+	},
 
 	// Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
 	//

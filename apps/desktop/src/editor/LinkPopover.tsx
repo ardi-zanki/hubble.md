@@ -18,6 +18,9 @@ import {
 	useState,
 } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 import MingcutePencilFill from "~icons/mingcute/pencil-fill";
 import { cn } from "../lib/utils";
 import styles from "./LinkPopover.module.css";
@@ -148,11 +151,9 @@ export function LinkPopover({
 			previousState.mode === "hidden" &&
 			previousState.activeKey !== event.activeKey;
 
-		if (!shouldAnimateHiddenToPreview) {
-			dispatch(event);
-			return;
+		if (shouldAnimateHiddenToPreview) {
+			setIsPreviewEntering(true);
 		}
-		setIsPreviewEntering(true);
 		dispatch(event);
 	}, []);
 
@@ -257,6 +258,17 @@ export function LinkPopover({
 			const isInputFocused = document.activeElement === inputRef.current;
 			const isVisible = machineState.mode !== "hidden";
 
+			if (
+				isInputFocused &&
+				hrefValue.length === 0 &&
+				(event.key === "Backspace" || event.key === "Delete")
+			) {
+				event.preventDefault();
+				event.stopPropagation();
+				removeActiveLink(editor, activeLink.from, activeLink.to);
+				return;
+			}
+
 			if (isInputFocused && keymatch(event, "Enter")) {
 				event.preventDefault();
 				dispatchMachineEvent({ type: "ESCAPE_REQUESTED" });
@@ -296,17 +308,11 @@ export function LinkPopover({
 				void copyLinkToClipboard(activeLink.href);
 				return;
 			}
-
-			if (machineState.mode !== "actions") return;
-			if (keymatch(event, "CmdOrCtrl+Backspace")) {
-				event.preventDefault();
-				removeActiveLink(editor, activeLink.from, activeLink.to);
-			}
 		};
 
 		window.addEventListener("keydown", onKeyDown, true);
 		return () => window.removeEventListener("keydown", onKeyDown, true);
-	}, [editor, activeLink, machineState.mode, dispatchMachineEvent]);
+	}, [editor, activeLink, machineState.mode, dispatchMachineEvent, hrefValue]);
 
 	if (!editor || !activeLink || machineState.mode === "hidden") return null;
 
@@ -323,10 +329,19 @@ export function LinkPopover({
 		editor.view.dispatch(tr);
 	};
 
+	const actionHintClass =
+		"text-[9px] leading-[14px] tracking-[0.12em] text-muted-foreground/85";
+	const actionButtonClass =
+		"h-auto flex-1 rounded-none border-0 px-2 text-foreground shadow-none inset-shadow-none hover:bg-muted/80";
 	return (
 		<div
 			ref={popoverRef}
-			className="fixed z-[2] w-[238px] transition-[inset-inline-start,inset-block-start] duration-[130ms] [transition-timing-function:ease] motion-reduce:transition-none"
+			className={cn(
+				"fixed z-[4] w-[250px] transition-position motion-reduce:transition-none",
+				machineState.mode === "actions"
+					? "duration-[var(--default-transition-duration)] ease-spring-snappy"
+					: "duration-[var(--cursor-motion-duration)] ease-cursor-motion",
+			)}
 			style={{
 				insetInlineStart: `${floatingX}px`,
 				insetBlockStart: `${floatingY}px`,
@@ -334,10 +349,11 @@ export function LinkPopover({
 		>
 			{machineState.mode === "preview" ? (
 				<div className="flex justify-center">
-					<button
-						type="button"
+					<Button
+						variant="outline"
+						size="sm"
 						className={cn(
-							"flex h-7 cursor-pointer overflow-hidden rounded-[2px] border border-zinc-300 bg-gradient-to-b from-white to-zinc-50 text-left shadow-[0_1px_3px_rgba(0,0,0,0.1)]",
+							"h-7 min-w-0 justify-start gap-0 overflow-hidden border-border bg-card px-0 text-left shadow-panel inset-shadow-chrome hover:bg-card",
 							styles.previewButton,
 							isPreviewEntering && styles.previewButtonEnter,
 						)}
@@ -348,14 +364,14 @@ export function LinkPopover({
 					>
 						<span
 							title={activeLink.href}
-							className="min-w-0 flex-1 overflow-hidden px-2 py-[5px] pr-3 text-[11px] leading-[16px] text-zinc-700 whitespace-nowrap [mask-image:linear-gradient(to_right,black_84%,transparent)] [-webkit-mask-image:linear-gradient(to_right,black_84%,transparent)]"
+							className="min-w-0 flex-1 overflow-hidden px-2.5 py-[5px] pr-3 text-[11px] leading-[16px] text-foreground whitespace-nowrap [mask-image:linear-gradient(to_right,black_84%,transparent)] [-webkit-mask-image:linear-gradient(to_right,black_84%,transparent)]"
 						>
 							{activeLink.href}
 						</span>
-						<span className="relative flex h-full w-[42px] items-center justify-center overflow-hidden rounded-ee-[2px] rounded-se-[2px] bg-accent text-white">
+						<span className="relative flex h-full w-[42px] shrink-0 items-center justify-center overflow-hidden border-s border-border bg-primary text-primary-foreground">
 							<span
 								className={cn(
-									"absolute inset-0 flex items-center justify-center text-[11px] font-semibold leading-[16px] tracking-[0.12em] transition-transform duration-200",
+									"absolute inset-0 flex items-center justify-center text-[11px] font-semibold leading-[16px] tracking-[0.12em] transition-transform duration-[var(--default-transition-duration)] ease-spring-snappy",
 									inputMode === "keyboard"
 										? "translate-y-0"
 										: "-translate-y-[120%]",
@@ -365,7 +381,7 @@ export function LinkPopover({
 							</span>
 							<span
 								className={cn(
-									"absolute inset-0 flex items-center justify-center transition-transform duration-200",
+									"absolute inset-0 flex items-center justify-center transition-transform duration-[var(--default-transition-duration)] ease-spring-snappy",
 									inputMode === "keyboard"
 										? "translate-y-[120%]"
 										: "translate-y-0",
@@ -377,56 +393,67 @@ export function LinkPopover({
 								/>
 							</span>
 						</span>
-					</button>
+					</Button>
 				</div>
 			) : (
-				<div className="w-full overflow-hidden rounded-[2px] border border-zinc-300 bg-gradient-to-b from-white to-zinc-50 shadow-[0_1px_3px_rgba(0,0,0,0.1)]">
-					<input
-						ref={inputRef}
-						type="text"
-						value={hrefValue}
-						onChange={(event) => handleInput(event.target.value)}
-						className="block w-full border-none bg-transparent px-2 py-[5px] text-[11px] leading-[16px] text-black outline-none"
-					/>
-					<div className="border-block-start border-zinc-300">
-						<div className="grid h-[30px] grid-cols-[1fr_1fr_63px] items-stretch text-[11px] leading-[16px]">
-							<button
-								type="button"
-								className="flex items-center justify-center gap-1 font-semibold text-zinc-700"
-								onClick={() =>
-									removeActiveLink(editor, activeLink.from, activeLink.to)
-								}
-							>
-								<span>Remove</span>
-								<span className="text-[9px] leading-[14px] tracking-[0.12em] text-zinc-500">
-									⌘⌫
-								</span>
-							</button>
-							<button
-								type="button"
-								className="flex items-center justify-center gap-1 font-semibold text-zinc-700"
-								onClick={() => {
-									void copyLinkToClipboard(activeLink.href);
-								}}
-							>
-								<span>Copy</span>
-								<span className="text-[9px] leading-[14px] tracking-[0.12em] text-zinc-500">
-									⌘⇧C
-								</span>
-							</button>
-							<button
-								type="button"
-								className="flex items-center justify-center gap-1 rounded-ee-[2px] rounded-se-[2px] bg-accent font-semibold text-white"
-								onClick={() => {
-									void visitLink(activeLink.href);
-								}}
-							>
-								<span>Visit</span>
-								<span className="text-[9px] leading-[14px] tracking-[0.12em] text-green-200">
-									⌘↩
-								</span>
-							</button>
-						</div>
+				<div className="w-full overflow-hidden rounded-sm border border-border bg-popover shadow-panel">
+					<div className="p-1">
+						<Input
+							ref={inputRef}
+							type="text"
+							value={hrefValue}
+							placeholder="⌫ to remove link"
+							onChange={(event) => handleInput(event.target.value)}
+							className="h-7 rounded-[calc(var(--radius)-1px)] border-border bg-background px-2 py-[5px] text-[11px] leading-[16px]"
+						/>
+					</div>
+					<Separator className="bg-border/90" />
+					<div className="flex h-8 items-stretch text-[11px] leading-[16px]">
+						<Button
+							type="button"
+							variant="ghost"
+							size="xs"
+							className={actionButtonClass}
+							onClick={() =>
+								removeActiveLink(editor, activeLink.from, activeLink.to)
+							}
+						>
+							<span>Remove</span>
+						</Button>
+						<Separator
+							orientation="vertical"
+							className="self-stretch bg-border/90"
+						/>
+						<Button
+							type="button"
+							variant="ghost"
+							size="xs"
+							className={actionButtonClass}
+							onClick={() => {
+								void copyLinkToClipboard(activeLink.href);
+							}}
+						>
+							<span>Copy</span>
+							<span className={actionHintClass}>⌘⇧C</span>
+						</Button>
+						<Separator
+							orientation="vertical"
+							className="self-stretch bg-border/90"
+						/>
+						<Button
+							type="button"
+							variant="default"
+							size="xs"
+							className="h-auto min-w-[72px] rounded-none border-0 px-2 text-primary-foreground shadow-none inset-shadow-none hover:brightness-105"
+							onClick={() => {
+								void visitLink(activeLink.href);
+							}}
+						>
+							<span>Visit</span>
+							<span className="text-[9px] leading-[14px] tracking-[0.12em] text-primary-foreground/75">
+								⌘↩
+							</span>
+						</Button>
 					</div>
 				</div>
 			)}
@@ -447,13 +474,11 @@ async function visitLink(href: string) {
 		const parsed = new URL(href);
 		const protocol = parsed.protocol.toLowerCase();
 		if (protocol !== "http:" && protocol !== "https:") {
-			// TODO: Replace console warnings with app toast notifications.
-			console.warn(`[LinkPopover] blocked non-http(s) URL: ${href}`);
+			toast.error("Only http(s) links can be opened");
 			return;
 		}
 		await openUrl(href);
 	} catch {
-		// TODO: Replace console warnings with app toast notifications.
-		console.warn(`[LinkPopover] invalid URL: ${href}`);
+		toast.error("Invalid link URL");
 	}
 }

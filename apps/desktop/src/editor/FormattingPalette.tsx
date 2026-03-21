@@ -87,19 +87,19 @@ export function FormattingPalette({
 	}, [editor, scrollContainer]);
 	if (!editor) return null;
 	const dividerClass = paletteState.showDashedDivider
-		? "[border-block-start:0.5px_dashed_#d0d0d0]"
+		? "[border-block-start:1px_dashed_var(--border)]"
 		: "border-transparent";
 
 	return (
 		<div
-			className={`z-[3] flex h-8 items-center justify-between bg-white px-4 ${dividerClass}`}
+			className={`z-[3] flex h-8 items-center justify-between bg-background/95 px-4 text-[12px] backdrop-blur-[2px] ${dividerClass}`}
 		>
-			<p className="text-[12px] leading-none text-[#9b9b9b]">
+			<p className="leading-none text-muted-foreground">
 				{paletteState.wordCount} words
 			</p>
-			<div className="flex items-center gap-2 text-[#8d8d8d]">
+			<div className="flex items-center gap-2 text-muted-foreground">
 				{paletteState.canEscapeBoundary && (
-					<span className="inline-flex h-4 items-center rounded-[2px] bg-gradient-to-b from-[#eaeaea] to-[#e4e4e4] px-1 text-[12px] leading-none text-[#656565]">
+					<span className="inline-flex h-4 items-center rounded-sm border border-border bg-secondary px-1 text-[11px] leading-none text-foreground shadow-panel inset-shadow-chrome">
 						esc
 					</span>
 				)}

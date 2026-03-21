@@ -2,37 +2,8 @@
 	height: 100vh;
 	display: flex;
 	flex-direction: column;
-	background: #ffffff;
-	color: #111827;
-}
-
-.toolbar {
-	display: flex;
-	align-items: center;
-	gap: 0.75rem;
-	padding: 0.75rem;
-	border-bottom: 1px solid #e5e7eb;
-}
-
-.button {
-	border: 1px solid #d1d5db;
-	border-radius: 0.375rem;
-	background: var(--accent);
-	color: #ffffff;
-	padding: 0.45rem 0.75rem;
-	cursor: pointer;
-}
-
-.button:hover {
-	filter: brightness(1.04);
-}
-
-.path {
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
-	color: #6b7280;
-	font-size: 0.875rem;
+	background: var(--background);
+	color: var(--foreground);
 }
 
 .content {
@@ -66,10 +37,11 @@
 	font-variant-ligatures: none;
 	font-feature-settings: "liga" 0;
 	caret-color: transparent;
+	color: var(--foreground);
 }
 
 .ProseMirror > * {
-	margin-left: 1rem;
+	margin-inline-start: 1rem;
 }
 
 .ProseMirror h1 {
@@ -108,7 +80,7 @@
 
 .ProseMirror ul > li[data-checked] > label {
 	flex: 0 0 auto;
-	margin-right: 0.55rem;
+	margin-inline-end: 0.55rem;
 	user-select: none;
 }
 
@@ -118,18 +90,19 @@
 
 .ProseMirror blockquote {
 	margin-inline-start: calc(1rem - 2px);
-	border-inline-start: 2px solid #ccc;
+	border-inline-start: 2px solid var(--border);
 	border-radius: 1px;
 	padding-inline-start: 1rem;
+	color: color-mix(in oklab, var(--foreground) 78%, white);
 }
 
 .pm-fake-selection {
-	background: rgba(0, 122, 255, 0.35);
+	background: color-mix(in oklab, var(--brand) 34%, transparent);
 	border-radius: 2px;
 }
 
 .pm-md-delimiter {
-	color: #6b7280;
+	color: var(--muted-foreground);
 	opacity: 0.7;
 	user-select: none;
 	pointer-events: auto;
@@ -141,7 +114,7 @@
 }
 
 .ProseMirror span[data-link="true"] {
-	color: #565656;
+	color: color-mix(in oklab, var(--brand) 48%, var(--foreground));
 	text-decoration: underline;
 }
 
@@ -151,61 +124,17 @@
 	block-size: auto;
 }
 
-.link-popover {
-	position: absolute;
-	inline-size: 300px;
-	border-radius: 4px;
-	background-color: #111827;
-	border: 1px solid #111827;
-	z-index: 2;
-}
-
-.link-popover-inner {
-	display: flex;
-	align-items: center;
-	gap: 0.2rem;
-	background: #f9fafb;
-	border-radius: 2px;
-	border: 1px solid #9ca3af;
-}
-
-.link-input-container {
-	position: relative;
-	flex: 1;
-}
-
-.link-input-container input {
-	inline-size: 100%;
-	border: none;
-	outline: none;
-	padding-inline: 0.4rem;
-	padding-block: 0.35rem;
-	background-color: #f9fafb;
-	color: #111827;
-}
-
-.link-popover button {
-	border: none;
-	background: #111827;
-	color: #f9fafb;
-	border-radius: 0 2px 2px 0;
-	padding-inline: 0.6rem;
-	padding-block: 0.35rem;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-}
 .pm-virtual-cursor {
 	position: absolute;
-	border-radius: 4px;
-	background: var(--accent);
+	border-radius: 2px;
+	background: var(--brand);
 	pointer-events: none;
 	transform-origin: top;
 	transition:
-		left 130ms ease,
-		top 130ms ease,
-		width 130ms ease,
-		height 130ms ease;
+		left var(--cursor-motion-duration) var(--cursor-motion-easing),
+		top var(--cursor-motion-duration) var(--cursor-motion-easing),
+		width var(--cursor-motion-duration) var(--cursor-motion-easing),
+		height var(--cursor-motion-duration) var(--cursor-motion-easing);
 }
 
 .pm-virtual-cursor.no-position-transition {
