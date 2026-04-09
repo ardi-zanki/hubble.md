@@ -127,44 +127,63 @@ function getLinkSession(editor: Editor) {
 	};
 }
 
-type LinkSettlementState = {
+// ── Anchor state ────────────────────────────────────────────────────
+// The popover is "anchored" to a link once it has entered the link AND
+// its floating position has been computed at least once. CSS transitions
+// are only applied while anchored — this prevents jarring motion when
+// jumping between links (keyboard or mouse) or clicking around with the
+// pointer. The anchor detaches on any pointer-driven selection and on
+// keyboard moves that land on a different link; it re-anchors after the
+// first position compute on the new link.
+
+type LinkAnchorState = {
+	// The link the cursor is currently inside.
 	activeKey: string | null;
-	settledKey: string | null;
+	// The link the popover has been positioned over at least once.
+	// When anchoredKey === activeKey, transitions are enabled.
+	anchoredKey: string | null;
 };
 
-type LinkSettlementEvent =
+type LinkAnchorEvent =
 	| {
-			type: "SESSION_SYNCED";
+			// Fired on every editor update; carries the new active link and
+			// whether this change should detach the anchor.
+			type: "LINK_SYNCED";
 			activeKey: string | null;
-			shouldUnsettle: boolean;
+			shouldDetach: boolean;
 	  }
 	| {
-			type: "POSITION_COMPUTED";
+			// Fired after floating-ui resolves the popover position, marking
+			// the popover as fully anchored to activeKey.
+			type: "POSITIONED";
 			activeKey: string | null;
 	  };
 
-const INITIAL_LINK_SETTLEMENT_STATE: LinkSettlementState = {
+const INITIAL_LINK_ANCHOR_STATE: LinkAnchorState = {
 	activeKey: null,
-	settledKey: null,
+	anchoredKey: null,
 };
 
-function linkSettlementReducer(
-	state: LinkSettlementState,
-	event: LinkSettlementEvent,
-): LinkSettlementState {
+function linkAnchorReducer(
+	state: LinkAnchorState,
+	event: LinkAnchorEvent,
+): LinkAnchorState {
 	switch (event.type) {
-		case "SESSION_SYNCED": {
-			const { activeKey, shouldUnsettle } = event;
-			if (!activeKey) return INITIAL_LINK_SETTLEMENT_STATE;
-			if (shouldUnsettle || state.activeKey !== activeKey) {
-				return { activeKey, settledKey: null };
+		case "LINK_SYNCED": {
+			const { activeKey, shouldDetach } = event;
+			if (!activeKey) return INITIAL_LINK_ANCHOR_STATE;
+			// Detach (drop anchoredKey) when moving to a new link or when the
+			// caller signals the move should suppress animation.
+			if (shouldDetach || state.activeKey !== activeKey) {
+				return { activeKey, anchoredKey: null };
 			}
 			return { ...state, activeKey };
 		}
-		case "POSITION_COMPUTED": {
+		case "POSITIONED": {
 			const { activeKey } = event;
+			// Only anchor if the position resolves for the link we're tracking.
 			if (!activeKey || state.activeKey !== activeKey) return state;
-			return { activeKey, settledKey: activeKey };
+			return { activeKey, anchoredKey: activeKey };
 		}
 		default:
 			return state;
@@ -255,7 +274,12 @@ const PREVIEW_INLINE_SIZE_END = 174;
 const PREVIEW_HORIZONTAL_OVERFLOW =
 	(PREVIEW_SHELL_INLINE_SIZE - PREVIEW_INLINE_SIZE_END) / 2;
 
-function shouldUnsettleLink({
+// Returns true when a selection change should detach the anchor,
+// suppressing position transitions on the next update.
+// Detaches when:
+//   - the user moved with the pointer (mouse/trackpad click)
+//   - the cursor jumped to a different link via keyboard
+function shouldDetachAnchor({
 	reason,
 	inputMode,
 	activeKey,
@@ -357,7 +381,7 @@ export function LinkPopover({
 		((reason?: PositionUpdateReason) => void) | null
 	>(null);
 	const machineStateRef = useRef(machineState);
-	const settlementRef = useRef(INITIAL_LINK_SETTLEMENT_STATE);
+	const anchorRef = useRef(INITIAL_LINK_ANCHOR_STATE);
 	const lastSelectionActiveKeyRef = useRef<string | null>(null);
 	const positionRequestIdRef = useRef(0);
 	const [animatePosition, setAnimatePosition] = useState(false);
@@ -377,8 +401,8 @@ export function LinkPopover({
 		machineStateRef.current = machineReducer(previousState, event);
 		dispatch(event);
 	}, []);
-	const advanceSettlement = useCallback((event: LinkSettlementEvent) => {
-		settlementRef.current = linkSettlementReducer(settlementRef.current, event);
+	const setAnchorState = useCallback((event: LinkAnchorEvent) => {
+		anchorRef.current = linkAnchorReducer(anchorRef.current, event);
 	}, []);
 	const openCreationTitleInput = useCallback(() => {
 		if (!editor || creationCursorPos === null) return;
@@ -410,28 +434,30 @@ export function LinkPopover({
 			const shouldPosition = Boolean(
 				link || machineStateRef.current.pendingCreation || isCreating,
 			);
-			const wasSettledForActiveKey =
+			// Transitions are allowed only when the popover is already anchored
+			// to this exact link. Read the ref before advancing so we can compare
+			// against the previous anchor state.
+			const isAnchored =
 				activeKey !== null &&
-				settlementRef.current.activeKey === activeKey &&
-				settlementRef.current.settledKey === activeKey;
-			const shouldUnsettle = shouldUnsettleLink({
+				anchorRef.current.activeKey === activeKey &&
+				anchorRef.current.anchoredKey === activeKey;
+			const shouldDetach = shouldDetachAnchor({
 				reason,
 				inputMode,
 				activeKey,
 				previousSelectionActiveKey: lastSelectionActiveKeyRef.current,
 			});
 
-			advanceSettlement({
-				type: "SESSION_SYNCED",
+			setAnchorState({
+				type: "LINK_SYNCED",
 				activeKey,
-				shouldUnsettle,
+				shouldDetach,
 			});
 			setAnimatePosition(
-				Boolean(activeKey) &&
-					wasSettledForActiveKey &&
+				isAnchored &&
 					reason !== "scroll" &&
 					reason !== "resize" &&
-					!shouldUnsettle,
+					!shouldDetach,
 			);
 			if (reason === "selection") {
 				lastSelectionActiveKeyRef.current = activeKey;
@@ -448,10 +474,7 @@ export function LinkPopover({
 				setFloatingY,
 			).then(() => {
 				if (requestId !== positionRequestIdRef.current) return;
-				advanceSettlement({
-					type: "POSITION_COMPUTED",
-					activeKey,
-				});
+				setAnchorState({ type: "POSITIONED", activeKey });
 			});
 		};
 		positionUpdateRef.current = update;
@@ -486,7 +509,7 @@ export function LinkPopover({
 		editor,
 		viewportRef,
 		dispatchMachineEvent,
-		advanceSettlement,
+		setAnchorState,
 		creationCursorPos,
 		inputMode,
 	]);
