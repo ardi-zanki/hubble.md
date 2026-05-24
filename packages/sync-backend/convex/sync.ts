@@ -71,6 +71,13 @@ export const createWorkspace = mutation({
 	},
 });
 
+export const listWorkspaces = query({
+	args: {},
+	handler: async (ctx) => {
+		return ctx.db.query("workspaces").collect();
+	},
+});
+
 export const getFilesByWorkspace = query({
 	args: {
 		workspaceId: v.id("workspaces"),

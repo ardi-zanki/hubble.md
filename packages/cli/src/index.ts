@@ -2,6 +2,10 @@
 import { resolve } from "node:path";
 import { parseArgs as parseNodeArgs } from "node:util";
 import {
+	createConvexBackend,
+	createConvexSubscriber,
+} from "@hubble.md/convex-client";
+import {
 	init,
 	isInitialized,
 	readConfig,
@@ -10,7 +14,6 @@ import {
 } from "@hubble.md/sync";
 import { createNodeFileSystem } from "@hubble.md/sync/node";
 import chokidar from "chokidar";
-import { createConvexBackend, createConvexSubscriber } from "./convex.js";
 
 const fs = createNodeFileSystem();
 

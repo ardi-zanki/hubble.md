@@ -1,0 +1,232 @@
+import { createConvexSubscriber } from "@hubble.md/convex-client";
+import { useStoreValue } from "@simplestack/store/react";
+import { useEffect, useRef, useState } from "react";
+import {
+	applyRemoteChange,
+	getActionCtx,
+	initActions,
+	loadPath,
+	markRemoteDeleted,
+	refreshFiles,
+	reloadFromRemote,
+	savePathContent,
+	teardownActions,
+} from "../store/actions";
+import { viewerStore, workspaceStore } from "../store/state";
+import { EditorView } from "./EditorView";
+import { Sidebar } from "./Sidebar";
+import { Toolbar } from "./Toolbar";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
+
+type Props = {
+	url: string;
+	workspaceId: string;
+	workspaceName: string;
+	onSwitch: (id: string, name: string) => void;
+	onDisconnect: () => void;
+};
+
+export function AppShell({
+	url,
+	workspaceId,
+	workspaceName,
+	onSwitch,
+	onDisconnect,
+}: Props) {
+	const viewer = useStoreValue(viewerStore);
+	const [switcherOpen, setSwitcherOpen] = useState(false);
+	const [newNoteName, setNewNoteName] = useState<string | null>(null);
+	const newNoteInputRef = useRef<HTMLInputElement>(null);
+
+	useEffect(() => {
+		initActions(url, workspaceId);
+		void refreshFiles();
+		return () => {
+			teardownActions();
+		};
+	}, [url, workspaceId]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: subscription owns its lifecycle by url+workspaceId
+	useEffect(() => {
+		const subscriber = createConvexSubscriber(url);
+		const unsubscribe = subscriber.onFilesChanged(
+			workspaceId,
+			() => {
+				void onRemoteFilesChanged();
+			},
+			(err) => {
+				console.error("subscription error:", err);
+			},
+		);
+		return () => {
+			unsubscribe();
+			void subscriber.close();
+		};
+	}, [url, workspaceId]);
+
+	useEffect(() => {
+		if (newNoteName !== null) {
+			requestAnimationFrame(() => newNoteInputRef.current?.focus());
+		}
+	}, [newNoteName]);
+
+	const handleNewNote = () => setNewNoteName("");
+
+	const submitNewNote = async (event: React.FormEvent) => {
+		event.preventDefault();
+		const name = (newNoteName ?? "").trim();
+		if (!name) return;
+		const path = name.endsWith(".md") ? name : `${name}.md`;
+		await savePathContent(path, "");
+		await refreshFiles();
+		await loadPath(path);
+		setNewNoteName(null);
+	};
+
+	const onRemoteFilesChanged = async () => {
+		const ctx = getActionCtx();
+		if (!ctx) return;
+		const remote = await ctx.backend.getFiles(ctx.workspaceId);
+		const visible = remote
+			.filter((f) => !f.deleted)
+			.map((f) => ({
+				path: f.path,
+				contentHash: f.contentHash,
+				updatedAt: f.updatedAt,
+				deleted: f.deleted,
+			}));
+		workspaceStore.set({ files: visible });
+
+		const v = viewerStore.get();
+		if (!v.currentPath) return;
+		const current = remote.find((f) => f.path === v.currentPath);
+		if (!current || current.deleted) {
+			markRemoteDeleted(v.currentPath);
+			return;
+		}
+		applyRemoteChange(v.currentPath, current.content, current.contentHash);
+	};
+
+	return (
+		<main className="flex h-dvh flex-col bg-background text-foreground">
+			<Toolbar
+				workspaceName={workspaceName}
+				onSwitcherOpen={() => setSwitcherOpen(true)}
+				onNewNote={handleNewNote}
+			/>
+			<div className="flex min-h-0 flex-1 overflow-hidden">
+				<Sidebar />
+				<section className="flex-1 overflow-hidden" aria-live="polite">
+					{newNoteName !== null && (
+						<form
+							onSubmit={submitNewNote}
+							className="border-b border-border bg-muted/40 px-3 py-2"
+						>
+							<div className="mx-auto flex max-w-3xl items-center gap-2">
+								<input
+									ref={newNoteInputRef}
+									type="text"
+									required
+									value={newNoteName}
+									onChange={(e) => setNewNoteName(e.target.value)}
+									placeholder="note-name.md"
+									className="flex-1 rounded-sm border border-border bg-background px-2 py-1 text-sm outline-none focus:border-ring"
+								/>
+								<button
+									type="submit"
+									className="rounded-sm bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"
+								>
+									Create
+								</button>
+								<button
+									type="button"
+									onClick={() => setNewNoteName(null)}
+									className="rounded-sm px-3 py-1 text-xs text-muted-foreground hover:bg-sidebar-accent"
+								>
+									Cancel
+								</button>
+							</div>
+						</form>
+					)}
+					{viewer.currentPath && (
+						<div className="flex h-full min-h-0 flex-col">
+							{viewer.externalChange.kind === "conflict" && (
+								<ExternalChangeBanner
+									message="Remote changes available. Reload to accept."
+									onReload={reloadFromRemote}
+								/>
+							)}
+							{viewer.externalChange.kind === "deleted" && (
+								<ExternalChangeBanner
+									message="This file was deleted remotely. Reload before editing."
+									onReload={() => {
+										if (viewer.currentPath) void loadPath(viewer.currentPath);
+									}}
+								/>
+							)}
+							<EditorView
+								path={viewer.currentPath}
+								initialMarkdown={viewer.content}
+							/>
+						</div>
+					)}
+					{!viewer.currentPath && viewer.status === "loading" && (
+						<p className="p-6 text-sm text-muted-foreground">Loading…</p>
+					)}
+					{!viewer.currentPath && viewer.status === "error" && (
+						<p className="p-6 text-sm text-destructive">{viewer.error}</p>
+					)}
+					{!viewer.currentPath &&
+						viewer.status !== "loading" &&
+						viewer.status !== "error" && (
+							<div className="flex h-full items-center justify-center p-6">
+								<p className="text-sm text-muted-foreground">
+									Select a file, or create a new one with +.
+								</p>
+							</div>
+						)}
+				</section>
+			</div>
+			{switcherOpen && (
+				<WorkspaceSwitcher
+					url={url}
+					currentWorkspaceId={workspaceId}
+					onSelect={(id, name) => {
+						setSwitcherOpen(false);
+						if (id !== workspaceId) {
+							onSwitch(id, name);
+						}
+					}}
+					onClose={() => setSwitcherOpen(false)}
+					onDisconnect={() => {
+						setSwitcherOpen(false);
+						onDisconnect();
+					}}
+				/>
+			)}
+		</main>
+	);
+}
+
+function ExternalChangeBanner({
+	message,
+	onReload,
+}: {
+	message: string;
+	onReload: () => void;
+}) {
+	return (
+		<div className="border-b border-border bg-muted/40">
+			<div className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
+				<p className="m-0 text-sm text-muted-foreground">{message}</p>
+				<button
+					type="button"
+					onClick={onReload}
+					className="rounded-sm border border-border bg-background px-3 py-1 text-xs hover:bg-sidebar-accent"
+				>
+					Reload
+				</button>
+			</div>
+		</div>
+	);
+}
