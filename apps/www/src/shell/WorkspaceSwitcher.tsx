@@ -1,9 +1,10 @@
 import { api } from "@hubble.md/sync-backend";
 import type { Doc } from "@hubble.md/sync-backend/types";
-import { WorkspaceSwitcherMenu } from "@hubble.md/ui";
+import { Modal, WorkspaceSwitcherMenu } from "@hubble.md/ui";
 import { ConvexHttpClient } from "convex/browser";
 import { useEffect, useState } from "react";
 import { categorizeError, describeError } from "../connection/convex-error";
+import { CreateWorkspaceForm } from "./CreateWorkspaceForm";
 
 type Props = {
 	url: string;
@@ -21,6 +22,7 @@ export function WorkspaceSwitcher({
 	onDisconnect,
 }: Props) {
 	const [open, setOpen] = useState(false);
+	const [createOpen, setCreateOpen] = useState(false);
 	const [client] = useState(() => new ConvexHttpClient(url));
 	const [workspaces, setWorkspaces] = useState<Doc<"workspaces">[]>([]);
 	const [error, setError] = useState<string | null>(null);
@@ -41,38 +43,61 @@ export function WorkspaceSwitcher({
 	}, [client]);
 
 	return (
-		<WorkspaceSwitcherMenu
-			label={currentWorkspaceName}
-			title={currentWorkspaceName}
-			open={open}
-			onOpenChange={setOpen}
-		>
-			{error && (
-				<div className="px-2 py-1 text-[11px] text-destructive">{error}</div>
-			)}
-			{workspaces.map((workspace) => (
+		<>
+			<WorkspaceSwitcherMenu
+				label={currentWorkspaceName}
+				title={currentWorkspaceName}
+				open={open}
+				onOpenChange={setOpen}
+			>
+				{error && (
+					<div className="px-2 py-1 text-[11px] text-destructive">{error}</div>
+				)}
+				{workspaces.map((workspace) => (
+					<WorkspaceSwitcherMenu.Item
+						key={workspace._id}
+						selected={workspace._id === currentWorkspaceId}
+						onClick={() => {
+							setOpen(false);
+							if (workspace._id !== currentWorkspaceId) {
+								onSelect(workspace._id, workspace.name);
+							}
+						}}
+					>
+						<span className="truncate">{workspace.name}</span>
+					</WorkspaceSwitcherMenu.Item>
+				))}
+				<WorkspaceSwitcherMenu.Separator />
 				<WorkspaceSwitcherMenu.Item
-					key={workspace._id}
-					selected={workspace._id === currentWorkspaceId}
 					onClick={() => {
 						setOpen(false);
-						if (workspace._id !== currentWorkspaceId) {
-							onSelect(workspace._id, workspace.name);
-						}
+						setCreateOpen(true);
 					}}
 				>
-					<span className="truncate">{workspace.name}</span>
+					Create workspace
 				</WorkspaceSwitcherMenu.Item>
-			))}
-			<WorkspaceSwitcherMenu.Separator />
-			<WorkspaceSwitcherMenu.Item
-				onClick={() => {
-					setOpen(false);
-					onDisconnect();
-				}}
+				<WorkspaceSwitcherMenu.Item
+					onClick={() => {
+						setOpen(false);
+						onDisconnect();
+					}}
+				>
+					Disconnect
+				</WorkspaceSwitcherMenu.Item>
+			</WorkspaceSwitcherMenu>
+			<Modal
+				open={createOpen}
+				onOpenChange={setCreateOpen}
+				title="Create workspace"
 			>
-				Disconnect
-			</WorkspaceSwitcherMenu.Item>
-		</WorkspaceSwitcherMenu>
+				<CreateWorkspaceForm
+					client={client}
+					onCreated={(id, name) => {
+						setCreateOpen(false);
+						onSelect(id, name);
+					}}
+				/>
+			</Modal>
+		</>
 	);
 }
