@@ -15,3 +15,7 @@ A folder on a device's local filesystem that is bound to a [[Workspace]]. The bi
 ### Plain Folder
 
 A folder open in the desktop app that is *not* bound to a Workspace — no `.hubble/config.json`. The desktop app can read and edit it as a general markdown viewer; nothing syncs.
+
+### Workspace Snapshot
+
+The client's currently loaded view of a [[Workspace]] — an atomically assembled bundle of (workspace name, files list, last-opened file content). The app shell renders only when a Workspace Snapshot exists; the UI never shows a partially-loaded one. Switching workspaces means preparing a new snapshot in the background and replacing the previous Workspace Snapshot in a single update once it's ready.
