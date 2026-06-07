@@ -2,19 +2,32 @@
 
 Glossary for shared terms across the project. Implementation details belong in code or ADRs — not here.
 
+## Flagged ambiguities
+
+- **A Workspace is defined by its configuration, not by the cloud.** Don't conflate "is this a Workspace?" (does the folder have a `.hubble/` configuration) with "is it synced?" ([[Cloud Sync]] enabled). A desktop Workspace can be local-only and gain Cloud Sync later. *(Note: not yet true in code — `init()` requires a Convex backend to mint a `workspaceId`. This is the subject of an active spec; see the deferred-cloud-sync handoff.)*
+- **"Open folder" (desktop runtime) vs "Workspace."** The desktop editor operates on any open folder path and reads/writes the filesystem directly; that folder may be a [[Workspace Folder]] or a [[Plain Folder]]. Say "open folder" for the runtime notion, "Workspace" for the configured logical entity.
+
 ## Glossary
 
 ### Workspace
 
-A logical container of Markdown Files and Assets. Lives as a row in the Convex `workspaces` table. Identified by `name` (human-meaningful, unique within a deployment) and `_id` (Convex ID). The Convex row is the source of truth; everything else is a view into it.
+A logical container of Markdown Files and Assets, defined by a **workspace configuration** (`.hubble/config.json`) — *not* by the cloud. A Workspace has a stable identity from the moment it is created.
+
+[[Cloud Sync]] is an optional capability layered on top. A Workspace may be **local-only** (configured, no cloud backend) or **synced** (bound to a Convex deployment, with a row in the `workspaces` table). On the **web** a Workspace is always synced — there is no local filesystem to fall back to. On **desktop** a Workspace can be created local-only and have Cloud Sync enabled later.
+
+The Workspace is the unit; the **access path differs by surface**. The web app reads/writes through the Convex backend. The desktop app reads/writes the [[Workspace Folder]] directly on disk (the working source of truth), with the background sync engine reconciling to Convex when Cloud Sync is on. Features that must run on both surfaces — notably [[Embed]]s — target the Workspace as the unit and resolve against whichever backend the current surface provides; they never assume Convex.
 
 ### Workspace Folder
 
-A folder on a device's local filesystem that is bound to a [[Workspace]]. The binding is denoted by a `.hubble/config.json` file inside the folder containing the `workspaceId` and a `deviceId`. Multiple Workspace Folders on multiple devices can be bound to the same Workspace.
+The on-disk realization of a [[Workspace]]: a folder containing the workspace configuration at `.hubble/config.json`. **Configuration presence — not cloud binding — is what makes a folder a Workspace Folder.** When [[Cloud Sync]] is enabled the config also carries the Convex linkage (today: `workspaceId`, `workspaceName`); a local-only Workspace Folder has configuration without it. Multiple Workspace Folders across devices can map to the same synced Workspace.
 
 ### Plain Folder
 
-A folder open in the desktop app that is *not* bound to a Workspace — no `.hubble/config.json`. The desktop app can read and edit it as a general markdown viewer; nothing syncs.
+A folder open in the desktop app with **no** workspace configuration (no `.hubble/`). It is not a [[Workspace]]: the desktop app reads and edits it as a general markdown viewer, nothing syncs, and Workspace-scoped features (e.g. [[Embed]]s) do not resolve. Adding a configuration promotes it to a [[Workspace Folder]].
+
+### Cloud Sync
+
+The optional capability that binds a [[Workspace]] to a Convex deployment, enabling multi-device sync and web access. Required for web Workspaces; opt-in on desktop, where it can be enabled after a Workspace is created by supplying a Convex deployment URL. Whether Cloud Sync is on is orthogonal to whether a folder is a Workspace.
 
 ### Markdown File
 
@@ -31,6 +44,16 @@ A Markdown File opened directly from the filesystem, not through a Workspace Fol
 ### Asset
 
 A binary file referenced by a Markdown File, such as an image. Asset paths in markdown use the desktop-canonical `<markdown-file-stem>.assets/<hash>.<ext>` convention relative to the Markdown File's folder.
+
+### Embed
+
+A self-contained, interactive UI component placed at a point in a [[Markdown File]] — authored as a client-side app and marked by a **parameterized** custom element (e.g. `<embed-kanban board="roadmap">`). An Embed renders **in-realm**, CSS-isolated, but *not* iframed — so its UI can overflow and compose naturally. (Initial mechanism: a Web Component with a Shadow DOM + built CSS; provisional — see ADR-0005.) It reaches Workspace data only through a capability-scoped, async **broker**, never directly. Isolation of *untrusted* content is handled at the document level — a shared document may run the whole editor in a sandbox — not per-Embed.
+_Avoid_: widget, plugin, gadget, component.
+
+### Embed Bundle
+
+The compiled artifact a viewer renders directly, without building or installing anything. Distinct from an [[Embed]]'s source: source is diffable text synced as files; the Embed Bundle is opaque and synced as an [[Asset]]. A custom element in a [[Markdown File]] resolves to its Embed Bundle by the Embed's name.
+_Avoid_: build, output, dist.
 
 ### Workspace Snapshot
 
