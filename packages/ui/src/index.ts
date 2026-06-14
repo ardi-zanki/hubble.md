@@ -2,6 +2,7 @@ export { AppShellFrame } from "./components/AppShellFrame";
 export {
 	Sidebar,
 	type SidebarFile,
+	SidebarFrame,
 	type SidebarSortMode,
 } from "./components/Sidebar";
 export { NewNoteButton, Toolbar } from "./components/Toolbar";

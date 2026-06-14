@@ -1,6 +1,15 @@
 import { Menu } from "@base-ui/react/menu";
 import { Select } from "@base-ui/react/select";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+	type CSSProperties,
+	type KeyboardEvent as ReactKeyboardEvent,
+	type ReactNode,
+	type PointerEvent as ReactPointerEvent,
+	useCallback,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import MingcuteAzSortAscendingLettersLine from "~icons/mingcute/az-sort-ascending-letters-line";
 import MingcuteCheckLine from "~icons/mingcute/check-line";
 import MingcuteDeleteLine from "~icons/mingcute/delete-line";
@@ -30,6 +39,11 @@ const sidebarActionClass =
 	"flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-start text-[11px] font-normal outline-hidden select-none";
 const sidebarActionIconClass =
 	"inline-flex size-4 shrink-0 items-center justify-center [&_svg]:size-3.5";
+const DEFAULT_SIDEBAR_WIDTH = 220;
+const MIN_SIDEBAR_WIDTH = 180;
+const MAX_SIDEBAR_WIDTH = 360;
+const COLLAPSE_EDGE_DISTANCE = 24;
+const RESIZE_HANDLE_WIDTH = 10;
 
 export function Sidebar({
 	files,
@@ -40,6 +54,7 @@ export function Sidebar({
 	header,
 	emptyState,
 	getDisplayPath = (path) => path,
+	onCollapse,
 	onSortModeChange,
 	onSelectFile,
 	onRenameFile,
@@ -53,9 +68,10 @@ export function Sidebar({
 	sortMode: SidebarSortMode;
 	/** Stable key used to persist folder expansion for one workspace/open folder. */
 	storageScope?: string | null;
-	header?: React.ReactNode;
-	emptyState?: React.ReactNode;
+	header?: ReactNode;
+	emptyState?: ReactNode;
 	getDisplayPath?: (path: string) => string;
+	onCollapse?: () => void;
 	onSortModeChange: (mode: SidebarSortMode) => void;
 	onSelectFile: (path: string) => void;
 	onRenameFile?: (path: string, nextName: string) => void;
@@ -210,7 +226,7 @@ export function Sidebar({
 	}, [getRenameError, onRenameFile, renameDraft, renamingPath, resetRename]);
 
 	return (
-		<aside className="flex w-[220px] shrink-0 flex-col overflow-hidden border-e border-sidebar-border bg-sidebar">
+		<SidebarFrame onCollapse={onCollapse} storageScope={storageScope}>
 			<div className="flex items-center justify-between border-b border-sidebar-border px-2.5 py-1.5">
 				{header ?? (
 					<span className="text-[11px] font-medium uppercase text-muted-foreground">
@@ -392,6 +408,154 @@ export function Sidebar({
 						</div>
 					);
 				})}
+			</div>
+		</SidebarFrame>
+	);
+}
+
+export function SidebarFrame({
+	children,
+	onCollapse,
+	storageScope,
+}: {
+	children: ReactNode;
+	onCollapse?: () => void;
+	storageScope?: string | null;
+}) {
+	const asideRef = useRef<HTMLElement | null>(null);
+	const pointerIdRef = useRef<number | null>(null);
+	const inlineStartRef = useRef(0);
+	const widthStorageKey = sidebarWidthStorageKey(storageScope);
+	const [sidebarWidth, setSidebarWidth] = useState(() =>
+		readSidebarWidth(widthStorageKey),
+	);
+	const sidebarWidthRef = useRef(sidebarWidth);
+	const previewCollapsedRef = useRef(false);
+	const [isResizing, setIsResizing] = useState(false);
+	const [previewCollapsed, setPreviewCollapsedState] = useState(false);
+
+	useEffect(() => {
+		const nextWidth = readSidebarWidth(widthStorageKey);
+		sidebarWidthRef.current = nextWidth;
+		setSidebarWidth(nextWidth);
+	}, [widthStorageKey]);
+
+	function setWidth(nextWidth: number) {
+		const clampedWidth = clampSidebarWidth(nextWidth);
+		sidebarWidthRef.current = clampedWidth;
+		setSidebarWidth(clampedWidth);
+	}
+
+	function setPreviewCollapsed(nextPreviewCollapsed: boolean) {
+		if (previewCollapsedRef.current === nextPreviewCollapsed) return;
+		previewCollapsedRef.current = nextPreviewCollapsed;
+		setPreviewCollapsedState(nextPreviewCollapsed);
+	}
+
+	function finishResize(event?: ReactPointerEvent<HTMLDivElement>) {
+		const pointerId = pointerIdRef.current;
+		if (
+			pointerId !== null &&
+			event?.currentTarget.hasPointerCapture(pointerId)
+		) {
+			event.currentTarget.releasePointerCapture(pointerId);
+		}
+		pointerIdRef.current = null;
+		setIsResizing(false);
+		const shouldCollapse = previewCollapsedRef.current;
+		setPreviewCollapsed(false);
+		if (shouldCollapse && onCollapse) {
+			onCollapse();
+			return;
+		}
+		writeSidebarWidth(widthStorageKey, sidebarWidthRef.current);
+	}
+
+	function beginResize(event: ReactPointerEvent<HTMLDivElement>) {
+		event.preventDefault();
+		pointerIdRef.current = event.pointerId;
+		inlineStartRef.current =
+			asideRef.current?.getBoundingClientRect().left ?? 0;
+		event.currentTarget.setPointerCapture(event.pointerId);
+		setPreviewCollapsed(false);
+		setIsResizing(true);
+	}
+
+	function resize(event: ReactPointerEvent<HTMLDivElement>) {
+		if (pointerIdRef.current !== event.pointerId) return;
+		event.preventDefault();
+		if (onCollapse && event.clientX <= COLLAPSE_EDGE_DISTANCE) {
+			setPreviewCollapsed(true);
+			return;
+		}
+		setPreviewCollapsed(false);
+		setWidth(event.clientX - inlineStartRef.current);
+	}
+
+	function resizeWithKeyboard(event: ReactKeyboardEvent<HTMLDivElement>) {
+		let nextWidth: number | null = null;
+		if (event.key === "ArrowLeft") {
+			nextWidth = sidebarWidth - 16;
+		} else if (event.key === "ArrowRight") {
+			nextWidth = sidebarWidth + 16;
+		} else if (event.key === "Home") {
+			nextWidth = MIN_SIDEBAR_WIDTH;
+		} else if (event.key === "End") {
+			nextWidth = MAX_SIDEBAR_WIDTH;
+		}
+		if (nextWidth === null) return;
+		event.preventDefault();
+		setWidth(nextWidth);
+		writeSidebarWidth(widthStorageKey, sidebarWidthRef.current);
+	}
+
+	return (
+		<aside
+			ref={asideRef}
+			className={cn(
+				"relative flex shrink-0 flex-col overflow-visible border-e border-sidebar-border bg-sidebar",
+				isResizing && "select-none",
+			)}
+			style={
+				{
+					"--sidebar-width": `${sidebarWidth}px`,
+					inlineSize: previewCollapsed ? 0 : sidebarWidth,
+					maxInlineSize: MAX_SIDEBAR_WIDTH,
+					minInlineSize: previewCollapsed ? 0 : MIN_SIDEBAR_WIDTH,
+				} as CSSProperties & Record<"--sidebar-width", string>
+			}
+		>
+			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+				{children}
+			</div>
+			{/* biome-ignore lint/a11y/useSemanticElements: interactive splitters use ARIA separator semantics; hr is not reliable for pointer dragging here. */}
+			<div
+				className="group absolute z-20 cursor-col-resize outline-none [inset-block:0]"
+				style={{
+					inlineSize: RESIZE_HANDLE_WIDTH,
+					insetInlineEnd: -(RESIZE_HANDLE_WIDTH / 2),
+				}}
+				// A resizable split pane maps to the ARIA separator pattern:
+				// arrow keys resize, Home/End jump to min/max, and pointer drag works normally.
+				aria-label="Resize sidebar"
+				role="separator"
+				aria-orientation="vertical"
+				aria-valuemin={MIN_SIDEBAR_WIDTH}
+				aria-valuemax={MAX_SIDEBAR_WIDTH}
+				aria-valuenow={sidebarWidth}
+				tabIndex={0}
+				onKeyDown={resizeWithKeyboard}
+				onPointerDown={beginResize}
+				onPointerMove={resize}
+				onPointerUp={finishResize}
+				onPointerCancel={finishResize}
+			>
+				<span
+					className={cn(
+						"absolute bg-transparent [inset-block:0] [inset-inline-start:50%] [inline-size:1px] group-focus:bg-primary",
+						isResizing && "bg-primary",
+					)}
+				/>
 			</div>
 		</aside>
 	);
@@ -581,12 +745,39 @@ function FileRenameInput({
 				}}
 			/>
 			{error && (
-				<span className="absolute top-full start-0 z-20 mt-1 w-max max-w-[calc(220px-2rem)] rounded-sm bg-[oklch(0.78_0.11_4)] px-2 py-1.5 text-[11px] font-normal leading-4 text-[oklch(0.18_0.02_4)] shadow-panel">
+				<span className="absolute top-full start-0 z-20 mt-1 w-max max-w-[calc(var(--sidebar-width)-2rem)] rounded-sm bg-[oklch(0.78_0.11_4)] px-2 py-1.5 text-[11px] font-normal leading-4 text-[oklch(0.18_0.02_4)] shadow-panel">
 					{error}
 				</span>
 			)}
 		</span>
 	);
+}
+
+function clampSidebarWidth(width: number) {
+	return Math.min(MAX_SIDEBAR_WIDTH, Math.max(MIN_SIDEBAR_WIDTH, width));
+}
+
+function sidebarWidthStorageKey(storageScope?: string | null) {
+	return storageScope
+		? `hubble-sidebar-width:${storageScope}`
+		: "hubble-sidebar-width";
+}
+
+function readSidebarWidth(storageKey: string) {
+	if (typeof localStorage === "undefined") return DEFAULT_SIDEBAR_WIDTH;
+	try {
+		const value = Number.parseInt(localStorage.getItem(storageKey) ?? "", 10);
+		return Number.isFinite(value)
+			? clampSidebarWidth(value)
+			: DEFAULT_SIDEBAR_WIDTH;
+	} catch {
+		return DEFAULT_SIDEBAR_WIDTH;
+	}
+}
+
+function writeSidebarWidth(storageKey: string, width: number) {
+	if (typeof localStorage === "undefined") return;
+	localStorage.setItem(storageKey, String(clampSidebarWidth(width)));
 }
 
 function renameTargetExists(

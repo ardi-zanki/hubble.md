@@ -1,4 +1,4 @@
-import { Button, Sidebar as SharedSidebar } from "@hubble.md/ui";
+import { Button, Sidebar as SharedSidebar, SidebarFrame } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
 import {
 	createMarkdownFileInFolder,
@@ -7,6 +7,7 @@ import {
 	loadPath,
 	openWorkspace,
 	renameMarkdownFile,
+	setSidebarOpen,
 	setSortMode,
 } from "../store/actions";
 import {
@@ -23,9 +24,10 @@ export function Sidebar() {
 	const { workspacePath, files, sortMode } = workspace;
 
 	if (!sidebarOpen) return null;
+	const collapseSidebar = () => setSidebarOpen(false);
 	if (!workspacePath) {
 		return (
-			<aside className="flex w-[220px] shrink-0 flex-col overflow-hidden border-e border-sidebar-border bg-sidebar">
+			<SidebarFrame onCollapse={collapseSidebar}>
 				<div className="flex h-full flex-col items-start justify-center gap-3 px-3 text-sm">
 					<div>
 						<p className="font-medium text-sidebar-foreground">
@@ -39,7 +41,7 @@ export function Sidebar() {
 						Open folder
 					</Button>
 				</div>
-			</aside>
+			</SidebarFrame>
 		);
 	}
 
@@ -68,6 +70,7 @@ export function Sidebar() {
 			storageScope={workspacePath}
 			header={<WorkspaceSwitcher />}
 			getDisplayPath={relativePath}
+			onCollapse={collapseSidebar}
 			onSortModeChange={setSortMode}
 			onSelectFile={(path) => void loadPath(path)}
 			onRenameFile={(path, nextName) => void renameMarkdownFile(path, nextName)}
