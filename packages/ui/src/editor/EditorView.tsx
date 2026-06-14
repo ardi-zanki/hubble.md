@@ -28,6 +28,7 @@ import {
 	FilePropertiesPanel,
 	frontMatterStateFromMarkdown,
 } from "./FilePropertiesPanel";
+import { FormatCommandMenu } from "./FormatCommandMenu";
 import { FormattingStatusBar } from "./FormattingStatusBar";
 import type { VirtualCursorMode } from "./virtualCursorMode";
 
@@ -260,6 +261,7 @@ export function EditorView({
 					containerRef={editorRootRef}
 					viewportRef={editorViewportRef}
 				/>
+				<FormatCommandMenu editor={editor} containerRef={editorRootRef} />
 			</div>
 			<FormattingStatusBar editor={editor} scrollContainer={editorViewportEl} />
 		</div>
