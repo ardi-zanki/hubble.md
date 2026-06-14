@@ -90,6 +90,5 @@ export type DesktopApi = {
 	onMenuOpenFile(callback: () => void): Unsubscribe;
 	onMenuOpenFolder(callback: () => void): Unsubscribe;
 	onMenuOpenSettings(callback: () => void): Unsubscribe;
-	onMenuCheckForUpdates(callback: () => void): Unsubscribe;
 	onMenuShowWorkspaceSwitcher(callback: () => void): Unsubscribe;
 };

@@ -3,10 +3,13 @@ import { useStoreValue } from "@simplestack/store/react";
 import { keymatch } from "keymatch";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { SettingsDialog, SettingsSection } from "./components/SettingsDialog";
+import { SettingsDialog } from "./components/SettingsDialog";
 import { Sidebar } from "./components/Sidebar";
 import { Toolbar } from "./components/Toolbar";
-import { UpdateReadyBanner, UpdatesSection } from "./components/UpdatesSection";
+import {
+	SidebarUpdateCallout,
+	UpdatesSection,
+} from "./components/UpdatesSection";
 import { desktopApi } from "./desktopApi";
 import type { DesktopUpdateState } from "./desktopApi/types";
 import { createEmbedExtension } from "./editor/EmbedExtension";
@@ -28,6 +31,7 @@ import {
 	updateEditorContent,
 } from "./store/actions";
 import {
+	sidebarOpenStore,
 	uiStore,
 	viewerStore,
 	workspacePathStore,
@@ -49,6 +53,7 @@ function focusSidebarNav() {
 function App() {
 	const state = useStoreValue(viewerStore);
 	const workspacePath = useStoreValue(workspacePathStore);
+	const sidebarOpen = useStoreValue(sidebarOpenStore);
 	const hasWorkspace = workspacePath !== null;
 	const [scrollContainerEl, setScrollContainerEl] =
 		useState<HTMLDivElement | null>(null);
@@ -56,13 +61,15 @@ function App() {
 	const [updateState, setUpdateState] = useState<DesktopUpdateState | null>(
 		null,
 	);
+	const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
+	const readyVersion =
+		updateState?.status === "ready"
+			? (updateState.availableVersion ?? "__unknown__")
+			: null;
+	const showUpdateCallout = readyVersion !== dismissedVersion;
 
 	const openSettings = useCallback(() => {
 		setSettingsOpen(true);
-	}, []);
-
-	const requestUpdateCheck = useCallback(async () => {
-		await desktopApi.checkForUpdates();
 	}, []);
 
 	const installUpdate = useCallback(async () => {
@@ -74,6 +81,15 @@ function App() {
 			});
 		}
 	}, []);
+
+	const triggerPrimaryUpdateAction = useCallback(async () => {
+		if (!updateState?.isSupported) return;
+		if (updateState.status === "ready") {
+			await installUpdate();
+			return;
+		}
+		await desktopApi.checkForUpdates();
+	}, [installUpdate, updateState]);
 
 	useEffect(() => {
 		if (!workspacePath) return;
@@ -221,10 +237,6 @@ function App() {
 			desktopApi.onMenuOpenFile(() => void openFilePicker()),
 			desktopApi.onMenuOpenFolder(() => void openWorkspaceWithSidebar()),
 			desktopApi.onMenuOpenSettings(() => openSettings()),
-			desktopApi.onMenuCheckForUpdates(() => {
-				openSettings();
-				void requestUpdateCheck();
-			}),
 			desktopApi.onMenuShowWorkspaceSwitcher(() =>
 				setWorkspaceSwitcherOpen(true),
 			),
@@ -232,7 +244,7 @@ function App() {
 		return () => {
 			for (const dispose of disposers) dispose();
 		};
-	}, [openFilePicker, openSettings, requestUpdateCheck]);
+	}, [openFilePicker, openSettings]);
 
 	useEffect(() => {
 		let active = true;
@@ -263,16 +275,23 @@ function App() {
 
 	return (
 		<main className="flex h-dvh flex-col bg-background text-foreground">
-			<Toolbar scrollContainer={scrollContainerEl} />
-			{updateState?.status === "ready" ? (
-				<UpdateReadyBanner
-					version={updateState.availableVersion}
-					onOpenSettings={openSettings}
-					onInstall={installUpdate}
-				/>
-			) : null}
+			<Toolbar
+				scrollContainer={scrollContainerEl}
+				showSidebarBadge={!sidebarOpen && showUpdateCallout}
+			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
-				<Sidebar />
+				<Sidebar
+					footer={
+						updateState?.status === "ready" && showUpdateCallout ? (
+							<SidebarUpdateCallout
+								onInstall={installUpdate}
+								onDismiss={() =>
+									setDismissedVersion(readyVersion ?? "__unknown__")
+								}
+							/>
+						) : undefined
+					}
+				/>
 				<section className="flex-1 overflow-hidden" aria-live="polite">
 					{state.status === "loading" && <p>Loading…</p>}
 					{state.status === "error" && (
@@ -331,16 +350,9 @@ function App() {
 				{updateState ? (
 					<UpdatesSection
 						state={updateState}
-						onCheckForUpdates={() => void requestUpdateCheck()}
-						onInstall={() => void installUpdate()}
+						onPrimaryAction={() => void triggerPrimaryUpdateAction()}
 					/>
-				) : (
-					<SettingsSection title="Updates">
-						<p className="text-sm text-muted-foreground">
-							Loading update status...
-						</p>
-					</SettingsSection>
-				)}
+				) : null}
 			</SettingsDialog>
 		</main>
 	);

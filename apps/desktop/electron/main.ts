@@ -366,19 +366,8 @@ function buildMenu() {
 				{ type: "separator" },
 				{
 					id: "check-for-updates",
-					label:
-						updateState.status === "checking"
-							? "Checking for Updates..."
-							: "Check for Updates...",
-					enabled: updateState.status !== "checking",
-					click: () => sendToRenderer("desktop:menu-check-for-updates"),
-				},
-				{
-					id: "restart-to-update",
-					label: "Restart to Update",
-					enabled: updateState.status === "ready",
-					visible: updateState.status === "ready",
-					click: () => autoUpdater.quitAndInstall(false, true),
+					label: "Check for Updates...",
+					click: () => sendToRenderer("desktop:menu-open-settings"),
 				},
 				{ type: "separator" },
 				{ role: "services" },

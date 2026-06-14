@@ -31,6 +31,7 @@ function ToolbarActions({ children }: { children?: React.ReactNode }) {
 export function Toolbar({
 	currentPath,
 	sidebarOpen,
+	sidebarBadge,
 	scrollContainer,
 	platformInset = true,
 	leftSlot,
@@ -41,6 +42,7 @@ export function Toolbar({
 }: {
 	currentPath: string | null;
 	sidebarOpen: boolean;
+	sidebarBadge?: boolean;
 	scrollContainer?: HTMLDivElement | null;
 	platformInset?: boolean;
 	leftSlot?: React.ReactNode;
@@ -111,10 +113,14 @@ export function Toolbar({
 						<Button
 							variant="ghost"
 							size="icon-sm"
+							className="relative"
 							onClick={onToggleSidebar}
 							aria-label="Toggle sidebar"
 						>
 							<MingcuteLayoutLeftLine className="size-4" />
+							{sidebarBadge ? (
+								<span className="absolute top-1 end-1 size-1.5 rounded-full bg-primary" />
+							) : null}
 						</Button>
 					)}
 					{leftSlot}

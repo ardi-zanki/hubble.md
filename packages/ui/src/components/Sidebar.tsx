@@ -14,6 +14,7 @@ import {
 	normalizeDisplayPath,
 	splitFileName,
 } from "../lib/filePath";
+import { shouldShowFooterDivider } from "../lib/scrollOverflow";
 import { cn } from "../lib/utils";
 import { Button } from "../primitives/button";
 import { useSidebarKeyboardNav } from "./useSidebarKeyboardNav";
@@ -38,6 +39,7 @@ export function Sidebar({
 	sortMode,
 	storageScope,
 	header,
+	footer,
 	emptyState,
 	getDisplayPath = (path) => path,
 	onSortModeChange,
@@ -54,6 +56,7 @@ export function Sidebar({
 	/** Stable key used to persist folder expansion for one workspace/open folder. */
 	storageScope?: string | null;
 	header?: React.ReactNode;
+	footer?: React.ReactNode;
 	emptyState?: React.ReactNode;
 	getDisplayPath?: (path: string) => string;
 	onSortModeChange: (mode: SidebarSortMode) => void;
@@ -68,6 +71,7 @@ export function Sidebar({
 	const [openActionsPath, setOpenActionsPath] = useState<string | null>(null);
 	const [renamingPath, setRenamingPath] = useState<string | null>(null);
 	const [renameDraft, setRenameDraft] = useState("");
+	const [showFooterBorder, setShowFooterBorder] = useState(false);
 	const [deleteOnCancel, setDeleteOnCancel] = useState<{
 		path: string;
 		draft: string;
@@ -162,6 +166,30 @@ export function Sidebar({
 		renameInputRef.current?.focus();
 		renameInputRef.current?.select();
 	}, [renamingPath]);
+
+	useEffect(() => {
+		const navEl = navRef.current;
+		if (!navEl) {
+			setShowFooterBorder(false);
+			return;
+		}
+		const update = () => {
+			setShowFooterBorder(shouldShowFooterDivider(navEl));
+		};
+		update();
+		const observer = new MutationObserver(() => update());
+		navEl.addEventListener("scroll", update, { passive: true });
+		window.addEventListener("resize", update);
+		observer.observe(navEl, {
+			childList: true,
+			subtree: true,
+		});
+		return () => {
+			navEl.removeEventListener("scroll", update);
+			window.removeEventListener("resize", update);
+			observer.disconnect();
+		};
+	}, []);
 
 	const resetRename = useCallback(() => {
 		setRenamingPath(null);
@@ -393,6 +421,18 @@ export function Sidebar({
 					);
 				})}
 			</div>
+			{footer ? (
+				<div
+					className={cn(
+						"p-2",
+						showFooterBorder
+							? "[border-block-start:1px_dashed_var(--sidebar-border)]"
+							: "border-transparent",
+					)}
+				>
+					{footer}
+				</div>
+			) : null}
 		</aside>
 	);
 }

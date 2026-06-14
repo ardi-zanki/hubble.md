@@ -18,8 +18,10 @@ const dragRegionStyle = {
 
 export function Toolbar({
 	scrollContainer,
+	showSidebarBadge = false,
 }: {
 	scrollContainer: HTMLDivElement | null;
+	showSidebarBadge?: boolean;
 }) {
 	const workspacePath = useStoreValue(workspacePathStore);
 	const sidebarOpen = useStoreValue(sidebarOpenStore);
@@ -29,6 +31,7 @@ export function Toolbar({
 		<SharedToolbar
 			currentPath={currentPath ?? null}
 			sidebarOpen={sidebarOpen}
+			sidebarBadge={showSidebarBadge}
 			scrollContainer={scrollContainer}
 			rootProps={{ style: dragRegionStyle }}
 			onToggleSidebar={toggleSidebar}

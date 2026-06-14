@@ -70,8 +70,6 @@ const desktopApi = {
 		subscribe("desktop:menu-open-folder", callback),
 	onMenuOpenSettings: (callback) =>
 		subscribe("desktop:menu-open-settings", callback),
-	onMenuCheckForUpdates: (callback) =>
-		subscribe("desktop:menu-check-for-updates", callback),
 	onMenuShowWorkspaceSwitcher: (callback) =>
 		subscribe("desktop:menu-show-workspace-switcher", callback),
 } satisfies DesktopApi;

@@ -1,5 +1,6 @@
 import { Button, Sidebar as SharedSidebar } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
+import type { ReactNode } from "react";
 import {
 	createMarkdownFileInFolder,
 	deleteFolder,
@@ -16,7 +17,7 @@ import {
 } from "../store/state";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
-export function Sidebar() {
+export function Sidebar({ footer }: { footer?: ReactNode }) {
 	const workspace = useStoreValue(workspaceStore);
 	const sidebarOpen = useStoreValue(sidebarOpenStore);
 	const currentPath = useStoreValue(currentPathStore);
@@ -26,8 +27,8 @@ export function Sidebar() {
 	if (!workspacePath) {
 		return (
 			<aside className="flex w-[220px] shrink-0 flex-col overflow-hidden border-e border-sidebar-border bg-sidebar">
-				<div className="flex h-full flex-col items-start justify-center gap-3 px-3 text-sm">
-					<div>
+				<div className="flex min-h-0 flex-1 flex-col items-start justify-center gap-3 px-3 text-sm">
+					<div className="flex flex-col gap-1">
 						<p className="font-medium text-sidebar-foreground">
 							No folder selected
 						</p>
@@ -39,6 +40,9 @@ export function Sidebar() {
 						Open folder
 					</Button>
 				</div>
+				{footer ? (
+					<div className="border-t border-sidebar-border p-2">{footer}</div>
+				) : null}
 			</aside>
 		);
 	}
@@ -67,6 +71,7 @@ export function Sidebar() {
 			sortMode={sortMode}
 			storageScope={workspacePath}
 			header={<WorkspaceSwitcher />}
+			footer={footer}
 			getDisplayPath={relativePath}
 			onSortModeChange={setSortMode}
 			onSelectFile={(path) => void loadPath(path)}
