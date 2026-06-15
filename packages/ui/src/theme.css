@@ -94,3 +94,7 @@
 [data-sidebar-root]:focus-within {
 	--sidebar-accent: var(--selected);
 }
+
+::selection {
+	background: color-mix(in oklab, var(--selected) 70%, transparent);
+}

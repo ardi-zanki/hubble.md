@@ -19,7 +19,3 @@ body {
 	color: var(--foreground);
 	background-color: var(--background);
 }
-
-::selection {
-	background: color-mix(in oklab, var(--selected) 70%, transparent);
-}
