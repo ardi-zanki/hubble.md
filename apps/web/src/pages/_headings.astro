@@ -1,0 +1,38 @@
+---
+import Base from "../layouts/Base.astro";
+
+const options = [
+  { id: 1, name: "Fraunces", note: "Current — wonky serif, editorial, characterful", font: '"Fraunces", Georgia, serif', weight: 600, style: "normal", italicHl: true },
+  { id: 2, name: "Fredoka", note: "Matches your wordmark — rounded, playful, cohesive", font: '"Fredoka", sans-serif', weight: 600, style: "normal", italicHl: false },
+  { id: 3, name: "Chubbo", note: "Chunky friendly display — soft but bold", font: '"Chubbo", sans-serif', weight: 700, style: "normal", italicHl: false },
+  { id: 4, name: "Obviously Wide", note: "Loud grotesque — Ollipop energy, confident", font: '"Obviously Wide", sans-serif', weight: 900, style: "normal", italicHl: false },
+];
+---
+<Base title="Hubble — heading font options">
+  <main>
+    <p class="intro">Concept A hero headline — same everything, four heading fonts. Pick one (or mix per-element).</p>
+    {options.map((o) => (
+      <section>
+        <div class="tag"><b>{o.id}. {o.name}</b><span>{o.note}</span></div>
+        <h1 style={`font-family:${o.font};font-weight:${o.weight}`}>
+          Everything in your head,
+          <span class={`hl ${o.italicHl ? "ital" : ""}`}>finally making sense</span>.
+        </h1>
+      </section>
+    ))}
+  </main>
+
+  <style>
+    main { background:#fbf7ec; color:#173d2e; min-height:100vh; padding:clamp(2rem,5vw,4rem);
+      background-image:radial-gradient(circle at 1px 1px, rgba(23,61,46,.06) 1px, transparent 0); background-size:26px 26px; font-family:var(--font-body); }
+    .intro { font-family:var(--font-rounded); font-weight:500; opacity:.7; margin-block-end:2.5rem; }
+    section { border-block-start:1.5px solid rgba(23,61,46,.18); padding-block:2.5rem; max-width:1000px; margin-inline:auto; }
+    .tag { display:flex; gap:1rem; align-items:baseline; margin-block-end:1.2rem; flex-wrap:wrap; }
+    .tag b { font-family:var(--font-rounded); font-weight:600; background:#173d2e; color:#f4c13c; padding:.25rem .8rem; border-radius:999px; font-size:.85rem; }
+    .tag span { opacity:.65; font-size:.9rem; }
+    h1 { font-size:clamp(2.4rem,5.5vw,4.4rem); line-height:1.05; letter-spacing:-.02em; }
+    .hl { position:relative; white-space:nowrap; }
+    .hl.ital { font-style:italic; }
+    .hl::after { content:""; position:absolute; left:-.12em; right:-.12em; bottom:.06em; height:.5em; background:#f4c13c; z-index:-1; border-radius:4px; transform:rotate(-1.2deg); }
+  </style>
+</Base>

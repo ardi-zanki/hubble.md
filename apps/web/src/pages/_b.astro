@@ -1,0 +1,157 @@
+---
+import Base from "../layouts/Base.astro";
+import Avatar from "../components/Avatar.astro";
+---
+<Base title="Hubble — Bold Banana" concept="b">
+  <div class="page">
+    <nav>
+      <a class="brand" href="/">
+        <Avatar size={36} body="#f4c13c" ink="#173d2e" gleam="#fff7e0" stroke={2} />
+        <span class="wordmark" style="width:108px;height:27px;color:#173d2e"></span>
+      </a>
+      <div class="links">
+        <a href="#">Product</a>
+        <a href="#">Mini-apps</a>
+        <a href="#">Pricing</a>
+        <a class="btn" href="#">Get Hubble</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">★ A second brain you can build on</span>
+        <h1>THINK<br/>OUT<br/><span class="loud">LOUD.</span></h1>
+        <p class="lede">
+          Hubble turns your notebook into a workshop. Capture everything, then
+          build the little apps that make sense of it — boards, graphs, trackers,
+          all living right inside your notes.
+        </p>
+        <div class="cta">
+          <a class="btn lg" href="#">Start free →</a>
+          <a class="btn outline lg" href="#">Watch the tour</a>
+        </div>
+      </div>
+
+      <div class="hero-art">
+        <div class="card kanban" style="--r:-5deg">
+          <div class="card-top">◼ ROADMAP</div>
+          <div class="k-chip">Capture idea</div>
+          <div class="k-chip on">Build mini-app</div>
+          <div class="k-chip">Ship it</div>
+        </div>
+        <div class="card note" style="--r:6deg">
+          <div class="card-top">✎ NOTES</div>
+          <span class="ln"></span><span class="ln"></span><span class="ln s"></span>
+        </div>
+        <div class="card graph" style="--r:-3deg">
+          <div class="card-top">● GRAPH</div>
+          <svg viewBox="0 0 160 90" aria-hidden="true">
+            <line x1="28" y1="50" x2="80" y2="24"/><line x1="28" y1="50" x2="74" y2="74"/>
+            <line x1="80" y1="24" x2="134" y2="46"/><line x1="74" y1="74" x2="134" y2="46"/>
+            <circle cx="28" cy="50" r="8"/><circle cx="80" cy="24" r="10" class="hot"/>
+            <circle cx="74" cy="74" r="7"/><circle cx="134" cy="46" r="9"/>
+          </svg>
+        </div>
+        <Avatar class="peek" size={92} body="#173d2e" ink="#0f2c20" gleam="#f4c13c" stroke={2} />
+      </div>
+    </header>
+
+    <!-- MARQUEE STRIP -->
+    <div class="strip">
+      <div class="strip-track">
+        <span>NOTES</span><b>◆</b><span>KANBAN</span><b>◆</b><span>GRAPH VIEW</span><b>◆</b>
+        <span>TRACKERS</span><b>◆</b><span>MINI-APPS</span><b>◆</b>
+        <span>NOTES</span><b>◆</b><span>KANBAN</span><b>◆</b><span>GRAPH VIEW</span><b>◆</b>
+        <span>TRACKERS</span><b>◆</b><span>MINI-APPS</span><b>◆</b>
+      </div>
+    </div>
+
+    <section class="features">
+      <article>
+        <div class="num">01</div>
+        <h3>Dump it all in</h3>
+        <p>Every half-formed thought has a home. Hubble is plain Markdown underneath — fast, yours, future-proof.</p>
+      </article>
+      <article>
+        <div class="num">02</div>
+        <h3>Build a tiny app</h3>
+        <p>Need a board? A table? A tracker? Drop one into any page. No setup, no plugins, no leaving your notes.</p>
+      </article>
+      <article>
+        <div class="num">03</div>
+        <h3>Watch it connect</h3>
+        <p>Links become a living graph. The structure of your thinking reveals itself as you go.</p>
+      </article>
+    </section>
+
+    <section class="closer">
+      <h2>Your notebook called.<br/>It wants superpowers.</h2>
+      <a class="btn xl" href="#">Get Hubble — it's free</a>
+    </section>
+
+    <footer>
+      <span class="wordmark" style="width:96px;height:24px;color:#173d2e"></span>
+      <span>Make sense of everything rolling around in your notebook.</span>
+    </footer>
+  </div>
+
+  <style>
+    .page { --bg:#f4c13c; --fg:#173d2e; --cream:#fff7e0; background:var(--bg); color:var(--fg); font-family:var(--font-body); min-height:100vh; overflow:hidden; }
+    .page > *:not(.strip) { padding-inline: clamp(1.25rem,5vw,6rem); }
+
+    nav { display:flex; align-items:center; justify-content:space-between; padding-block:1.5rem; max-width:1240px; margin-inline:auto; }
+    .brand { display:flex; align-items:center; gap:.6rem; text-decoration:none; }
+    .links { display:flex; align-items:center; gap:1.5rem; }
+    .links > a:not(.btn) { text-decoration:none; font-family:var(--font-rounded); font-weight:600; }
+    .btn { font-family:var(--font-rounded); font-weight:600; text-decoration:none; background:var(--fg); color:var(--bg); border-radius:999px; padding:.6rem 1.2rem; transition:transform .12s ease, box-shadow .12s ease; display:inline-block; }
+    .btn:hover { transform:translateY(-2px); box-shadow:0 8px 0 rgba(15,44,32,.25); }
+    .btn.outline { background:transparent; color:var(--fg); border:2.5px solid var(--fg); }
+    .btn.lg { padding:.9rem 1.7rem; font-size:1.1rem; }
+    .btn.xl { padding:1.1rem 2.4rem; font-size:1.3rem; }
+
+    .hero { max-width:1240px; margin-inline:auto; display:grid; grid-template-columns:1.05fr .95fr; gap:2rem; align-items:center; padding-block:clamp(2rem,5vw,4rem) clamp(3rem,6vw,5rem); }
+    .eyebrow { font-family:var(--font-rounded); font-weight:600; letter-spacing:.02em; }
+    h1 { font-family:var(--font-wide); font-weight:900; font-size:clamp(3.6rem,11vw,8.5rem); line-height:.86; letter-spacing:-.02em; margin-block:1rem 1.4rem; text-transform:uppercase; }
+    h1 .loud { color:var(--cream); -webkit-text-stroke:3px var(--fg); paint-order:stroke fill; }
+    .lede { font-size:clamp(1.05rem,1.6vw,1.3rem); max-width:42ch; line-height:1.5; font-weight:500; }
+    .cta { display:flex; gap:1rem; margin-block-start:2rem; flex-wrap:wrap; }
+
+    .hero-art { position:relative; height:440px; }
+    .card { position:absolute; background:var(--cream); border:3px solid var(--fg); border-radius:18px; padding:1rem 1.1rem; box-shadow:8px 8px 0 var(--fg); transform:rotate(var(--r)); }
+    .card-top { font-family:var(--font-rounded); font-weight:700; font-size:.8rem; letter-spacing:.06em; margin-block-end:.7rem; }
+    .card.kanban { inset-block-start:0; inset-inline-start:4%; width:210px; }
+    .card.note { inset-block-start:40%; inset-inline-end:2%; width:190px; }
+    .card.graph { inset-block-end:0; inset-inline-start:14%; width:210px; }
+    .k-chip { background:#fff; border:2px solid var(--fg); border-radius:9px; padding:.45rem .6rem; font-weight:600; font-size:.85rem; margin-block-end:.5rem; }
+    .k-chip.on { background:var(--bg); }
+    .ln { display:block; height:9px; border-radius:5px; background:rgba(23,61,46,.22); margin-block-end:.55rem; }
+    .ln.s { width:55%; background:var(--bg); border:2px solid var(--fg); height:14px; }
+    .graph svg line { stroke:rgba(23,61,46,.35); stroke-width:2.5; }
+    .graph svg circle { fill:#fff; stroke:var(--fg); stroke-width:3; }
+    .graph svg circle.hot { fill:var(--bg); }
+    .peek { position:absolute; inset-block-start:-6%; inset-inline-end:8%; filter:drop-shadow(4px 6px 0 rgba(15,44,32,.4)); }
+
+    .strip { background:var(--fg); color:var(--bg); padding-block:.9rem; margin-block:1rem; overflow:hidden; border-block:3px solid var(--fg); }
+    .strip-track { display:inline-flex; gap:1.6rem; align-items:center; white-space:nowrap; font-family:var(--font-wide); font-weight:900; font-size:1.4rem; letter-spacing:.02em; animation:scroll 24s linear infinite; }
+    .strip-track b { color:var(--bg); opacity:.6; }
+    @keyframes scroll { to { transform:translateX(-50%); } }
+
+    .features { max-width:1240px; margin:clamp(3rem,6vw,5rem) auto 0; display:grid; grid-template-columns:repeat(3,1fr); gap:1.5rem; }
+    .features article { background:var(--cream); border:3px solid var(--fg); border-radius:22px; padding:1.8rem; box-shadow:6px 6px 0 var(--fg); }
+    .num { font-family:var(--font-wide); font-weight:900; font-size:2.4rem; line-height:1; }
+    .features h3 { font-family:var(--font-rounded); font-weight:600; font-size:1.45rem; margin-block:.6rem .5rem; }
+    .features p { font-weight:500; line-height:1.5; }
+
+    .closer { max-width:1240px; margin:clamp(3.5rem,7vw,6rem) auto 0; text-align:center; }
+    .closer h2 { font-family:var(--font-wide); font-weight:900; font-size:clamp(2.2rem,6vw,4.5rem); line-height:.95; text-transform:uppercase; margin-block-end:2rem; }
+
+    footer { max-width:1240px; margin:clamp(3rem,6vw,5rem) auto 0; padding-block:2.5rem; border-block-start:3px solid var(--fg); display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    footer span:last-child { font-weight:600; }
+
+    @media (max-width:900px) {
+      .hero { grid-template-columns:1fr; }
+      .hero-art { height:380px; }
+      .features { grid-template-columns:1fr; }
+    }
+  </style>
+</Base>

@@ -1,0 +1,171 @@
+---
+import Base from "../layouts/Base.astro";
+import Avatar from "../components/Avatar.astro";
+---
+<Base title="Hubble — Stencil Deck" concept="c">
+  <div class="page">
+    <nav>
+      <a class="brand" href="/">
+        <Avatar size={34} body="#fff" ink="#0a0a0a" gleam="#ffd400" stroke={2} />
+        <span class="wordmark" style="width:104px;height:26px;color:#0a0a0a"></span>
+      </a>
+      <div class="links">
+        <a href="#">Product</a>
+        <a href="#">Mini-apps</a>
+        <a href="#">Pricing</a>
+        <a class="btn" href="#">Get Hubble</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="hero-copy">
+        <span class="kicker"><span class="suit">♠</span> Happiness is a second brain <span class="suit red">♦</span></span>
+        <h1>PLAY YOUR<br/>WHOLE <span class="deck">DECK</span></h1>
+        <p class="hand">every note is a card — deal yourself the right app for the job.</p>
+        <p class="lede">
+          Hubble began as a notes app and grew into a knowledge base you can
+          build on. Lay out Kanban boards, graph views, trackers — little apps
+          that turn a shuffled notebook into a hand you can actually play.
+        </p>
+        <div class="cta">
+          <a class="btn lg" href="#">Deal me in →</a>
+          <a class="btn ghost lg" href="#">See the deck</a>
+        </div>
+      </div>
+
+      <div class="fan">
+        <article class="pcard" style="--r:-18deg; --x:-120px; --y:30px;">
+          <div class="corner tl"><b>K</b><span>♣</span></div>
+          <div class="face"><div class="ttl">KANBAN</div>
+            <div class="kc">To do</div><div class="kc on">Doing</div><div class="kc">Done</div></div>
+          <div class="corner br"><b>K</b><span>♣</span></div>
+        </article>
+
+        <article class="pcard" style="--r:-6deg; --x:-40px; --y:0;">
+          <div class="corner tl"><b>Q</b><span class="red">♥</span></div>
+          <div class="face"><div class="ttl">GRAPH</div>
+            <svg viewBox="0 0 140 100" aria-hidden="true">
+              <line x1="26" y1="54" x2="74" y2="26"/><line x1="26" y1="54" x2="66" y2="82"/>
+              <line x1="74" y1="26" x2="116" y2="50"/><line x1="66" y1="82" x2="116" y2="50"/>
+              <circle cx="26" cy="54" r="8"/><circle cx="74" cy="26" r="10" class="hot"/>
+              <circle cx="66" cy="82" r="7"/><circle cx="116" cy="50" r="9"/>
+            </svg></div>
+          <div class="corner br"><b>Q</b><span class="red">♥</span></div>
+        </article>
+
+        <article class="pcard hub" style="--r:7deg; --x:44px; --y:6px;">
+          <div class="corner tl"><b>A</b><span>♠</span></div>
+          <div class="face center"><Avatar size={104} body="#fff" ink="#0a0a0a" gleam="#ffd400" stroke={2.5} /><div class="ttl">HUBBLE</div></div>
+          <div class="corner br"><b>A</b><span>♠</span></div>
+        </article>
+
+        <article class="pcard" style="--r:18deg; --x:128px; --y:34px;">
+          <div class="corner tl"><b>J</b><span class="red">♦</span></div>
+          <div class="face"><div class="ttl">NOTES</div>
+            <span class="ln"></span><span class="ln"></span><span class="ln"></span><span class="ln s"></span></div>
+          <div class="corner br"><b>J</b><span class="red">♦</span></div>
+        </article>
+      </div>
+    </header>
+
+    <div class="rule"><span>♠</span><span>♥</span><span>♣</span><span>♦</span></div>
+
+    <section class="features">
+      <article>
+        <div class="ace">A<span>♠</span></div>
+        <h3>Capture the hand</h3>
+        <p>Jot anything. It's plain Markdown under the hood — fast, portable, yours to keep.</p>
+      </article>
+      <article>
+        <div class="ace">A<span class="red">♥</span></div>
+        <h3>Build the play</h3>
+        <p>Drop a mini-app into any page — board, table, tracker — and shape the tool to the task.</p>
+      </article>
+      <article>
+        <div class="ace">A<span>♣</span></div>
+        <h3>Read the table</h3>
+        <p>Connections fan out into a graph, so the whole layout of your thinking is visible at a glance.</p>
+      </article>
+    </section>
+
+    <section class="closer">
+      <h2>STACK<br/>THE DECK<br/>IN YOUR<br/>FAVOR.</h2>
+      <div>
+        <p class="hand big">your notebook, finally holding all the cards.</p>
+        <a class="btn xl" href="#">Get Hubble — free</a>
+      </div>
+    </section>
+
+    <footer>
+      <span class="wordmark" style="width:96px;height:24px;color:#ffd400"></span>
+      <span>Make sense of everything rolling around in your notebook. <span class="suit">♠♥♣♦</span></span>
+    </footer>
+  </div>
+
+  <style>
+    .page { --bg:#ffd400; --ink:#0a0a0a; --red:#d6332e; background:var(--bg); color:var(--ink); font-family:var(--font-body); min-height:100vh; overflow:hidden; }
+    .page > * { padding-inline:clamp(1.25rem,5vw,6rem); }
+    .red { color:var(--red); }
+    .suit { letter-spacing:.15em; }
+
+    nav { display:flex; align-items:center; justify-content:space-between; padding-block:1.5rem; max-width:1240px; margin-inline:auto; }
+    .brand { display:flex; align-items:center; gap:.6rem; text-decoration:none; }
+    .links { display:flex; align-items:center; gap:1.5rem; }
+    .links > a:not(.btn) { text-decoration:none; font-family:var(--font-rounded); font-weight:600; }
+    .btn { font-family:var(--font-wide); font-weight:700; text-transform:uppercase; letter-spacing:.02em; text-decoration:none; background:var(--ink); color:var(--bg); border-radius:8px; padding:.55rem 1.1rem; border:2.5px solid var(--ink); transition:transform .12s ease; display:inline-block; font-size:.8rem; }
+    .btn:hover { transform:translateY(-2px); }
+    .btn.ghost { background:transparent; color:var(--ink); }
+    .btn.lg { padding:.9rem 1.5rem; font-size:1rem; }
+    .btn.xl { padding:1.1rem 2.2rem; font-size:1.2rem; }
+
+    .hero { max-width:1240px; margin-inline:auto; display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:center; padding-block:clamp(2rem,4vw,3rem) clamp(4rem,8vw,7rem); }
+    .kicker { font-family:var(--font-rounded); font-weight:600; display:inline-flex; gap:.5rem; align-items:center; }
+    h1 { font-family:var(--font-wide); font-weight:900; font-size:clamp(2.8rem,7.5vw,5.6rem); line-height:.9; letter-spacing:-.02em; text-transform:uppercase; margin-block:1rem .8rem; }
+    h1 .deck { color:var(--bg); -webkit-text-stroke:3px var(--ink); paint-order:stroke fill; }
+    .hand { font-family:var(--font-hand); font-weight:500; font-size:clamp(1.05rem,1.8vw,1.35rem); transform:rotate(-2deg); margin-block-end:1.1rem; }
+    .lede { font-size:clamp(1rem,1.5vw,1.2rem); max-width:44ch; line-height:1.5; font-weight:500; }
+    .cta { display:flex; gap:1rem; margin-block-start:1.8rem; flex-wrap:wrap; }
+
+    /* fanned cards */
+    .fan { position:relative; height:440px; display:flex; align-items:center; justify-content:center; }
+    .pcard { position:absolute; width:188px; height:268px; background:#fff; border:3px solid var(--ink); border-radius:16px; box-shadow:0 0 0 3px #fff, 6px 10px 0 rgba(10,10,10,.55); transform:translate(var(--x),var(--y)) rotate(var(--r)); transform-origin:bottom center; padding:.6rem; display:flex; flex-direction:column; justify-content:space-between; }
+    .pcard.hub { z-index:5; box-shadow:0 0 0 3px var(--bg), 7px 12px 0 rgba(10,10,10,.6); }
+    .corner { font-family:var(--font-wide); font-weight:900; line-height:.8; display:flex; flex-direction:column; align-items:center; width:fit-content; font-size:1rem; }
+    .corner span { font-size:1.05rem; }
+    .corner.br { align-self:flex-end; transform:rotate(180deg); }
+    .face { flex:1; display:flex; flex-direction:column; gap:.4rem; justify-content:center; padding-inline:.3rem; }
+    .face.center { align-items:center; gap:.6rem; }
+    .ttl { font-family:var(--font-wide); font-weight:900; font-size:.85rem; letter-spacing:.08em; text-align:center; }
+    .kc { border:2.5px solid var(--ink); border-radius:7px; padding:.3rem .45rem; font-weight:700; font-size:.78rem; }
+    .kc.on { background:var(--bg); }
+    .face svg line { stroke:var(--ink); stroke-width:2.5; }
+    .face svg circle { fill:#fff; stroke:var(--ink); stroke-width:3; }
+    .face svg circle.hot { fill:var(--bg); }
+    .ln { display:block; height:7px; border-radius:4px; background:var(--ink); opacity:.85; }
+    .ln.s { width:55%; background:var(--bg); border:2px solid var(--ink); height:13px; opacity:1; }
+
+    .rule { max-width:1240px; margin:0 auto; border-block:3px solid var(--ink); padding-block:.6rem; display:flex; gap:2rem; justify-content:center; font-size:1.2rem; }
+    .rule .red:nth-child(2){ } .rule span:nth-child(2),.rule span:nth-child(4){ color:var(--red); }
+
+    .features { max-width:1240px; margin:clamp(3rem,6vw,4.5rem) auto 0; display:grid; grid-template-columns:repeat(3,1fr); gap:1.5rem; }
+    .features article { background:#fff; border:3px solid var(--ink); border-radius:16px; padding:1.6rem; box-shadow:6px 8px 0 var(--ink); }
+    .ace { font-family:var(--font-wide); font-weight:900; font-size:2rem; display:flex; align-items:baseline; gap:.15rem; }
+    .ace span { font-size:1.5rem; }
+    .features h3 { font-family:var(--font-rounded); font-weight:600; font-size:1.4rem; margin-block:.5rem .4rem; }
+    .features p { font-weight:500; line-height:1.5; }
+
+    .closer { max-width:1240px; margin:clamp(3.5rem,7vw,6rem) auto 0; display:grid; grid-template-columns:1fr 1fr; gap:2rem; align-items:center; }
+    .closer h2 { font-family:var(--font-wide); font-weight:900; font-size:clamp(2.6rem,8vw,6rem); line-height:.86; text-transform:uppercase; }
+    .closer .hand.big { font-size:clamp(1.3rem,2.4vw,1.8rem); margin-block-end:1.4rem; }
+
+    footer { max-width:1240px; margin:clamp(3rem,6vw,5rem) auto 0; padding-block:2rem; background:var(--ink); color:var(--bg); border-radius:16px 16px 0 0; padding-inline:2rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    footer span:last-child { font-weight:500; }
+    footer .suit { color:var(--bg); }
+
+    @media (max-width:900px) {
+      .hero, .closer { grid-template-columns:1fr; }
+      .fan { height:380px; transform:scale(.85); }
+      .features { grid-template-columns:1fr; }
+    }
+  </style>
+</Base>

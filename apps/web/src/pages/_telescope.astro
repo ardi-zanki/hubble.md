@@ -1,0 +1,89 @@
+---
+import Base from "../layouts/Base.astro";
+
+const FG = "#173d2e", CREAM = "#fff8e7", GOLD = "#ffc21f", WHITE = "#fff", PAPER = "#fbf7ec";
+
+// refined mark: big friendly lens-eye + chunky tube + rounded wedge base. gleam = bg (negative-space hole)
+const scope = (fg, gleam) => `<svg viewBox="0 0 64 64" fill="none" stroke-linejoin="round" stroke-linecap="round">
+  <path d="M26 46 L36 46 L41 54 Q42.5 57 39 57 L23 57 Q19.5 57 21 54 Z" fill="${fg}"/>
+  <line x1="31" y1="49" x2="43" y2="23" stroke="${fg}" stroke-width="13"/>
+  <circle cx="44" cy="21" r="12.5" fill="${fg}"/>
+  <circle cx="47.5" cy="17" r="4.2" fill="${gleam}"/>
+</svg>`;
+
+const treatments = [
+  { bg: PAPER, fg: FG, name: "Green on paper" },
+  { bg: WHITE, fg: FG, name: "Green on white" },
+  { bg: GOLD, fg: FG, name: "Green on golden" },
+  { bg: FG, fg: CREAM, name: "Cream on green" },
+  { bg: FG, fg: GOLD, name: "Golden on green" },
+];
+const sizes = [16, 24, 32, 48];
+---
+<Base title="Hubble — telescope mark">
+  <main>
+    <header>
+      <h1>Telescope mark — color treatments</h1>
+      <p>Big friendly lens-eye + chunky tube + rounded base. Highlight is negative space (no dot). Contrast comes from the field.</p>
+    </header>
+
+    <section class="big">
+      {treatments.map((t) => (
+        <div class="cell" style={`background:${t.bg}`}>
+          <div class="mk" set:html={scope(t.fg, t.bg)} />
+          <span class="cap" style={`color:${t.fg === CREAM || t.fg === GOLD ? FG : t.fg}`}>{t.name}</span>
+        </div>
+      ))}
+    </section>
+
+    <section class="tiles">
+      {treatments.map((t) => (
+        <div class="tile-wrap">
+          <div class="tile" style={`background:${t.bg}`}><div class="mk-sm" set:html={scope(t.fg, t.bg)} /></div>
+          <span class="cap2">{t.name}</span>
+        </div>
+      ))}
+    </section>
+
+    <section class="scale">
+      <div class="scale-row">
+        {sizes.map((s) => (
+          <div style={`width:${s}px;height:${s}px`} set:html={scope(FG, PAPER)} />
+        ))}
+        <span class="cap2">16 / 24 / 32 / 48 px</span>
+      </div>
+      <div class="scale-row">
+        <div class="navlock">
+          <div style="width:24px;height:24px" set:html={scope(FG, WHITE)} />
+          <span class="wordmark" style="width:80px;height:20px;color:#173d2e"></span>
+        </div>
+        <div class="fav" style="background:#173d2e"><div style="width:22px;height:22px" set:html={scope(CREAM, FG)} /></div>
+        <span class="cap2">nav lockup · 32px favicon</span>
+      </div>
+    </section>
+  </main>
+
+  <style>
+    main { background:#fbf7ec; color:#173d2e; min-height:100vh; padding:clamp(2rem,5vw,4rem); font-family:var(--font-body); }
+    header { max-width:760px; margin-block-end:2.5rem; }
+    header h1 { font-family:var(--font-rounded); font-weight:600; font-size:2rem; }
+    header p { opacity:.75; margin-block-start:.5rem; }
+
+    .big { display:flex; flex-wrap:wrap; gap:1rem; margin-block-end:2.5rem; }
+    .cell { width:200px; height:200px; border-radius:18px; border:1.5px solid rgba(23,61,46,.12); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1rem; }
+    .mk { width:92px; height:92px; }
+    .mk :global(svg), .mk-sm :global(svg) { width:100%; height:100%; display:block; }
+    .cap { font-family:var(--font-rounded); font-weight:600; font-size:.85rem; }
+
+    .tiles { display:flex; gap:1.5rem; flex-wrap:wrap; margin-block-end:2.5rem; }
+    .tile-wrap { display:flex; flex-direction:column; align-items:center; gap:.6rem; }
+    .tile { width:104px; height:104px; border-radius:24px; display:grid; place-items:center; box-shadow:0 6px 20px rgba(23,61,46,.18); }
+    .mk-sm { width:62px; height:62px; }
+    .cap2 { font-family:var(--font-rounded); font-weight:500; font-size:.85rem; opacity:.7; }
+
+    .scale { display:flex; flex-direction:column; gap:1.6rem; border-block-start:1.5px solid rgba(23,61,46,.12); padding-block-start:2rem; }
+    .scale-row { display:flex; align-items:center; gap:1.4rem; }
+    .navlock { display:flex; align-items:center; gap:.5rem; background:#fff; border:1.5px solid rgba(23,61,46,.15); border-radius:12px; padding:.5rem .9rem; }
+    .fav { width:32px; height:32px; border-radius:8px; display:grid; place-items:center; }
+  </style>
+</Base>

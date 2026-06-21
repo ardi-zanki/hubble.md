@@ -1,0 +1,45 @@
+---
+interface Props {
+  size?: number;
+  body?: string;   // petal fill
+  ink?: string;    // outline + pupil
+  gleam?: string;  // eye highlight
+  stroke?: number;
+  class?: string;
+}
+const {
+  size = 56,
+  body = "#ffffff",
+  ink = "#121212",
+  gleam = "#ffffff",
+  stroke = 1.5,
+  class: klass = "",
+} = Astro.props;
+---
+<svg
+  class={klass}
+  width={size}
+  height={size}
+  viewBox="0 0 56 57"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+  aria-hidden="true"
+>
+  <!-- right petal -->
+  <path
+    d="M40.2026 47.0052L38.8342 47.2636C33.8143 48.2115 28.9764 44.9104 28.0285 39.8905L23.5926 16.3984C22.6449 11.3786 25.9458 6.54062 30.9657 5.59275L32.3341 5.33436C39.5246 3.9766 46.4545 8.70527 47.8125 15.8958L50.764 31.5268C52.1218 38.7175 47.3933 45.6474 40.2026 47.0052Z"
+    fill={body}
+    stroke={ink}
+    stroke-width={stroke}
+  />
+  <!-- left petal -->
+  <path
+    d="M11.9097 8.99L12.5921 8.85163C19.0583 7.54056 25.363 11.7196 26.6741 18.1858L30.4145 36.6336C31.7253 43.0997 27.5464 49.4045 21.0804 50.7156L20.398 50.854C14.3088 52.0886 8.37162 48.1529 7.13679 42.0638L3.11962 22.2512C1.88496 16.1619 5.82043 10.2246 11.9097 8.99Z"
+    fill={body}
+    stroke={ink}
+    stroke-width={stroke}
+  />
+  <!-- pupil + gleam -->
+  <circle cx="31.4095" cy="27.4095" r="12.754" transform="rotate(3.89346 31.4095 27.4095)" fill={ink} />
+  <circle cx="33.9108" cy="24.9264" r="6.5" transform="rotate(3.89346 33.9108 24.9264)" fill={gleam} />
+</svg>

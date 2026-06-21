@@ -1,0 +1,292 @@
+---
+import Base from "../layouts/Base.astro";
+import Avatar from "../components/Avatar.astro";
+---
+<Base title="Hubble — Deep Forest" concept="a">
+  <div class="page">
+    <!-- NAV -->
+    <nav class="wrap">
+      <a class="brand" href="/">
+        <img src="/favicon.svg" width="34" height="34" alt="Hubble" class="brand-mark" />
+        <span class="wordmark" style="width:104px;height:26px;color:#173d2e"></span>
+      </a>
+      <div class="links">
+        <a href="#">Product</a>
+        <a href="#">Mini-apps</a>
+        <a href="#">Pricing</a>
+        <a class="btn ghost" href="#">Log in</a>
+        <a class="btn yellow" href="#">Get Hubble</a>
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <header class="hero wrap">
+      <span class="eyebrow">The notebook that grows a brain</span>
+      <h1>
+        Everything in your head,
+        <span class="hl">finally making sense</span>.
+      </h1>
+      <p class="lede">
+        Hubble started as a humble notes app. Now it's a second brain you can
+        <em>shape</em> — design miniature apps, build Kanban boards, grow graph
+        views, and connect every idea rolling around in your notebook.
+      </p>
+      <div class="cta">
+        <a class="btn yellow lg" href="#">Start your notebook</a>
+        <a class="btn link" href="#">See how it works →</a>
+      </div>
+      <p class="trust">Free to start · Your notes stay yours · Works offline</p>
+
+      <svg class="scribble" viewBox="0 0 220 60" fill="none" aria-hidden="true">
+        <path d="M5 40 C 60 5, 120 5, 175 30" stroke="#f4c13c" stroke-width="5" stroke-linecap="round"/>
+        <path d="M160 18 L 178 31 L 162 44" stroke="#f4c13c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </header>
+
+    <!-- SHOWCASE (subtle: white cards on cream) -->
+    <section class="showcase wrap">
+      <article class="mini">
+        <div class="mini-head"><span class="pip">◆</span> Kanban</div>
+        <div class="rows">
+          <div class="chip">Draft outline</div>
+          <div class="chip done">Ship v1</div>
+          <div class="chip">Talk to users</div>
+        </div>
+        <p>Turn a messy list into a board you can move.</p>
+      </article>
+
+      <article class="mini wide">
+        <div class="mini-head"><span class="pip">●</span> Graph view</div>
+        <svg class="graph" viewBox="0 0 260 120" aria-hidden="true">
+          <line x1="40" y1="60" x2="130" y2="30" /><line x1="40" y1="60" x2="120" y2="95" />
+          <line x1="130" y1="30" x2="220" y2="55" /><line x1="120" y1="95" x2="220" y2="55" />
+          <line x1="130" y1="30" x2="120" y2="95" />
+          <circle cx="40" cy="60" r="11"/><circle cx="130" cy="30" r="14"/>
+          <circle cx="120" cy="95" r="9"/><circle cx="220" cy="55" r="12"/>
+        </svg>
+        <p>Watch your notes link themselves into a map of what you know.</p>
+      </article>
+
+      <article class="mini">
+        <div class="mini-head"><span class="pip">▲</span> Notes</div>
+        <div class="lines"><span></span><span></span><span></span><span class="short"></span></div>
+        <p>Plain Markdown underneath. Yours forever, in real files.</p>
+      </article>
+    </section>
+
+    <!-- YELLOW POP BAND (full bleed) -->
+    <section class="band">
+      <div class="wrap band-inner">
+        <div class="band-copy">
+          <span class="band-eyebrow">★ The fun part</span>
+          <h2>Need a tool?<br/>Build it right<br/>in the doc.</h2>
+          <p>
+            Boards, trackers, tables, timelines — drop a mini-app onto any page
+            and it just works. No setup, no new tab, no leaving your train of thought.
+          </p>
+          <a class="btn dark lg" href="#">Explore mini-apps →</a>
+        </div>
+
+        <div class="band-art">
+          <article class="float tracker" style="--r:-4deg">
+            <div class="f-head">Habit tracker</div>
+            <div class="dots">
+              <i class="on"></i><i class="on"></i><i></i><i class="on"></i><i class="on"></i><i></i><i class="on"></i>
+              <i class="on"></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i class="on"></i>
+            </div>
+          </article>
+          <article class="float table" style="--r:5deg">
+            <div class="f-head">Reading list</div>
+            <div class="trow"><span></span><b>2025</b></div>
+            <div class="trow"><span></span><b>2024</b></div>
+            <div class="trow"><span></span><b>2024</b></div>
+          </article>
+          <Avatar class="band-peek" size={76} body="#fff8e7" ink="#173d2e" gleam="#f4c13c" stroke={1.75} />
+        </div>
+      </div>
+    </section>
+
+    <!-- VALUE -->
+    <section class="value wrap">
+      <h2 class="value-h">One canvas for the whole mess.</h2>
+      <div class="value-grid">
+        <div><h3>Write first</h3><p>Capture the thought before it floats away. Structure can come later.</p></div>
+        <div><h3>Build the tool you need</h3><p>Drop a mini-app into any page — a tracker, a board, a table — no setup.</p></div>
+        <div><h3>See the connections</h3><p>Every link feeds the graph, so the big picture assembles itself.</p></div>
+      </div>
+    </section>
+
+    <footer class="wrap">
+      <div class="foot-brand">
+        <img src="/favicon.svg" width="28" height="28" alt="Hubble" class="brand-mark" />
+        <span class="wordmark" style="width:88px;height:22px;color:#173d2e"></span>
+      </div>
+      <span>Make sense of everything rolling around in your notebook.</span>
+    </footer>
+
+    <!-- PREVIEW CONTROLS (not part of the design) -->
+    <aside class="lab" id="lab">
+      <button class="lab-toggle" id="labToggle" title="Hide/show controls">⚙</button>
+      <div class="lab-body">
+        <div class="lab-group">
+          <span class="lab-label">Accent yellow</span>
+          <div class="lab-row" data-set="accent">
+            <button data-accent="#f4c13c" style="--sw:#f4c13c">Banana</button>
+            <button data-accent="#ffc21f" class="on" style="--sw:#ffc21f">Golden</button>
+            <button data-accent="#ffcb05" style="--sw:#ffcb05">Marigold</button>
+            <button data-accent="#ffd400" style="--sw:#ffd400">Primary</button>
+          </div>
+        </div>
+        <div class="lab-group">
+          <span class="lab-label">Heading font</span>
+          <div class="lab-row col" data-set="font">
+            <button data-font='"Fraunces", Georgia, serif' data-w="600" class="on">Fraunces</button>
+            <button data-font='"Fredoka", sans-serif' data-w="600">Fredoka</button>
+            <button data-font='"Chubbo", serif' data-w="700">Chubbo</button>
+            <button data-font='"Obviously Wide", sans-serif' data-w="900">Obviously</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <script is:inline>
+      (function () {
+        const page = document.querySelector(".page");
+        const lab = document.getElementById("lab");
+        document.getElementById("labToggle").addEventListener("click", () => lab.classList.toggle("min"));
+        lab.querySelectorAll(".lab-row[data-set='accent'] button").forEach((b) => {
+          b.addEventListener("click", () => {
+            const hex = b.dataset.accent;
+            page.style.setProperty("--accent", hex);
+            page.style.setProperty("--accent-bg", hex);
+            b.parentElement.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+          });
+        });
+        lab.querySelectorAll(".lab-row[data-set='font'] button").forEach((b) => {
+          b.addEventListener("click", () => {
+            page.style.setProperty("--display", b.dataset.font);
+            page.style.setProperty("--display-w", b.dataset.w);
+            b.parentElement.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+          });
+        });
+      })();
+    </script>
+  </div>
+
+  <style>
+    .page {
+      --bg: #fbf7ec; --fg: #173d2e;
+      /* accent yellow — Golden chosen 2026-06-13. Alternates kept in back pocket: */
+      --accent: #ffc21f; --accent-bg: #ffc21f;
+      /* --accent: #ffcb05; --accent-bg: #ffcb05;  Marigold */
+      /* --accent: #f4c13c; --accent-bg: #f4c13c;  Banana */
+      --display: var(--font-serif);
+      background: var(--bg); color: var(--fg);
+      font-family: var(--font-body); min-height: 100vh; overflow-x: hidden;
+      background-image: radial-gradient(circle at 1px 1px, rgba(23,61,46,.06) 1px, transparent 0);
+      background-size: 26px 26px;
+    }
+    .wrap { max-width: 1140px; margin-inline: auto; padding-inline: clamp(1.25rem, 5vw, 3rem); }
+
+    /* nav */
+    nav { display: flex; align-items: center; justify-content: space-between; padding-block: 1.5rem; }
+    .brand { display: flex; align-items: center; gap: .6rem; text-decoration: none; }
+    .links { display: flex; align-items: center; gap: 1.4rem; }
+    .links > a:not(.btn) { text-decoration: none; font-weight: 500; opacity: .8; }
+    .links > a:not(.btn):hover { opacity: 1; }
+    .btn { font-family: var(--font-rounded); font-weight: 600; text-decoration: none; border-radius: 999px; padding: .55rem 1.1rem; transition: transform .12s ease, box-shadow .12s ease; display: inline-block; }
+    .btn.ghost { border: 1.5px solid rgba(23,61,46,.25); }
+    .btn.yellow { background: var(--accent-bg); color: var(--fg); box-shadow: 0 3px 0 rgba(23,61,46,.85); }
+    .btn.yellow:hover { transform: translateY(-2px); box-shadow: 0 5px 0 rgba(23,61,46,.85); }
+    .btn.dark { background: var(--fg); color: var(--bg); }
+    .btn.dark:hover { transform: translateY(-2px); }
+    .btn.lg { padding: .85rem 1.6rem; font-size: 1.05rem; }
+    .btn.link { font-family: var(--font-rounded); font-weight: 600; text-decoration: none; align-self: center; }
+
+    /* hero */
+    .hero { text-align: center; padding-block: clamp(3rem, 9vw, 6.5rem) 4rem; position: relative; }
+    .hero { max-width: 940px; }
+    .eyebrow { font-family: var(--font-rounded); font-weight: 600; font-size: 1rem; color: var(--accent); background: var(--fg); padding: .4rem 1rem; border-radius: 999px; display: inline-block; }
+    h1 { font-family: var(--display); font-weight: var(--display-w, 600); font-size: clamp(2.6rem, 6.5vw, 5rem); line-height: 1.04; letter-spacing: -.02em; margin-block: 1.4rem .2rem; max-width: 14ch; margin-inline: auto; }
+    h1 .hl { position: relative; white-space: nowrap; font-style: italic; }
+    h1 .hl::after { content: ""; position: absolute; left: -.12em; right: -.12em; bottom: .06em; height: .5em; background: var(--accent); z-index: -1; border-radius: 4px; transform: rotate(-1.2deg); }
+    .lede { font-size: clamp(1.1rem, 2.2vw, 1.35rem); line-height: 1.55; max-width: 42ch; margin: 1.6rem auto 0; opacity: .85; }
+    .lede em { font-family: var(--font-serif); font-style: italic; }
+    .cta { display: flex; gap: 1rem; justify-content: center; align-items: center; margin-block-start: 2.2rem; flex-wrap: wrap; }
+    .trust { font-size: .85rem; opacity: .6; margin-block-start: 1.1rem; }
+    .scribble { position: absolute; width: 150px; inset-block-start: 7%; inset-inline-end: 4%; transform: rotate(8deg); }
+
+    /* showcase */
+    .showcase { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.2rem; }
+    .mini { grid-column: span 1; background: #fff; border: 1.5px solid rgba(23,61,46,.16); border-radius: 20px; padding: 1.4rem; box-shadow: 0 10px 30px rgba(23,61,46,.06); }
+    .mini.wide { grid-column: span 2; }
+    .mini-head { font-family: var(--font-rounded); font-weight: 600; display: flex; align-items: center; gap: .5rem; margin-block-end: 1rem; }
+    .pip { color: var(--accent); -webkit-text-stroke: .5px var(--fg); }
+    .mini p { font-size: .9rem; opacity: .75; margin-block-start: 1rem; }
+    .chip { background: var(--bg); border: 1.5px solid rgba(23,61,46,.18); border-radius: 10px; padding: .5rem .7rem; font-size: .85rem; font-weight: 500; margin-block-end: .5rem; }
+    .chip.done { background: var(--fg); color: var(--bg); text-decoration: line-through; opacity: .9; }
+    .graph line { stroke: rgba(23,61,46,.3); stroke-width: 2; }
+    .graph circle { fill: #fff; stroke: var(--fg); stroke-width: 2.5; }
+    .graph circle:nth-of-type(2) { fill: var(--accent); }
+    .lines span { display: block; height: 9px; border-radius: 6px; background: rgba(23,61,46,.15); margin-block-end: .6rem; }
+    .lines span.short { width: 55%; background: var(--accent); }
+
+    /* yellow pop band */
+    .band { background: var(--accent-bg); color: var(--fg); margin-block: clamp(4rem, 9vw, 7rem) 0; border-block: 2.5px solid var(--fg);
+      background-image: radial-gradient(circle at 1px 1px, rgba(23,61,46,.12) 1px, transparent 0); background-size: 24px 24px; }
+    .band-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; align-items: center; padding-block: clamp(3rem, 7vw, 5rem); }
+    .band-eyebrow { font-family: var(--font-rounded); font-weight: 600; letter-spacing: .03em; }
+    .band h2 { font-family: var(--display); font-weight: var(--display-w, 600); font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.02; letter-spacing: -.02em; margin-block: .8rem 1rem; }
+    .band-copy p { font-size: 1.1rem; line-height: 1.55; max-width: 38ch; margin-block-end: 1.8rem; }
+    .band-art { position: relative; height: 300px; }
+    .float { position: absolute; background: #fff8e7; border: 2px solid var(--fg); border-radius: 16px; padding: 1rem 1.1rem; box-shadow: 5px 7px 0 rgba(23,61,46,.9); transform: rotate(var(--r)); }
+    .f-head { font-family: var(--font-rounded); font-weight: 600; font-size: .95rem; margin-block-end: .8rem; }
+    .float.tracker { inset-block-start: 6%; inset-inline-start: 4%; width: 230px; }
+    .dots { display: grid; grid-template-columns: repeat(7, 1fr); gap: .35rem; }
+    .dots i { aspect-ratio: 1; border-radius: 5px; border: 1.5px solid rgba(23,61,46,.4); }
+    .dots i.on { background: var(--fg); border-color: var(--fg); }
+    .float.table { inset-block-end: 4%; inset-inline-end: 2%; width: 210px; }
+    .trow { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding-block: .45rem; border-block-end: 1.5px solid rgba(23,61,46,.18); }
+    .trow span { height: 8px; border-radius: 5px; background: rgba(23,61,46,.22); flex: 1; }
+    .trow b { font-size: .8rem; opacity: .7; }
+    .band-peek { position: absolute; inset-block-start: -8%; inset-inline-end: 14%; filter: drop-shadow(3px 5px 0 rgba(23,61,46,.5)); }
+
+    /* value */
+    .value { margin-block-start: clamp(4rem, 9vw, 7rem); text-align: center; }
+    .value-h { font-family: var(--display); font-weight: var(--display-w, 600); font-size: clamp(1.8rem, 4vw, 3rem); letter-spacing: -.02em; }
+    .value-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-block-start: 2.5rem; text-align: start; }
+    .value-grid h3 { font-family: var(--font-rounded); font-weight: 600; font-size: 1.25rem; margin-block-end: .4rem; }
+    .value-grid p { opacity: .8; }
+    .value-grid > div { border-block-start: 3px solid var(--accent); padding-block-start: 1rem; }
+
+    footer { margin-block-start: clamp(4rem, 9vw, 7rem); padding-block: 2.5rem; border-block-start: 1.5px solid rgba(23,61,46,.15); display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .foot-brand { display: flex; align-items: center; gap: .5rem; }
+    footer > span { opacity: .7; font-family: var(--font-serif); font-style: italic; }
+
+    /* preview controls overlay */
+    .lab { position: fixed; inset-block-end: 1.25rem; inset-inline-end: 1.25rem; z-index: 50; background: rgba(15,28,22,.92); color: #fff8e7; border-radius: 16px; padding: 1rem 1.1rem; box-shadow: 0 12px 40px rgba(0,0,0,.35); backdrop-filter: blur(8px); width: 232px; font-family: var(--font-rounded); }
+    .lab-toggle { position: absolute; inset-block-start: .6rem; inset-inline-end: .7rem; background: none; border: none; color: #fff8e7; opacity: .6; cursor: pointer; font-size: 1rem; }
+    .lab-toggle:hover { opacity: 1; }
+    .lab.min .lab-body { display: none; }
+    .lab.min { width: auto; padding: .5rem .65rem; }
+    .lab-group { margin-block-end: .9rem; }
+    .lab-group:last-child { margin-block-end: 0; }
+    .lab-label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; opacity: .55; margin-block-end: .5rem; }
+    .lab-row { display: flex; gap: .4rem; flex-wrap: wrap; }
+    .lab-row.col { flex-direction: column; }
+    .lab-row button { font-family: var(--font-rounded); font-weight: 600; font-size: .8rem; color: #fff8e7; background: rgba(255,255,255,.08); border: 1.5px solid transparent; border-radius: 9px; padding: .4rem .55rem; cursor: pointer; display: flex; align-items: center; gap: .4rem; transition: background .12s ease; text-align: start; }
+    .lab-row button:hover { background: rgba(255,255,255,.16); }
+    .lab-row[data-set="accent"] button::before { content: ""; width: 13px; height: 13px; border-radius: 50%; background: var(--sw); flex: none; box-shadow: 0 0 0 1.5px rgba(255,255,255,.3); }
+    .lab-row button.on { border-color: var(--accent); background: rgba(255,255,255,.14); }
+
+    @media (max-width: 820px) {
+      .lab { inset-inline: 1rem auto; width: auto; }
+      .showcase { grid-template-columns: repeat(2, 1fr); }
+      .mini.wide { grid-column: span 2; }
+      .band-inner { grid-template-columns: 1fr; }
+      .band-art { height: 320px; }
+      .value-grid { grid-template-columns: 1fr; }
+      .scribble { display: none; }
+    }
+  </style>
+</Base>

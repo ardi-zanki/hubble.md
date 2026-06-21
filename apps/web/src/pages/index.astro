@@ -1,0 +1,729 @@
+---
+import { Icon } from "astro-icon/components";
+import Base from "../layouts/Base.astro";
+import Logo from "../components/Logo.astro";
+const headline = "The best notepad for you and your agents";
+const sub = "Free, open source, backed by Markdown and HTML.";
+
+// Workspace demo content — drives both the markup below and the client script.
+const notes = [
+  { title: "Desert stars", tag: "Outdoors", place: "Joshua Tree", color: "var(--hero-leaf)", h: 116, x: 122, y: 150 },
+  { title: "Tokyo ramen", tag: "Travel", place: "Tokyo", color: "#c46a48", h: 110, x: 398, y: 98 },
+  { title: "Dune", tag: "Books", place: "Lisbon", color: "#5d6bb0", h: 118, x: 252, y: 112 },
+  { title: "Sourdough", tag: "Cooking", place: "Home", color: "#d99a2b", h: 112, x: 166, y: 120 },
+  { title: "Tide pools", tag: "Outdoors", place: "Big Sur", color: "#2e8d7a", h: 115, x: 82, y: 128 },
+  { title: "Kyoto garden", tag: "Travel", place: "Kyoto", color: "#b06a7a", h: 109, x: 368, y: 140, fresh: true },
+];
+const tagClass: Record<string, string> = { Outdoors: "t-out", Travel: "t-travel", Books: "t-books", Cooking: "t-cook" };
+// Bookshelf demo: a filled two-shelf library. The six notes become titled spines; deterministic
+// filler spines (sin-based so the build is stable) pad the shelves so it reads as a real bookcase
+// rather than six lonely books. The count intentionally doesn't track the sidebar file list.
+const spinePalette = ["#3f7d63", "#c9a23a", "#5d6bb0", "#bf6b50", "#2e8d7a", "#b06a7a", "#6f8a3a", "#cf9a3a", "#7a5c9e", "#4f7da0", "#a8516a", "#357a5e", "#c46a48", "#8a6f3a"];
+// Filler spine titles in the same note-ish voice as the six real notes; every spine is labelled.
+const fillerTitles = ["Cold brew", "Big Sur", "Orion", "Tide charts", "Lisbon trams", "Trail notes", "Night sky", "Field guide", "Sea glass", "Camp recipes", "Star maps", "Old letters", "Map sketches", "Garden log", "Tea blends", "Coastlines", "Pour over", "Sea fog"];
+const titleSlots = [2, 5, 8, 13, 16, 20]; // where the six real notes sit among the spines
+let fillerIdx = 0;
+const library = Array.from({ length: 24 }, (_, i) => {
+  const ti = titleSlots.indexOf(i);
+  const note = ti >= 0 ? notes[ti] : null;
+  const title = note ? note.title : fillerTitles[fillerIdx++];
+  const minH = Math.round(title.length * 6.7 + 30); // tall enough for the vertical spine label
+  const h = Math.max(minH, Math.round(108 + Math.abs(Math.sin(i * 1.3 + 1)) * 40));
+  const w = note ? 30 : 23 + Math.round(Math.abs(Math.sin(i * 0.77 + 1)) * 12);
+  return { color: note ? note.color : spinePalette[i % spinePalette.length], h, w, title };
+});
+const shelfRows = [library.slice(0, 12), library.slice(12)];
+// Route flows west→east across the map: Americas (Big Sur → Joshua Tree → Home), then Eurasia (Lisbon → Kyoto → Tokyo). Monotonic x keeps the spline from zig-zagging back and forth.
+const order = [4, 0, 3, 2, 5, 1];
+// Smooth Catmull-Rom spline through the ordered pins so the route flows instead of zig-zagging.
+const pts = order.map((i) => [notes[i].x, notes[i].y]);
+const route = pts.reduce((d, p1, i) => {
+  if (i === 0) return `M${p1[0]} ${p1[1]}`;
+  const p0 = pts[i - 1], p2 = pts[i + 1] || p1, pm = pts[i - 2] || p0;
+  const c1x = p0[0] + (p1[0] - pm[0]) / 6, c1y = p0[1] + (p1[1] - pm[1]) / 6;
+  const c2x = p1[0] - (p2[0] - p0[0]) / 6, c2y = p1[1] - (p2[1] - p0[1]) / 6;
+  return `${d} C${c1x} ${c1y} ${c2x} ${c2y} ${p1[0]} ${p1[1]}`;
+}, "");
+const ccLogo = '<svg viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg"><path clip-rule="evenodd" d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z" fill="#D97757" fill-rule="evenodd"/></svg>';
+---
+<Base title="Hubble — hero">
+  <div class="page">
+    <header class="nav">
+      <a class="brand" href="/" aria-label="Hubble home"><Logo class="logo" /></a>
+      <nav class="nav-links">
+        <a href="https://github.com/bholmesdev/hubble.md/releases" target="_blank" rel="noopener">Releases</a>
+        <a class="gh-stars" href="https://github.com/bholmesdev/hubble.md" target="_blank" rel="noopener" aria-label="Star Hubble on GitHub">
+          <Icon name="mingcute:github-fill" class="gh-ico" aria-hidden="true" />
+          <span class="gh-label">Star</span>
+          <span class="gh-count"><span class="gh-star">★</span><span data-gh-stars>61</span></span>
+        </a>
+      </nav>
+    </header>
+    <main>
+      <section class="hero">
+        <div class="hero-inner">
+          <div class="copy">
+            <h1>{headline}</h1>
+            <p class="sub">{sub}</p>
+            <div class="cta">
+              <a class="btn gold" href="https://github.com/bholmesdev/hubble.md/releases/latest" data-download>Download</a>
+              <span class="download-soon" data-download-soon hidden>
+                <span><span data-download-os>Windows</span> coming soon</span>
+                <span class="tip" tabindex="0" aria-label="It should be easy to bring Hubble to Windows. I just don't have a machine to test on yet. I'll release to your platform as soon as I do. :)">?</span>
+              </span>
+              <a class="btn ghost" href="https://github.com/bholmesdev/hubble.md" target="_blank" rel="noopener">★ Star on GitHub</a>
+            </div>
+          </div>
+          <div class="visual">
+            <div class="ws" data-step="1">
+              <div class="ws-editor-group">
+                <div class="ws-body">
+                  <aside class="ws-files">
+                    <div class="ws-switch"><span class="sw-name">my-notes</span><Icon name="mingcute:selector-vertical-line" class="sw-chev" /><span class="switch-icons"><Icon name="mingcute:edit-line" /><Icon name="mingcute:sort-descending-line" /></span></div>
+                    <ul class="ws-filelist">
+                      <li class="file f-projects active">desert-stars.md</li>
+                      <li class="file">tokyo-ramen.md</li>
+                      <li class="file">dune.md</li>
+                      <li class="file">sourdough.md</li>
+                      <li class="file">tide-pools.md</li>
+                      <li class="file f-new made">kyoto-garden.md</li>
+                      <li class="file f-index made">index.html</li>
+                      <li class="file f-shelf made">bookshelf.html</li>
+                      <li class="file f-map made">map.html</li>
+                    </ul>
+                  </aside>
+
+                  <section class="ws-editor">
+                    <div class="doc-bar">
+                      <span class="doc-tab">desert-stars.md</span>
+                      <div class="doc-actions">
+                        <button class="ellipsis" aria-label="More"><Icon name="mingcute:more-2-line" /></button>
+                        <div class="ctx-menu">
+                          <div class="ctx-item"><Icon name="mingcute:link-line" /> Copy link</div>
+                          <div class="ctx-item copypath"><Icon name="mingcute:copy-2-line" /> Copy file path</div>
+                          <div class="ctx-item"><Icon name="mingcute:edit-line" /> Rename</div>
+                        </div>
+                        <div class="toast">Copied path ✓</div>
+                      </div>
+                    </div>
+
+                    <div class="doc">
+                      <div class="doc-view doc-projects">
+                        <h1 class="doc-h1">Desert stars</h1>
+                        <div class="draft"></div>
+                      </div>
+
+                      <div class="doc-view doc-dash">
+                        <div class="viz viz-table">
+                          <table class="ntable"><thead><tr><th>Note</th><th>Tag</th><th>Place</th></tr></thead><tbody>
+                            {[...notes].sort((a, b) => (b.fresh ? 1 : 0) - (a.fresh ? 1 : 0)).map((n) => (<tr class:list={["brow", { "brow-new": n.fresh }]}><td>{n.title}</td><td><span class={`pill ${tagClass[n.tag]}`}>{n.tag}</span></td><td>{n.place}</td></tr>))}
+                          </tbody></table>
+                        </div>
+
+                        <div class="viz viz-shelf">
+                          <div class="shelf">
+                            {shelfRows.map((row) => (
+                              <div class="shelf-row">
+                                <div class="shelf-books">
+                                  {row.map((b) => (<div class="book" style={`background-color:${b.color};height:${b.h}px;width:${b.w}px`}><span class="book-title">{b.title}</span></div>))}
+                                </div>
+                                <div class="shelf-plank"></div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div class="viz viz-map">
+                          <svg class="mapsvg" viewBox="0 0 440 250" preserveAspectRatio="xMidYMid meet">
+                            <defs>
+                              <mask id="rmask" maskUnits="userSpaceOnUse"><path d={route} class="route-draw-mask" /></mask>
+                              <pattern id="grid" width="22" height="22" patternUnits="userSpaceOnUse">
+                                <circle cx="1" cy="1" r="1" fill="var(--hero-ink)" opacity="0.05" />
+                              </pattern>
+                              <radialGradient id="pinGrad" cx="0.35" cy="0.3" r="0.85">
+                                <stop offset="0%" stop-color="#ffe082" />
+                                <stop offset="45%" stop-color="var(--hero-gold)" />
+                                <stop offset="100%" stop-color="#e09c12" />
+                              </radialGradient>
+                              <filter id="pinShadow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feDropShadow dx="0" dy="0.8" stdDeviation="0.7" flood-color="var(--hero-ink)" flood-opacity="0.22" />
+                              </filter>
+                            </defs>
+                            <rect width="440" height="250" fill="#eef3ef" />
+                            <path class="land" d="M62 96 C70 64 132 52 168 74 C198 92 196 140 168 164 C138 190 80 186 58 150 C44 128 50 116 62 96 Z" />
+                            <path class="land" d="M236 88 C262 56 350 52 392 82 C426 106 428 158 388 182 C338 212 268 196 240 160 C220 134 222 112 236 88 Z" />
+                            <rect width="440" height="250" fill="url(#grid)" />
+                            <path d={route} class="route" mask="url(#rmask)" />
+                            {notes.map((n) => (
+                              <g class="pin">
+                                <line class="pin-stem" x1={n.x} y1={n.y} x2={n.x} y2={n.y - 13} />
+                                <circle class="pin-dot" cx={n.x} cy={n.y - 17} r="5.5" />
+                                <ellipse class="pin-gloss" cx={n.x - 1.6} cy={n.y - 19} rx="2" ry="1.4" />
+                                <text class="pin-label" x={n.x} y={n.y + 13} text-anchor="middle">{n.place}</text>
+                              </g>
+                            ))}
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                <div class="ws-claude">
+                  <div class="cli-head"><span class="cc-logo" set:html={ccLogo} /></div>
+                  <div class="cli-body">
+                    <div class="cli-group s2">
+                      <div class="cli-row"><span class="prompt">&gt;</span> <span class="path"></span><span class="ask"></span></div>
+                      <div class="cli-out r-out"><span class="ok">●</span> Added 3 ideas for next time.</div>
+                    </div>
+                    <div class="cli-group s3">
+                      <div class="cli-row"><span class="prompt">&gt;</span> <span class="ask3"></span></div>
+                      <div class="cli-out r-made"><span class="ok">●</span> <span class="made-txt"></span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="ws-head">
+                <div class="ws-progress">
+                  <button class="seg" type="button" data-i="1"><span class="seg-bar"><span class="seg-fill"></span></span><b>Feels familiar</b></button>
+                  <button class="seg" type="button" data-i="2"><span class="seg-bar"><span class="seg-fill"></span></span><b>Agent ready</b></button>
+                  <button class="seg" type="button" data-i="3"><span class="seg-bar"><span class="seg-fill"></span></span><b>Build any view</b></button>
+                </div>
+                <div class="ws-caption"><span class="cap-text"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">Made with <span class="heart">♥︎</span> by <a href="https://twitter.com/bholmesdev" target="_blank" rel="noopener">@bholmesdev</a></footer>
+  </div>
+
+  <script>
+    import gsap from "gsap";
+
+    // Single source of truth for the demo's text content and per-step captions.
+    const demoContent = {
+      head: "Desert stars",
+      baseBullets: ["Drove past Joshua Tree, cut the headlights", "The sky looked almost fake", "Saw the Milky Way for the first time"],
+      ideas: ["Camp overnight at Jumbo Rocks", "Come back for the Perseids in August", "Bring a telescope next time"],
+      path: "~/my-notes/desert-stars.md",
+      ask2: "  add ideas for next time",
+      captions: {
+        1: "The same writing experience you're used to from Notion or Apple Notes, backed by Markdown files.",
+        2: "Tell your agent where to look on your computer, and work on notes together with live reloading.",
+        3: "Beyond Markdown, you can build fullscreen HTML apps with live access to your notes.",
+      } as Record<number, string>,
+    };
+
+    // String fragments injected into .draft as the slash menu appears.
+    // These are transient (created and torn down inside timelines), so they can't live in the template.
+    const slashMenuHTML = (items: { icon: string; label: string; active?: boolean }[]) =>
+      `<span class="slm"><span class="slm-list">${items
+        .map((it) => `<span class="slm-item${it.active ? " active" : ""}"><span class="slm-ic">${it.icon}</span><span class="slm-t">${it.label}</span></span>`)
+        .join("")}</span></span>`;
+    const SLM_FULL = slashMenuHTML([
+      { icon: "T", label: "Text", active: true },
+      { icon: "H1", label: "Heading 1" },
+      { icon: "•", label: "Bulleted list" },
+      { icon: "1.", label: "Numbered list" },
+      { icon: "☑", label: "To-do list" },
+    ]);
+    const slashMenuItemsHTML = (items: { icon: string; label: string; active?: boolean }[]) =>
+      items.map((it) => `<span class="slm-item${it.active ? " active" : ""}"><span class="slm-ic">${it.icon}</span><span class="slm-t">${it.label}</span></span>`).join("");
+    const SLM_FILTERED = slashMenuItemsHTML([{ icon: "•", label: "Bulleted list", active: true }]);
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const listHTML = (base: string[], extra: string[] = []) =>
+      "<ul class='note-bullets'>" +
+      base.map((b) => `<li>${b}</li>`).join("") +
+      extra.map((b) => `<li class='idea'>${b}</li>`).join("") +
+      "</ul>";
+
+    // A typed token stream — type 1/4/5 styling exists for future markdown tokenization;
+    // current call sites use type 0 (plain). Kept so adding bold/italic marks is a one-line change.
+    type Tok = [string, number];
+    const fullLen = (toks: Tok[]) => toks.reduce((a, t) => a + t[0].length, 0);
+    function renderToks(node: Element, toks: Tok[], n: number) {
+      let out = "", left = n;
+      for (const [t, ty] of toks) {
+        const take = Math.max(0, Math.min(t.length, left));
+        if (take > 0) {
+          const s = t.slice(0, take);
+          out += ty === 1 ? `<strong>${s}</strong>` : ty === 4 ? `<em>${s}</em>` : ty === 5 ? `<span class="md-mark">${s}</span>` : s;
+        }
+        left -= t.length;
+        if (left <= 0) break;
+      }
+      node.innerHTML = out;
+    }
+
+    document.querySelectorAll<HTMLElement>(".ws").forEach((ws) => {
+      // Init-time element map: resolve every animated node once, fail loudly if the markup drifts.
+      const qReq = <T extends Element = HTMLElement>(sel: string): T => {
+        const node = ws.querySelector<T>(sel);
+        if (!node) throw new Error(`hero.astro: expected "${sel}" inside .ws`);
+        return node;
+      };
+      const qa = <T extends Element = HTMLElement>(sel: string): T[] => [...ws.querySelectorAll<T>(sel)];
+      const el = {
+        draft: qReq(".draft"),
+        h1: qReq(".doc-h1"),
+        docTab: qReq(".doc-tab"),
+        path: qReq(".path"),
+        ask: qReq(".ask"),
+        ask3: qReq(".ask3"),
+        claude: qReq(".ws-claude"),
+        caption: qReq(".ws-caption"),
+        capText: qReq(".cap-text"),
+        routeMask: qReq(".route-draw-mask"),
+        segs: [1, 2, 3].map((i) => qReq<HTMLButtonElement>(`.seg[data-i="${i}"]`)) as const,
+        segFills: [1, 2, 3].map((i) => qReq(`.seg[data-i="${i}"] .seg-fill`)) as const,
+      };
+
+      // Class toggles — written once, reused everywhere.
+      const on = (node: Element | null | undefined) => node?.classList.add("on");
+      const off = (node: Element | null | undefined) => node?.classList.remove("on");
+      const setDoc = (w: string) => qa(".doc-view").forEach((d) => d.classList.toggle("on", d.classList.contains("doc-" + w)));
+      const activeFile = (c: string) => qa(".file").forEach((x) => x.classList.toggle("active", x.classList.contains(c)));
+      const filename = (n: string) => { el.docTab.textContent = n; };
+      const showClaude = (b: boolean) => el.claude.classList.toggle("shown", b);
+
+      const setCaption = (n: number) => {
+        const text = demoContent.captions[n];
+        if (!text) return;
+        el.capText.textContent = text;
+        el.caption.classList.remove("capin");
+        void el.caption.offsetWidth; // restart CSS animation
+        el.caption.classList.add("capin");
+      };
+
+      const setRouteDraw = (x: SVGPathElement, done = false) => {
+        const len = x.getTotalLength();
+        x.setAttribute("stroke-dasharray", String(len));
+        x.setAttribute("stroke-dashoffset", done ? "0" : String(len));
+      };
+      const resetRoute = () => qa(".route-draw-mask").forEach((x) => setRouteDraw(x as SVGPathElement, false));
+      const revealRoute = () => {
+        setRouteDraw(el.routeMask as SVGPathElement, false);
+        gsap.to(el.routeMask, { attr: { "stroke-dashoffset": 0 }, duration: 1.15, ease: "power2.out" });
+      };
+      const showViz = (v: string) => {
+        qa(".viz").forEach((x) => x.classList.toggle("on", x.classList.contains("viz-" + v)));
+        qa(".brow, .book, .pin").forEach((x) => x.classList.remove("on"));
+        resetRoute();
+      };
+
+      type Step = 1 | 2 | 3;
+      type DemoFrame = {
+        step: Step;
+        editor?: {
+          doc?: "projects" | "dash";
+          activeFile?: string;
+          filename?: string;
+          h1?: string;
+          h1AsPara?: boolean;
+          draft?: string;
+          draftTyping?: boolean;
+        };
+        terminal?: {
+          shown?: boolean;
+          path?: string;
+          ask?: string;
+          ask3?: string;
+          rOut?: boolean;
+          rMade?: boolean;
+          madeText?: string;
+        };
+        files?: { index?: boolean; shelf?: boolean; map?: boolean; fresh?: boolean };
+        viz?: {
+          view?: "table" | "shelf" | "map";
+          rows?: boolean;
+          books?: boolean;
+          pins?: boolean;
+          routeDone?: boolean;
+          flashNewRow?: boolean;
+        };
+      };
+
+      const draftWithIdeas = listHTML([...demoContent.baseBullets, ...demoContent.ideas]);
+      const initialFrames: Record<Step, DemoFrame> = {
+        1: { step: 1 },
+        2: { step: 2, editor: { h1: demoContent.head, draft: listHTML(demoContent.baseBullets) } },
+        3: { step: 3, editor: { h1: demoContent.head, draft: draftWithIdeas }, terminal: { shown: true, path: demoContent.path, ask: demoContent.ask2, rOut: true } },
+      };
+      const finalFrames: Record<Step, DemoFrame> = {
+        1: { step: 1, editor: { h1: demoContent.head, draft: listHTML(demoContent.baseBullets) } },
+        2: { step: 2, editor: { h1: demoContent.head, draft: listHTML(demoContent.baseBullets, demoContent.ideas) }, terminal: { shown: true, path: demoContent.path, ask: demoContent.ask2, rOut: true } },
+        3: {
+          step: 3,
+          editor: { doc: "dash", activeFile: "f-map", filename: "map.html", h1: "My library", draft: draftWithIdeas },
+          terminal: { shown: true, path: demoContent.path, ask: demoContent.ask2, ask3: "now map where I wrote each one", rOut: true, rMade: true, madeText: "Created map.html." },
+          files: { index: true, shelf: true, map: true, fresh: true },
+          viz: { view: "map", rows: true, books: true, pins: true, routeDone: true },
+        },
+      };
+
+      function renderFrame(frame: DemoFrame) {
+        const editor = {
+          doc: "projects",
+          activeFile: "f-projects",
+          filename: "desert-stars.md",
+          h1: "",
+          h1AsPara: false,
+          draft: "",
+          draftTyping: false,
+          ...frame.editor,
+        };
+        const terminal = { shown: false, path: "", ask: "", ask3: "", rOut: false, rMade: false, madeText: "", ...frame.terminal };
+        const files = { index: false, shelf: false, map: false, fresh: false, ...frame.files };
+        const viz = { view: "", rows: false, books: false, pins: false, routeDone: false, flashNewRow: false, ...frame.viz };
+
+        ws.dataset.step = String(frame.step);
+        off(qa(".ctx-menu")[0]); off(qa(".toast")[0]);
+        el.h1.classList.toggle("as-para", editor.h1AsPara);
+        el.draft.classList.toggle("typing", editor.draftTyping);
+        el.draft.classList.remove("flash");
+        el.path.classList.remove("pasted");
+        qa(".brow").forEach((r) => r.classList.remove("flashrow"));
+
+        setDoc(editor.doc);
+        activeFile(editor.activeFile);
+        filename(editor.filename);
+        el.h1.textContent = editor.h1;
+        el.draft.innerHTML = editor.draft;
+        el.path.textContent = terminal.path;
+        el.ask.textContent = terminal.ask;
+        el.ask3.textContent = terminal.ask3;
+        qReq(".made-txt").textContent = terminal.madeText;
+
+        qa(".viz").forEach((x) => x.classList.toggle("on", !!viz.view && x.classList.contains("viz-" + viz.view)));
+        qa(".brow").forEach((x) => x.classList.toggle("on", viz.rows));
+        qa(".book").forEach((x) => x.classList.toggle("on", viz.books));
+        qa(".pin").forEach((x) => x.classList.toggle("on", viz.pins));
+        qReq(".viz-table .brow-new").classList.toggle("flashrow", viz.flashNewRow);
+        qa(".f-index").forEach((x) => x.classList.toggle("on", files.index));
+        qa(".f-shelf").forEach((x) => x.classList.toggle("on", files.shelf));
+        qa(".f-map").forEach((x) => x.classList.toggle("on", files.map));
+        qa(".f-new").forEach((x) => x.classList.toggle("on", files.fresh));
+        qa(".r-out").forEach((x) => x.classList.toggle("on", terminal.rOut));
+        qa(".r-made").forEach((x) => x.classList.toggle("on", terminal.rMade));
+        viz.routeDone ? setRouteDraw(el.routeMask as SVGPathElement, true) : resetRoute();
+        showClaude(terminal.shown);
+      }
+
+      const setup = (n: Step) => renderFrame(initialFrames[n]);
+      const frameFinal = (n: Step) => renderFrame(finalFrames[n]);
+
+      const addType = (tl: gsap.core.Timeline, node: Element, toks: Tok[], speed = 0.024) => {
+        const st = { n: 0 };
+        tl.set(st, { n: 0 });
+        tl.to(st, { n: fullLen(toks), duration: Math.max(0.22, fullLen(toks) * speed), ease: "none", onUpdate: () => renderToks(node, toks, Math.round(st.n)) });
+      };
+      const addTypeFn = (tl: gsap.core.Timeline, nodeFn: () => Element | null, toks: Tok[], speed = 0.024) => {
+        const st = { n: 0 };
+        tl.set(st, { n: 0 });
+        tl.to(st, { n: fullLen(toks), duration: Math.max(0.22, fullLen(toks) * speed), ease: "none", onUpdate: () => { const node = nodeFn(); if (node) renderToks(node, toks, Math.round(st.n)); } });
+      };
+      const pause = (tl: gsap.core.Timeline, d: number) => tl.to({}, { duration: d });
+
+      function build1() {
+        const tl = gsap.timeline({ paused: true });
+        tl.add(() => setup(1)); pause(tl, 0.3);
+        // heading — type "# ", the shortcut turns the line into a heading
+        tl.add(() => { el.h1.classList.add("as-para"); el.h1.textContent = ""; });
+        addType(tl, el.h1, [["# ", 0]], 0.045);
+        tl.add(() => { el.h1.classList.remove("as-para"); el.h1.textContent = ""; });
+        addType(tl, el.h1, [[demoContent.head, 0]], 0.011); pause(tl, 0.2);
+        // slash command — "/bu" filters to Bulleted list, then select
+        tl.add(() => { el.draft.classList.add("typing"); el.draft.innerHTML = '<span class="slashtext"></span><span class="lp-caret"></span>'; });
+        addTypeFn(tl, () => ws.querySelector(".slashtext"), [["/", 0]], 0.05);
+        tl.add(() => el.draft.insertAdjacentHTML("beforeend", SLM_FULL)); pause(tl, 0.22);
+        addTypeFn(tl, () => ws.querySelector(".slashtext"), [["/bu", 0]], 0.085);
+        tl.add(() => { const list = qReq(".slm-list"); list.innerHTML = SLM_FILTERED; }); pause(tl, 0.35);
+        // bulleted list — type the three bullets
+        tl.add(() => { el.draft.classList.remove("typing"); el.draft.innerHTML = '<ul class="note-bullets"><li class="bl bl0"></li></ul>'; });
+        addTypeFn(tl, () => ws.querySelector(".bl0"), [[demoContent.baseBullets[0], 0]], 0.012); pause(tl, 0.1);
+        tl.add(() => qReq(".note-bullets").insertAdjacentHTML("beforeend", '<li class="bl bl1"></li>'));
+        addTypeFn(tl, () => ws.querySelector(".bl1"), [[demoContent.baseBullets[1], 0]], 0.012);
+        tl.add(() => qReq(".note-bullets").insertAdjacentHTML("beforeend", '<li class="bl bl2"></li>'));
+        addTypeFn(tl, () => ws.querySelector(".bl2"), [[demoContent.baseBullets[2], 0]], 0.012);
+        pause(tl, 0.85);
+        return tl;
+      }
+      function build2() {
+        const tl = gsap.timeline({ paused: true });
+        tl.add(() => setup(2)); pause(tl, 0.6);
+        tl.add(() => on(qa(".ctx-menu")[0])); pause(tl, 0.9);
+        tl.add(() => { off(qa(".ctx-menu")[0]); showClaude(true); }); pause(tl, 0.45);
+        tl.add(() => { el.path.textContent = demoContent.path; el.path.classList.remove("pasted"); void el.path.offsetWidth; el.path.classList.add("pasted"); }); pause(tl, 0.25);
+        addType(tl, el.ask, [[demoContent.ask2, 0]]); pause(tl, 0.3);
+        tl.add(() => { el.draft.innerHTML = listHTML(demoContent.baseBullets, demoContent.ideas); on(qa(".r-out")[0]); }); pause(tl, 1.6);
+        return tl;
+      }
+      function build3() {
+        const tl = gsap.timeline({ paused: true });
+        tl.add(() => setup(3));
+        // 1 · table appears immediately
+        addType(tl, el.ask3, [["make a live table of all my notes", 0]]);
+        tl.add(() => { on(qa(".f-index")[0]); setDoc("dash"); activeFile("f-index"); filename("index.html"); showViz("table"); }); pause(tl, 0.2);
+        qa(".viz-table .brow:not(.brow-new)").forEach((r) => { tl.add(() => r.classList.add("on")); pause(tl, 0.1); });
+        tl.add(() => { qReq(".made-txt").innerHTML = "Created index.html."; on(qa(".r-made")[0]); }); pause(tl, 1.3);
+        // live: a new note appears, the table updates itself
+        tl.add(() => on(qa(".f-new")[0])); pause(tl, 0.4);
+        tl.add(() => { const nr = qReq(".viz-table .brow-new"); nr.classList.add("on", "flashrow"); }); pause(tl, 1.7);
+        // 2 · bookshelf
+        tl.add(() => { off(qa(".r-made")[0]); el.ask3.textContent = ""; qReq(".viz-table .brow-new").classList.remove("flashrow"); });
+        addType(tl, el.ask3, [["actually, make it a bookshelf", 0]]); pause(tl, 0.25);
+        tl.add(() => { on(qa(".f-shelf")[0]); activeFile("f-shelf"); filename("bookshelf.html"); showViz("shelf"); });
+        qa(".book").forEach((b) => { tl.add(() => b.classList.add("on")); pause(tl, 0.035); });
+        tl.add(() => { qReq(".made-txt").innerHTML = "Created bookshelf.html."; on(qa(".r-made")[0]); }); pause(tl, 1.9);
+        // 3 · map
+        tl.add(() => { off(qa(".r-made")[0]); el.ask3.textContent = ""; });
+        addType(tl, el.ask3, [["now map where I wrote each one", 0]]); pause(tl, 0.25);
+        tl.add(() => { on(qa(".f-map")[0]); activeFile("f-map"); filename("map.html"); showViz("map"); });
+        qa(".pin").forEach((p) => { tl.add(() => p.classList.add("on")); pause(tl, 0.1); });
+        tl.add(revealRoute); pause(tl, 0.8);
+        tl.add(() => { qReq(".made-txt").innerHTML = "Created map.html."; on(qa(".r-made")[0]); }); pause(tl, 1.6);
+        // slide the terminal out before looping
+        tl.add(() => showClaude(false)); pause(tl, 0.9);
+        return tl;
+      }
+      const tls = { 1: build1(), 2: build2(), 3: build3() };
+
+      const setSegs = (n: number) => {
+        setCaption(n);
+        [1, 2, 3].forEach((i) => {
+          const seg = el.segs[i - 1], fill = el.segFills[i - 1];
+          seg.classList.toggle("done", i < n);
+          seg.classList.toggle("current", i === n);
+          fill.style.width = i < n ? "100%" : "0%";
+        });
+      };
+      function staticEnd(n: number) {
+        // Snap to the canonical final frame for step n.
+        frameFinal(n as 1 | 2 | 3);
+        setSegs(n);
+        [1, 2, 3].forEach((i) => { if (i <= n) el.segFills[i - 1].style.width = "100%"; });
+      }
+
+      let cur = 0, pending: gsap.core.Tween | null = null, hovering = false;
+      const scheduleNext = (n: number) => {
+        if (hovering || reduce) return;
+        pending = gsap.delayedCall(0.6, () => play(n >= 3 ? 1 : n + 1));
+      };
+      function play(n: 1 | 2 | 3) {
+        if (pending) { pending.kill(); pending = null; }
+        ([1, 2, 3] as const).forEach((i) => tls[i].pause());
+        setSegs(n); cur = n;
+        const tl = tls[n];
+        tl.eventCallback("onUpdate", () => { el.segFills[n - 1].style.width = tl.progress() * 100 + "%"; });
+        tl.eventCallback("onComplete", () => scheduleNext(n));
+        tl.restart();
+      }
+      el.segs.forEach((s) => s.addEventListener("click", () => (reduce ? staticEnd(+s.dataset.i) : play(+s.dataset.i as 1 | 2 | 3))));
+      ws.addEventListener("mouseenter", () => { hovering = true; if (pending) { pending.kill(); pending = null; } });
+      ws.addEventListener("mouseleave", () => { hovering = false; if (!reduce && tls[cur as 1 | 2 | 3] && !tls[cur as 1 | 2 | 3].isActive()) scheduleNext(cur); });
+
+      if (reduce) staticEnd(3);
+      else play(1);
+    });
+  </script>
+
+  <script>
+    // Live GitHub star count → any [data-gh-stars]. CORS-enabled public API, 1h localStorage cache, graceful fallback.
+    (async () => {
+      const els = document.querySelectorAll("[data-gh-stars]");
+      if (!els.length) return;
+      const REPO = "bholmesdev/hubble.md", KEY = "hubble:stars";
+      const fmt = (n: number) => (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, "") + "k" : String(n));
+      const set = (n: number) => els.forEach((el) => (el.textContent = fmt(n)));
+      try { const c = JSON.parse(localStorage.getItem(KEY) || "null"); if (c && Date.now() - c.t < 3.6e6) set(c.n); } catch {}
+      try {
+        const r = await fetch(`https://api.github.com/repos/${REPO}`, { headers: { Accept: "application/vnd.github+json" } });
+        if (!r.ok) return;
+        const { stargazers_count } = await r.json();
+        if (typeof stargazers_count === "number") { set(stargazers_count); try { localStorage.setItem(KEY, JSON.stringify({ n: stargazers_count, t: Date.now() })); } catch {} }
+      } catch {}
+    })();
+  </script>
+
+  <style is:global>
+    /* App's "expressive" spring (Open Props --ease-spring-3) — overshoots past 1 for a real bounce. */
+    :root { --ease-spring-expressive: linear(0, 0.009, 0.035 2.1%, 0.141 4.4%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1); }
+    .page { --hero-paper:#fbf7ec; --hero-ink:#173d2e; --hero-cream:#fff8e7; --hero-gold:#ffc21f; --hero-leaf:#2f6b4f; --hero-line:rgba(23,61,46,.16); --hero-line-strong:rgba(23,61,46,.25); --hero-soft:rgba(23,61,46,.08); --hero-popup-shadow:0 10px 30px rgba(23,61,46,.18); --radius-pill:999px; --radius-popover:10px; --radius-control:6px; background:var(--hero-paper); color:var(--hero-ink); font-family:var(--font-body); background-image:radial-gradient(circle at 1px 1px, rgba(23,61,46,.05) 1px, transparent 0); background-size:26px 26px; min-height:100vh; display:flex; flex-direction:column; }
+    .nav { display:flex; align-items:center; justify-content:space-between; gap:1rem; max-width:1240px; width:100%; margin-inline:auto; padding:1.15rem clamp(1.25rem,4vw,3rem); }
+    .brand { display:inline-flex; align-items:center; color:var(--hero-ink); }
+    .brand .logo { height:44px; width:auto; }
+    .nav-links { display:flex; align-items:center; gap:1.3rem; font-family:var(--font-rounded); font-weight:600; font-size:.92rem; }
+    .nav-links a { text-decoration:none; color:var(--hero-ink); }
+    .nav-links a:hover { opacity:.68; }
+    .gh-stars { display:inline-flex; align-items:center; gap:.5rem; border:1.5px solid var(--hero-line-strong); border-radius:var(--radius-pill); padding:.34rem .6rem .34rem .8rem; color:var(--hero-ink); transition:background .2s, opacity .2s; }
+    .gh-stars:hover { background:rgba(23,61,46,.06); opacity:1; }
+    .gh-ico { width:16px; height:16px; }
+    .gh-count { display:inline-flex; align-items:center; gap:.3rem; padding-inline-start:.55rem; border-inline-start:1.5px solid rgba(23,61,46,.18); font-variant-numeric:tabular-nums; }
+    .gh-star { color:var(--hero-gold); }
+    main { flex:1; display:flex; align-items:center; }
+    .site-footer { text-align:center; padding:1.4rem 1.25rem 2rem; font-family:var(--font-rounded); font-weight:500; font-size:.9rem; color:rgba(23,61,46,.62); }
+    .site-footer a { color:var(--hero-ink); font-weight:600; text-decoration:none; }
+    .site-footer a:hover { opacity:.7; }
+    .site-footer .heart { color:var(--hero-gold); }
+    .hero { max-width:1240px; margin-inline:auto; padding:clamp(1rem,3vw,2rem) clamp(1.25rem,4vw,3rem) clamp(2rem,5vw,4rem); width:100%; min-width:0; }
+    .hero-inner { display:grid; gap:clamp(1.5rem,5vw,7rem); align-items:center; grid-template-columns:1fr 1.5fr; }
+    h1 { font-family:var(--font-serif); font-weight:600; font-size:clamp(2.2rem,4.4vw,3.5rem); line-height:1.05; letter-spacing:-.02em; margin-block:0 .6rem; }
+    .sub { font-size:clamp(1rem,1.4vw,1.18rem); line-height:1.5; opacity:.82; }
+    .cta { display:flex; gap:.8rem; margin-block-start:1.6rem; flex-wrap:wrap; }
+    .cta [hidden] { display:none; }
+    .btn { font-family:var(--font-rounded); font-weight:600; text-decoration:none; border-radius:var(--radius-pill); padding:.7rem 1.3rem; font-size:.95rem; }
+    /* 3D press: rests on a forest "edge" shadow, springs up on hover, presses flat on click */
+    .btn.gold { background:var(--hero-gold); color:var(--hero-ink); box-shadow:0 4px 0 rgba(23,61,46,.85); transform:translateY(0); will-change:transform; transition:transform .5s var(--ease-spring-expressive), box-shadow .5s var(--ease-spring-expressive); }
+    .btn.gold:hover { transform:translateY(-3px); box-shadow:0 7px 0 rgba(23,61,46,.85); }
+    .btn.gold:active { transform:translateY(2px); box-shadow:0 2px 0 rgba(23,61,46,.85); transition-duration:.09s; }
+    .btn.ghost { border:1.5px solid var(--hero-line-strong); }
+    .download-soon { display:inline-flex; align-items:center; gap:.38rem; min-height:2.6rem; font-family:var(--font-rounded); font-weight:600; font-size:.95rem; color:rgba(23,61,46,.75); }
+    .tip { position:relative; display:inline-grid; place-items:center; width:1.15rem; height:1.15rem; border:1.5px solid var(--hero-line-strong); border-radius:var(--radius-pill); font-size:.76rem; line-height:1; cursor:help; color:var(--hero-ink); }
+    .tip::after { content:attr(aria-label); position:absolute; z-index:10; inset-block-end:calc(100% + .7rem); inset-inline-start:50%; width:min(260px,78vw); padding:.7rem .8rem; border-radius:var(--radius-control); background:var(--hero-ink); color:var(--hero-cream); box-shadow:var(--hero-popup-shadow); font-family:var(--font-body); font-weight:500; font-size:.82rem; line-height:1.35; text-align:start; transform:translate(-50%) translateY(4px); opacity:0; pointer-events:none; transition:opacity .16s ease, transform .16s ease; }
+    .tip::before { content:""; position:absolute; inset-block-end:calc(100% + .38rem); inset-inline-start:50%; border:.35rem solid transparent; border-block-start-color:var(--hero-ink); transform:translate(-50%) rotate(180deg); opacity:0; transition:opacity .16s ease; }
+    .tip:hover::after, .tip:focus-visible::after, .tip:hover::before, .tip:focus-visible::before { opacity:1; transform:translate(-50%) translateY(0); }
+    .tip:hover::before, .tip:focus-visible::before { transform:translate(-50%) rotate(180deg); }
+    @media (prefers-reduced-motion:reduce) { .btn.gold { transition:none; } .btn.gold:hover, .btn.gold:active { transform:none; } }
+
+    .visual { position:relative; min-width:0; }
+    .ws { --app-font:-apple-system, system-ui, "Segoe UI", sans-serif; --app-fg:var(--hero-ink); --app-muted:rgba(23,61,46,.6); --app-line:rgba(23,61,46,.1);
+      background:transparent; overflow:visible; position:relative; display:flex; flex-direction:column; gap:.75rem; }
+    .ws-editor-group { position:relative; }
+    .ws-progress { display:flex; gap:.6rem; padding:.8rem .9rem .6rem; background:transparent; }
+    .seg { flex:1; background:none; border:none; cursor:pointer; text-align:start; padding:0; display:flex; flex-direction:column; gap:.4rem; font-family:var(--font-body); }
+    .seg b { font-weight:600; font-size:.78rem; color:rgba(23,61,46,.42); transition:color .2s; letter-spacing:-.01em; }
+    .seg.current b { color:var(--hero-ink); }
+    .seg.done b { color:rgba(23,61,46,.7); }
+    .seg-bar { height:4px; border-radius:3px; background:rgba(23,61,46,.14); overflow:hidden; }
+    .seg-fill { display:block; height:100%; width:0; background:var(--hero-ink); border-radius:3px; }
+
+    .ws-caption { font-family:var(--font-body); display:flex; align-items:flex-start; padding:0 .9rem .8rem; background:transparent; min-height:3em; }
+    .cap-text { font-size:.82rem; line-height:1.45; color:rgba(23,61,46,.64); max-width:70ch; }
+    .ws-caption.capin .cap-text { animation:capfade .4s ease; }
+    @keyframes capfade { from { opacity:0; transform:translateY(3px); } }
+
+    /* editor = top card, slider = bottom panel */
+    .ws-head { background:transparent; }
+
+    .ws-body { display:grid; width:100%; max-width:100%; min-width:0; height:474px; grid-template-columns:184px minmax(0,1fr); grid-template-areas:"files editor"; border:1px solid var(--hero-line); border-radius:14px; box-shadow:0 4px 16px rgba(23,61,46,.07); overflow:hidden; }
+    .ws-files { grid-area:files; } .ws-editor { grid-area:editor; }
+    /* compact command bar, centered below the window; slides up into place */
+    .ws-claude { position:absolute; inset-block-end:16px; inset-inline:0; margin-inline:auto; width:460px; max-width:88%; border-radius:12px; border:1px solid rgba(255,255,255,.1); box-shadow:0 2px 6px rgba(0,0,0,.18), 0 22px 48px rgba(0,0,0,.26); opacity:0; transform:translateY(14px); transition:opacity .28s ease, transform .28s ease; z-index:6;
+      background:#1c1e19; color:#e9e4d6; display:flex; align-items:center; gap:.55rem; padding:.5rem .85rem; font-family:"IBM Plex Mono", ui-monospace, monospace; }
+    .ws-claude.shown { opacity:1; transform:translateY(0); }
+    .ws-claude .cli-head { border:none; padding:0; flex:none; }
+    .ws-claude .cli-body { padding:0; flex:1; }
+    .ws-claude .cli-row { margin-block-end:0; white-space:normal; }
+    .ws-claude .cli-out { display:none; }
+
+    .ws-files { background:#f6f1e4; border-inline-end:1px solid rgba(23,61,46,.1); padding:.7rem .6rem; overflow:hidden; font-family:var(--app-font); }
+    .ws-switch { display:flex; align-items:center; gap:.25rem; padding:.2rem .4rem .8rem; font-weight:600; font-size:.86rem; color:var(--hero-ink); }
+    .sw-chev { width:14px; height:14px; color:rgba(23,61,46,.45); }
+    .switch-icons { margin-inline-start:auto; display:flex; gap:.5rem; color:rgba(23,61,46,.5); }
+    .switch-icons [data-icon] { width:15px; height:15px; }
+    .ws-filelist { list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:1px; }
+    .file { font-size:.82rem; padding:.36rem .5rem; border-radius:7px; color:rgba(23,61,46,.68); white-space:nowrap; transition:background .25s, color .25s, box-shadow .25s; }
+    .file.active { background:#fff; color:var(--hero-ink); font-weight:600; box-shadow:0 1px 3px var(--hero-soft); }
+    .file.made { display:none; } .file.made.on { display:block; animation:slidein .45s ease; }
+    @keyframes slidein { from { opacity:0; transform:translateX(-8px) } }
+
+    .ws-editor { overflow:hidden; min-width:0; display:flex; flex-direction:column; background:#fff; font-family:var(--app-font); color:var(--app-fg); }
+    .doc-bar { display:flex; align-items:center; gap:.5rem; padding:.5rem .9rem; border-block-end:1px solid var(--app-line); position:relative; flex:none; }
+    .doc-tab { font-size:.78rem; font-weight:600; color:rgba(23,61,46,.7); }
+    .doc-actions { margin-inline-start:auto; position:relative; }
+    .ellipsis { border:none; background:none; cursor:pointer; color:rgba(23,61,46,.5); display:flex; padding:.25rem; border-radius:var(--radius-control); }
+    .ellipsis [data-icon] { width:18px; height:18px; }
+    .ws[data-step="2"] .ellipsis { color:var(--hero-ink); background:var(--hero-soft); }
+    .ctx-menu { position:absolute; inset-inline-end:0; inset-block-start:140%; width:154px; background:#fff; border:1px solid var(--app-line); border-radius:var(--radius-popover); box-shadow:0 1px 3px rgba(23,61,46,.10), 0 14px 32px rgba(23,61,46,.12); padding:.3rem; z-index:8; opacity:0; transform:translateY(-4px) scale(.97); pointer-events:none; transition:opacity .15s, transform .15s; font-family:var(--app-font); }
+    .ctx-menu.on { opacity:1; transform:none; }
+    .ctx-item { display:flex; align-items:center; gap:.45rem; font-size:.76rem; padding:.4rem .55rem; border-radius:var(--radius-control); color:var(--hero-ink); }
+    .ctx-item [data-icon] { width:14px; height:14px; opacity:.7; }
+    .ctx-item.copypath { background:var(--hero-ink); color:var(--hero-cream); font-weight:600; }
+    .toast { position:absolute; inset-inline-end:0; inset-block-start:140%; white-space:nowrap; background:var(--hero-ink); color:var(--hero-cream); font-size:.72rem; font-weight:600; padding:.4rem .7rem; border-radius:8px; opacity:0; transform:translateY(-4px); transition:opacity .2s, transform .2s; z-index:9; font-family:var(--font-rounded); }
+    .toast.on { opacity:1; transform:none; }
+    .doc { flex:1; min-width:0; overflow:auto; padding:1.5rem 1.8rem; }
+    .ws[data-step="3"] .doc:has(.doc-dash.on) { padding:0; overflow:hidden; background:#eef3ef; }
+    .doc-view { display:none; } .doc-view.on { display:block; }
+    .doc-dash.on { display:grid; min-height:100%; }
+    .doc-h1 { font-family:var(--app-font); font-weight:700; font-size:1.7rem; letter-spacing:-.01em; margin-block-end:.6rem; color:var(--hero-ink); }
+    .draft { font-size:1rem; line-height:1.6; min-height:1.5em; position:relative; }
+    .draft strong { font-weight:700; } .draft em { font-style:italic; }
+    .slashtext { color:var(--hero-ink); }
+    .slm { position:absolute; inset-block-start:1.9em; inset-inline-start:0; width:226px; z-index:20; background:#fff; border:1px solid var(--hero-line); border-radius:var(--radius-popover); box-shadow:var(--hero-popup-shadow); overflow:hidden; animation:lp-in .16s ease; }
+    .slm-list { display:block; padding:4px; }
+    .slm-item { display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:var(--radius-control); font-size:11px; }
+    .slm-item.active { background:var(--hero-soft); }
+    .slm-ic { width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; color:rgba(23,61,46,.5); border:1px solid rgba(23,61,46,.14); border-radius:4px; }
+    .slm-t { color:var(--hero-ink); }
+    .note-bullets { margin:0; padding-inline-start:1.15rem; font-size:1rem; line-height:1.6; }
+    .note-bullets li { margin-block-end:.3rem; }
+    .note-bullets li.idea { animation:idea-in .6s ease; border-radius:4px; }
+    @keyframes idea-in { 0% { opacity:0; transform:translateY(-4px); box-shadow:0 0 0 4px rgba(255,194,31,.3); background:rgba(255,194,31,.3); } 100% { opacity:1; box-shadow:0 0 0 0 transparent; background:transparent; } }
+    .draft.typing { white-space:pre-wrap; }
+    .doc-h1.as-para { font-weight:400; font-size:1rem; letter-spacing:0; margin-block-end:0; }
+    @keyframes lp-in { from { opacity:0; transform:translateY(-4px); } }
+    .lp-caret { width:1px; height:13px; background:var(--hero-ink); animation:blink 1s steps(1) infinite; }
+    @keyframes blink { 50% { opacity:0; } }
+
+    .viz { display:none; min-height:100%; } .viz.on { display:grid; }
+    .ntable { width:100%; min-height:100%; border-collapse:collapse; table-layout:fixed; font-size:.9rem; background:#fff; }
+    .ntable th, .ntable td { padding:.7rem 1.1rem; text-align:start; vertical-align:middle; }
+    .ntable th { font-weight:700; color:rgba(23,61,46,.55); font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; background:#eef2ed; }
+    .ntable td { border-block-start:1px solid var(--app-line); }
+    .ntable tbody tr:nth-child(2n) td { background:#f7faf7; }
+    .brow { opacity:0; transform:translateY(5px); transition:opacity .3s, transform .3s; } .brow.on { opacity:1; transform:none; }
+    .viz-table .brow-new { display:none; } .viz-table .brow-new.on { display:table-row; }
+    .brow.flashrow td { animation:rowflash 1.4s ease; }
+    @keyframes rowflash { 0% { background:rgba(74,158,110,.28) } 100% { background:transparent } }
+    .pill { display:inline-block; font-family:var(--font-rounded); font-weight:600; font-size:.72rem; padding:.16rem .55rem; border-radius:var(--radius-pill); }
+    .pill.t-out { background:#d7ecdd; color:var(--hero-leaf); } .pill.t-travel { background:#f6ddd0; color:#b1542f; } .pill.t-books { background:#e4dffb; color:#5a47b0; } .pill.t-cook { background:#fbeecb; color:#9a6f12; }
+
+    .shelf { display:grid; grid-template-rows:1fr 1fr; min-height:100%; padding:1.3rem 1.5rem 4.4rem; background:linear-gradient(#f7f2e4, #e8d6b6); }
+    .shelf-row { display:flex; flex-direction:column; justify-content:flex-end; min-height:0; }
+    .shelf-books { display:flex; align-items:flex-end; justify-content:center; gap:3px; }
+    .book { border-radius:3px 3px 1px 1px; display:flex; align-items:flex-start; justify-content:center; position:relative; flex:0 0 auto; opacity:0; transform:translateY(14px); transition:opacity .3s, transform .3s;
+      background-image:linear-gradient(100deg, rgba(255,255,255,.24), rgba(255,255,255,0) 24%, rgba(0,0,0,0) 70%, rgba(0,0,0,.26)); box-shadow:0 1px 1px rgba(20,30,25,.16), 0 4px 8px rgba(20,30,25,.10); }
+    .book.on { opacity:1; transform:none; }
+    .book::before { content:""; position:absolute; inset-block-start:0; inset-inline:2px; height:3px; background:rgba(255,255,255,.5); border-radius:2px; }
+    .book-title { writing-mode:vertical-rl; transform:rotate(180deg); color:#fff; font:700 10px var(--app-font); white-space:nowrap; padding:11px 0; opacity:.97; }
+    .shelf-plank { height:11px; background:#c29254; border-radius:2px 2px 0 0; position:relative; box-shadow:0 7px 11px -5px rgba(40,28,12,.42); }
+    .shelf-plank::after { content:""; position:absolute; inset-inline:0; inset-block-start:11px; height:6px; background:#9a7038; border-radius:0 0 3px 3px; }
+
+    .mapsvg { width:100%; height:100%; display:block; background:#eef3ef; }
+    .land { fill:#e3ece4; stroke:#2e6b4f; stroke-width:1; stroke-opacity:.10; }
+    .route { fill:none; stroke:#c46a48; stroke-width:2.5; stroke-linecap:round; stroke-dasharray:0.5 8; }
+    .route-draw-mask { fill:none; stroke:#fff; stroke-width:8; stroke-linecap:round; stroke-linejoin:round; }
+    .pin { opacity:0; transition:opacity .3s ease; } .pin.on { opacity:1; }
+    .pin-stem { stroke:var(--hero-ink); stroke-width:2; } .pin-dot { fill:url(#pinGrad); stroke:var(--hero-ink); stroke-width:0.6; stroke-opacity:.5; filter:url(#pinShadow); }
+    .pin-gloss { fill:#fff; opacity:.7; }
+    .pin-label { font-family:var(--app-font); font-size:10px; font-weight:600; fill:var(--hero-ink); }
+
+    .cli-head { display:flex; align-items:center; justify-content:space-between; padding:.5rem .7rem; border-block-end:1px solid rgba(255,255,255,.07); }
+    .cc-logo { display:flex; align-items:center; justify-content:center; padding:4px; border-radius:7px; background:rgba(217,119,87,.16); }
+    .cli-body { padding:.8rem; font-size:.75rem; line-height:1.55; flex:1; overflow:hidden; }
+    .prompt { color:var(--hero-gold); font-weight:700; } .ok { color:#7fd19a; }
+    .cli-row { margin-block-end:.35rem; word-break:break-word; }
+    .path { color:#9fd0e8; } .ask, .ask3 { color:#e9e4d6; }
+    .path.pasted { border-radius:3px; animation:paste-hl .75s ease; }
+    @keyframes paste-hl { 0% { background:rgba(159,208,232,.5); box-shadow:0 0 0 2px rgba(159,208,232,.5); } 100% { background:transparent; box-shadow:0 0 0 2px transparent; } }
+    .cli-out { margin-block-end:.22rem; } .cli-out b, .cli-row b { color:var(--hero-cream); }
+    .r-out, .r-made { opacity:0; transition:opacity .25s; } .r-out.on, .r-made.on { opacity:.92; }
+    .cli-group { display:none; }
+    .ws[data-step="2"] .cli-group.s2 { display:block; }
+    .ws[data-step="3"] .cli-group.s3 { display:block; }
+
+    @media (max-width:900px) { .hero-inner { grid-template-columns:1fr; } .ws-body { grid-template-columns:140px 1fr; height:420px; } }
+    @media (max-width:640px) {
+      .nav { padding-block:.9rem; } .nav-links { gap:.9rem; font-size:.85rem; } .brand .logo { height:34px; }
+      .ws-body { grid-template-columns:1fr; grid-template-areas:"editor"; height:392px; }
+      .ws-files { display:none; }
+      .doc { padding:1.1rem 1.2rem; } .doc-h1 { font-size:1.4rem; }
+      .seg:not(.current) { display:none; }
+      .ws-claude { inset-inline:10px; width:auto; max-width:none; align-items:flex-start; }
+    }
+  </style>
+</Base>

@@ -1,0 +1,233 @@
+---
+import Base from "../layouts/Base.astro";
+---
+<Base title="Hubble — icon lab">
+  <main>
+    <div class="stage">
+      <div id="preview" class="preview"></div>
+      <div class="sizes">
+        <div class="sz" id="s60" style="width:60px;height:60px"></div>
+        <div class="sz" id="s40" style="width:40px;height:40px"></div>
+        <div class="sz" id="s28" style="width:28px;height:28px"></div>
+        <span class="hint">60 / 40 / 28px</span>
+      </div>
+      <textarea id="src" class="src" readonly spellcheck="false"></textarea>
+      <button id="copy" class="copy">Copy SVG</button>
+    </div>
+
+    <aside class="panel">
+      <div class="grp">
+        <h3>Bullets</h3>
+        <label>Background dots</label>
+        <div class="seg">
+          <button class="dbtn on" data-d="1">On</button>
+          <button class="dbtn" data-d="0">Off</button>
+        </div>
+        <label style="margin-block-start:.9rem">Lit (yellow) dot</label>
+        <div class="seg" style="margin-block-end:.6rem">
+          <button class="gbtn on" data-g="1">On</button>
+          <button class="gbtn" data-g="0">Off</button>
+        </div>
+        <label>Spacing <output id="o_gap"></output>
+          <input type="range" id="gap" min="9" max="22" step="0.5" value="16" />
+        </label>
+        <label>Size <output id="o_bsize"></output>
+          <input type="range" id="bsize" min="1" max="5.5" step="0.1" value="2.8" />
+        </label>
+        <label>Lit bullet size <output id="o_goldsize"></output>
+          <input type="range" id="goldsize" min="2" max="8" step="0.1" value="4.2" />
+        </label>
+        <label>Falloff (fade from lit) <output id="o_falloff"></output>
+          <input type="range" id="falloff" min="0" max="3" step="0.05" value="0.6" />
+        </label>
+      </div>
+
+      <div class="grp">
+        <h3>Gleam (hole)</h3>
+        <label>Size <output id="o_gsize"></output>
+          <input type="range" id="gsize" min="3" max="24" step="0.5" value="13.5" />
+        </label>
+        <label>Position X <output id="o_gx"></output>
+          <input type="range" id="gx" min="-14" max="14" step="0.5" value="4.5" />
+        </label>
+        <label>Position Y <output id="o_gy"></output>
+          <input type="range" id="gy" min="-14" max="14" step="0.5" value="-4.5" />
+        </label>
+      </div>
+
+      <div class="grp">
+        <h3>Eye</h3>
+        <label>Size <output id="o_eye"></output>
+          <input type="range" id="eye" min="14" max="32" step="0.5" value="27" />
+        </label>
+      </div>
+
+      <div class="grp">
+        <h3>Telescope tube</h3>
+        <div class="seg">
+          <button class="tbtn on" data-tele="1">On</button>
+          <button class="tbtn" data-tele="0">Off</button>
+        </div>
+        <p class="note">Tube width tracks the eye size.</p>
+      </div>
+
+      <div class="grp">
+        <h3>Field</h3>
+        <div class="seg">
+          <button class="fbtn on" data-field="cream">Cream</button>
+          <button class="fbtn" data-field="forest">Forest</button>
+        </div>
+      </div>
+
+      <button id="reset" class="reset">Reset to defaults</button>
+    </aside>
+  </main>
+
+  <script is:inline>
+    (function () {
+      const GOLD = "#ffc21f";
+      const FIELDS = {
+        cream: { tileA: "#fffdf7", tileB: "#f6edd6", dot: "#173d2e", dotOp: 0.2, eye: "#173d2e", hole: "#fbf2dc" },
+        forest: { tileA: "#1d4332", tileB: "#14352a", dot: "#fff8e7", dotOp: 0.16, eye: "#fff8e7", hole: "#16382b" },
+      };
+      const DEFAULTS = { gap: 16.5, bsize: 2.8, goldsize: 4.2, falloff: 0.6, gsize: 13.5, gx: 4.5, gy: -4.5, eye: 27 };
+      let field = "cream";
+      let tele = true;
+      let dotsOn = true;
+      let goldOn = true;
+
+      const ids = ["gap", "bsize", "goldsize", "falloff", "gsize", "gx", "gy", "eye"];
+      const el = {};
+      ids.forEach((id) => (el[id] = document.getElementById(id)));
+
+      function build(v, f) {
+        const C = FIELDS[f];
+        const cx = 50;
+        const offs = [-2, -1, 0, 1, 2];
+        const POSx = offs.map((k) => cx + k * v.gap);
+        const POSy = offs.map((k) => cx + k * v.gap);
+        const gx = POSx[4], gy = POSy[0]; // lit (top-right) node
+        const dmax = Math.hypot(POSx[0] - gx, POSy[4] - gy) || 1;
+        const fo = v.falloff;
+        const near = C.dotOp + 0.1 * Math.min(fo, 1.2);
+        const far = C.dotOp * Math.max(0, 1 - 0.9 * fo);
+        const k = 1 + 0.8 * Math.max(0, fo - 1);
+        let dots = "";
+        for (let ci = 0; ci < 5; ci++) for (let ri = 0; ri < 5; ri++) {
+          if (ci === 4 && ri === 0) { // lit bullet (separate toggle)
+            if (goldOn) dots += `<circle cx="${POSx[ci].toFixed(2)}" cy="${POSy[ri].toFixed(2)}" r="${v.goldsize}" fill="${GOLD}"/>`;
+            continue;
+          }
+          if (!dotsOn) continue;
+          const t = Math.hypot(POSx[ci] - gx, POSy[ri] - gy) / dmax;
+          const op = (far + (near - far) * Math.pow(1 - t, k)).toFixed(3);
+          dots += `<circle cx="${POSx[ci].toFixed(2)}" cy="${POSy[ri].toFixed(2)}" r="${v.bsize}" fill="${C.dot}" opacity="${op}"/>`;
+        }
+        return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${C.tileA}"/><stop offset="1" stop-color="${C.tileB}"/></linearGradient>
+    <filter id="ds" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="1.4" stdDeviation="1.4" flood-color="#0f2c20" flood-opacity="0.18"/></filter>
+    <clipPath id="cl"><rect width="100" height="100" rx="23"/></clipPath>
+  </defs>
+  <g clip-path="url(#cl)">
+    <rect width="100" height="100" fill="url(#tg)"/>
+    ${dots}
+    <g filter="url(#ds)">
+      ${tele ? `<line x1="50" y1="50" x2="-40" y2="140" stroke="${C.eye}" stroke-width="${2 * v.eye}" stroke-linecap="round"/>` : ""}
+      <circle cx="50" cy="50" r="${v.eye}" fill="${C.eye}"/>
+    </g>
+    <circle cx="${(50 + v.gx).toFixed(2)}" cy="${(50 + v.gy).toFixed(2)}" r="${v.gsize}" fill="${C.hole}"/>
+  </g>
+</svg>`;
+      }
+
+      function read() {
+        return { gap: +el.gap.value, bsize: +el.bsize.value, goldsize: +el.goldsize.value, falloff: +el.falloff.value, gsize: +el.gsize.value, gx: +el.gx.value, gy: +el.gy.value, eye: +el.eye.value };
+      }
+      function render() {
+        const v = read();
+        document.getElementById("o_gap").textContent = v.gap;
+        document.getElementById("o_bsize").textContent = v.bsize;
+        document.getElementById("o_goldsize").textContent = v.goldsize;
+        document.getElementById("o_falloff").textContent = v.falloff;
+        document.getElementById("o_gsize").textContent = v.gsize;
+        document.getElementById("o_gx").textContent = v.gx;
+        document.getElementById("o_gy").textContent = v.gy;
+        document.getElementById("o_eye").textContent = v.eye;
+        const svg = build(v, field);
+        document.getElementById("preview").innerHTML = svg;
+        document.getElementById("s60").innerHTML = svg;
+        document.getElementById("s40").innerHTML = svg;
+        document.getElementById("s28").innerHTML = svg;
+        document.getElementById("src").value = svg;
+      }
+      ids.forEach((id) => el[id].addEventListener("input", render));
+      document.querySelectorAll(".fbtn").forEach((b) =>
+        b.addEventListener("click", () => {
+          field = b.dataset.field;
+          document.querySelectorAll(".fbtn").forEach((x) => x.classList.toggle("on", x === b));
+          render();
+        })
+      );
+      document.querySelectorAll(".tbtn").forEach((b) =>
+        b.addEventListener("click", () => {
+          tele = b.dataset.tele === "1";
+          document.querySelectorAll(".tbtn").forEach((x) => x.classList.toggle("on", x === b));
+          render();
+        })
+      );
+      document.querySelectorAll(".dbtn").forEach((b) =>
+        b.addEventListener("click", () => {
+          dotsOn = b.dataset.d === "1";
+          document.querySelectorAll(".dbtn").forEach((x) => x.classList.toggle("on", x === b));
+          render();
+        })
+      );
+      document.querySelectorAll(".gbtn").forEach((b) =>
+        b.addEventListener("click", () => {
+          goldOn = b.dataset.g === "1";
+          document.querySelectorAll(".gbtn").forEach((x) => x.classList.toggle("on", x === b));
+          render();
+        })
+      );
+      document.getElementById("reset").addEventListener("click", () => {
+        ids.forEach((id) => (el[id].value = DEFAULTS[id]));
+        render();
+      });
+      document.getElementById("copy").addEventListener("click", () => {
+        const t = document.getElementById("src");
+        t.select();
+        navigator.clipboard.writeText(t.value);
+        const b = document.getElementById("copy");
+        b.textContent = "Copied!";
+        setTimeout(() => (b.textContent = "Copy SVG"), 1200);
+      });
+      render();
+    })();
+  </script>
+
+  <style>
+    main { background:#e9e6dc; color:#173d2e; min-height:100vh; padding:clamp(1.5rem,4vw,3rem); font-family:var(--font-body); display:flex; gap:3rem; flex-wrap:wrap; align-items:flex-start; }
+    .stage { display:flex; flex-direction:column; gap:1.4rem; }
+    .preview { width:260px; height:260px; border-radius:58px; overflow:hidden; box-shadow:0 18px 40px rgba(23,61,46,.26); }
+    .preview :global(svg) { width:100%; height:100%; display:block; }
+    .sizes { display:flex; align-items:center; gap:1rem; }
+    .sz { border-radius:23%; overflow:hidden; box-shadow:0 3px 9px rgba(23,61,46,.22); }
+    .sz :global(svg) { width:100%; height:100%; display:block; }
+    .hint { font-family:var(--font-rounded); font-weight:500; font-size:.8rem; opacity:.6; }
+    .src { width:260px; height:90px; font-family:var(--font-mono, monospace); font-size:.62rem; border:1.5px solid rgba(23,61,46,.2); border-radius:10px; padding:.6rem; background:#fff; resize:none; color:#173d2e; }
+    .copy { align-self:flex-start; }
+
+    .panel { background:#fff; border-radius:20px; padding:1.6rem 1.8rem; box-shadow:0 10px 30px rgba(23,61,46,.1); width:300px; display:flex; flex-direction:column; gap:1.5rem; }
+    .grp h3 { font-family:var(--font-rounded); font-weight:600; font-size:1rem; margin-block-end:.8rem; }
+    label { display:block; font-family:var(--font-rounded); font-weight:500; font-size:.85rem; margin-block-end:.9rem; }
+    output { float:inline-end; font-variant-numeric:tabular-nums; opacity:.6; }
+    input[type=range] { width:100%; margin-block-start:.35rem; accent-color:#ffc21f; }
+    .seg { display:flex; gap:.5rem; }
+    .fbtn, .tbtn, .dbtn, .gbtn, .reset, .copy { font-family:var(--font-rounded); font-weight:600; border:1.5px solid rgba(23,61,46,.2); background:#fff; color:#173d2e; border-radius:10px; padding:.5rem .9rem; cursor:pointer; }
+    .fbtn.on, .tbtn.on, .dbtn.on, .gbtn.on { background:#173d2e; color:#fff8e7; border-color:#173d2e; }
+    .note { font-family:var(--font-rounded); font-weight:500; font-size:.78rem; opacity:.55; margin-block-start:.6rem; }
+    .reset { align-self:flex-start; }
+    .copy { background:#173d2e; color:#fff8e7; border-color:#173d2e; }
+  </style>
+</Base>

@@ -1,0 +1,47 @@
+---
+import Base from "../layouts/Base.astro";
+
+const shades = [
+  { id: 1, name: "Banana (current)", hex: "#F4C13C", note: "Mellow, golden, a touch muted" },
+  { id: 2, name: "Golden Pop (recommended)", hex: "#FFC21F", note: "Warmer + brighter, keeps depth on cream" },
+  { id: 3, name: "Marigold", hex: "#FFCB05", note: "One more notch up — between recommended & punchy" },
+  { id: 4, name: "Primary / Punchy (from C)", hex: "#FFD400", note: "Max energy, acid-bright" },
+];
+---
+<Base title="Hubble — yellow shades">
+  <main>
+    <p class="intro">Same Concept A elements, four yellows. Each row: eyebrow pill · CTA · highlight swipe · band swatch.</p>
+    {shades.map((s) => (
+      <section style={`--y:${s.hex}`}>
+        <div class="tag"><b>{s.id}. {s.name}</b><code>{s.hex}</code><span>{s.note}</span></div>
+        <div class="row">
+          <span class="eyebrow">The notebook that grows a brain</span>
+          <a class="btn">Start your notebook</a>
+          <div class="band"></div>
+        </div>
+        <h1>Everything in your head, <span class="hl">finally making sense</span>.</h1>
+      </section>
+    ))}
+  </main>
+
+  <style>
+    main { background:#fbf7ec; color:#173d2e; min-height:100vh; padding:clamp(2rem,5vw,4rem);
+      background-image:radial-gradient(circle at 1px 1px, rgba(23,61,46,.06) 1px, transparent 0); background-size:26px 26px; font-family:var(--font-body); }
+    .intro { font-family:var(--font-rounded); font-weight:500; opacity:.7; margin-block-end:2.5rem; }
+    section { border-block-start:1.5px solid rgba(23,61,46,.18); padding-block:2.2rem; max-width:1040px; margin-inline:auto; }
+    .tag { display:flex; gap:.9rem; align-items:baseline; margin-block-end:1.4rem; flex-wrap:wrap; }
+    .tag b { font-family:var(--font-rounded); font-weight:600; background:#173d2e; color:var(--y); padding:.25rem .8rem; border-radius:999px; font-size:.9rem; }
+    .tag code { font-family:var(--font-mono); opacity:.7; }
+    .tag span { opacity:.6; font-size:.9rem; }
+
+    .row { display:flex; gap:1.4rem; align-items:center; flex-wrap:wrap; margin-block-end:1.6rem; }
+    .eyebrow { font-family:var(--font-rounded); font-weight:600; font-size:1rem; color:var(--y); background:#173d2e; padding:.4rem 1rem; border-radius:999px; }
+    .btn { font-family:var(--font-rounded); font-weight:600; background:var(--y); color:#173d2e; border-radius:999px; padding:.75rem 1.5rem; box-shadow:0 3px 0 rgba(23,61,46,.85); }
+    .band { flex:1; min-width:160px; height:52px; border-radius:12px; background:var(--y); border:2px solid #173d2e;
+      background-image:radial-gradient(circle at 1px 1px, rgba(23,61,46,.14) 1px, transparent 0); background-size:18px 18px; }
+
+    h1 { font-family:var(--font-serif); font-weight:600; font-size:clamp(2rem,4.5vw,3.4rem); line-height:1.05; letter-spacing:-.02em; }
+    .hl { position:relative; white-space:nowrap; font-style:italic; }
+    .hl::after { content:""; position:absolute; left:-.12em; right:-.12em; bottom:.06em; height:.5em; background:var(--y); z-index:-1; border-radius:4px; transform:rotate(-1.2deg); }
+  </style>
+</Base>
