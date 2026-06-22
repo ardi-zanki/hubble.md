@@ -14,6 +14,7 @@ import {
 	ipcMain,
 	Menu,
 	protocol,
+	screen,
 	shell,
 } from "electron";
 import electronUpdater from "electron-updater";
@@ -55,6 +56,22 @@ type HtmlAppAsset = {
 	source: string;
 };
 
+type WindowState = {
+	width: number;
+	height: number;
+	x?: number;
+	y?: number;
+	isMaximized?: boolean;
+	isFullScreen?: boolean;
+};
+
+type WindowBounds = {
+	x: number;
+	y: number;
+	width: number;
+	height: number;
+};
+
 const isDev = !app.isPackaged || process.env.HUBBLE_DESKTOP_FORCE_DEV === "1";
 const { autoUpdater } = electronUpdater;
 const devAppName = isDev ? process.env.HUBBLE_DESKTOP_DEV_APP_NAME : undefined;
@@ -76,6 +93,7 @@ if (isDev && process.env.HUBBLE_DESKTOP_ENABLE_CDP === "1") {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let saveWindowStateTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingOpenPath: string | null = firstExistingFileArg(
 	process.argv.slice(1),
 );
@@ -118,6 +136,15 @@ const workspaceConfigSchema = z.object({
 			),
 	),
 });
+const defaultWindowState: WindowState = { width: 920, height: 720 };
+const windowStateSchema = z.object({
+	width: z.number().int().min(640).max(4096),
+	height: z.number().int().min(480).max(4096),
+	x: z.number().int().optional(),
+	y: z.number().int().optional(),
+	isMaximized: z.boolean().optional(),
+	isFullScreen: z.boolean().optional(),
+});
 const htmlAppHeadStyles = [
 	{ name: "hubble-theme", source: htmlAppTheme },
 ] as const;
@@ -132,6 +159,10 @@ const htmlAppBodyEndScripts = [
 
 function grantsPath(): string {
 	return path.join(app.getPath("userData"), "grants.json");
+}
+
+function windowStatePath(): string {
+	return path.join(app.getPath("userData"), "window-size.json");
 }
 
 function workspaceConfigPath(workspacePath: string): string {
@@ -197,6 +228,114 @@ async function saveGrants() {
 			2,
 		),
 	);
+}
+
+async function loadWindowState(): Promise<WindowState> {
+	try {
+		const raw = await fs.readFile(windowStatePath(), "utf8");
+		const parsed = windowStateSchema.safeParse(JSON.parse(raw));
+		if (parsed.success) return resolveWindowState(parsed.data);
+	} catch {
+		// Missing or malformed window state should not block launch.
+	}
+	return defaultWindowState;
+}
+
+function resolveWindowState(state: WindowState): WindowState {
+	if (
+		state.x === undefined ||
+		state.y === undefined ||
+		!isVisibleWindowBounds({
+			x: state.x,
+			y: state.y,
+			width: state.width,
+			height: state.height,
+		})
+	) {
+		return {
+			...clampWindowSize(state, screen.getPrimaryDisplay().workArea),
+			isMaximized: state.isMaximized,
+			isFullScreen: state.isFullScreen,
+		};
+	}
+	const bounds = {
+		x: state.x,
+		y: state.y,
+		width: state.width,
+		height: state.height,
+	};
+	return {
+		...state,
+		...clampWindowBounds(bounds, screen.getDisplayMatching(bounds).workArea),
+	};
+}
+
+function clampWindowSize(
+	{ width, height }: Pick<WindowState, "width" | "height">,
+	workArea: { width: number; height: number },
+) {
+	return {
+		width: Math.min(width, workArea.width),
+		height: Math.min(height, workArea.height),
+	};
+}
+
+function clampWindowBounds(bounds: WindowBounds, workArea: WindowBounds) {
+	const size = clampWindowSize(bounds, workArea);
+	return {
+		...size,
+		x: Math.min(
+			Math.max(bounds.x, workArea.x),
+			workArea.x + workArea.width - size.width,
+		),
+		y: Math.min(
+			Math.max(bounds.y, workArea.y),
+			workArea.y + workArea.height - size.height,
+		),
+	};
+}
+
+function isVisibleWindowBounds(bounds: WindowBounds) {
+	return screen.getAllDisplays().some(({ workArea }) => {
+		const visibleWidth =
+			Math.min(bounds.x + bounds.width, workArea.x + workArea.width) -
+			Math.max(bounds.x, workArea.x);
+		const visibleHeight =
+			Math.min(bounds.y + bounds.height, workArea.y + workArea.height) -
+			Math.max(bounds.y, workArea.y);
+		return (
+			visibleWidth >= Math.min(160, bounds.width) &&
+			visibleHeight >= Math.min(120, bounds.height)
+		);
+	});
+}
+
+function saveWindowState(window: BrowserWindow) {
+	if (window.isDestroyed() || window.isMinimized()) return;
+	const bounds = window.getNormalBounds();
+	const parsed = windowStateSchema.safeParse({
+		...bounds,
+		isMaximized: window.isMaximized(),
+		isFullScreen: window.isFullScreen(),
+	});
+	if (!parsed.success) return;
+	try {
+		fsSync.mkdirSync(path.dirname(windowStatePath()), { recursive: true });
+		fsSync.writeFileSync(
+			windowStatePath(),
+			JSON.stringify(parsed.data, null, 2),
+		);
+	} catch {
+		// Best-effort window state should not interrupt resize or app shutdown.
+	}
+}
+
+function queueSaveWindowState(window: BrowserWindow) {
+	if (saveWindowStateTimer) clearTimeout(saveWindowStateTimer);
+	saveWindowStateTimer = setTimeout(() => {
+		saveWindowStateTimer = null;
+		saveWindowState(window);
+	}, 300);
 }
 
 function resolvePath(input: string): string {
@@ -745,10 +884,15 @@ function matchesGlob(relativePath: string, glob: string): boolean {
 }
 
 async function createWindow() {
-	mainWindow = new BrowserWindow({
+	const windowState = await loadWindowState();
+	const window = new BrowserWindow({
 		title: appName,
-		width: 800,
-		height: 600,
+		...(windowState.x !== undefined && windowState.y !== undefined
+			? { x: windowState.x, y: windowState.y }
+			: {}),
+		width: windowState.width,
+		height: windowState.height,
+		show: false,
 		titleBarStyle: "hidden",
 		trafficLightPosition: { x: 12, y: 10 },
 		webPreferences: {
@@ -758,13 +902,32 @@ async function createWindow() {
 			sandbox: false,
 		},
 	});
+	mainWindow = window;
+	if (windowState.isFullScreen) {
+		window.setFullScreen(true);
+	} else if (windowState.isMaximized) {
+		window.maximize();
+	}
+	window.once("ready-to-show", () => window.show());
 
-	mainWindow.on("focus", () => sendToRenderer("desktop:window-focus"));
+	window.on("focus", () => sendToRenderer("desktop:window-focus"));
+	window.on("resize", () => queueSaveWindowState(window));
+	window.on("move", () => queueSaveWindowState(window));
+	window.on("close", () => {
+		if (saveWindowStateTimer) {
+			clearTimeout(saveWindowStateTimer);
+			saveWindowStateTimer = null;
+		}
+		saveWindowState(window);
+	});
+	window.on("closed", () => {
+		if (mainWindow === window) mainWindow = null;
+	});
 
 	if (isDev && process.env.ELECTRON_RENDERER_URL) {
-		await mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
+		await window.loadURL(process.env.ELECTRON_RENDERER_URL);
 	} else {
-		await mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
+		await window.loadFile(path.join(__dirname, "../renderer/index.html"));
 	}
 }
 
