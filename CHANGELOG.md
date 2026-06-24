@@ -10,6 +10,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ### Added
 
 ### Changed
+
+### Fixed
+
+## [0.1.13] - 2026-06-24
+
+### Changed
 - Sidebar folders now reflect real workspace directories, including empty folders, while hiding Hubble-owned config and asset folders
 
 ### Fixed
