@@ -15,6 +15,9 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ## [0.1.13] - 2026-06-24
 
+### Added
+- You can now adjust the window zoom with `⌘=/⌘-/⌘0`
+
 ### Changed
 - Sidebar folders now reflect real workspace directories, including empty folders, while hiding Hubble-owned config and asset folders
 
