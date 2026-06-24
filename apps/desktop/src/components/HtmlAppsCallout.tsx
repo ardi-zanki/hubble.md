@@ -46,7 +46,7 @@ export function SidebarHtmlAppsCallout({
 				<div className="flex flex-col gap-1">
 					<p className="text-[11px] text-foreground">
 						<span className="font-semibold">Turn notes into HTML Apps.</span>{" "}
-						Install Hubble skills and agents to build live views from your
+						Install Hubble skills for your agents to build live views from your
 						notes.
 					</p>
 				</div>

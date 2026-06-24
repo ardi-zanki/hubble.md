@@ -72,6 +72,7 @@ jobs:
           else
             echo "No CHANGELOG section for $VERSION; leaving release notes as-is."
           fi
+          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
 
   release-linux:
     name: Build and publish desktop app (Linux)

@@ -73,6 +73,7 @@ const desktopApi = {
 		ipcRenderer.invoke("desktop:get-launch-workspace-path"),
 	setMenuState: (state) => ipcRenderer.invoke("desktop:set-menu-state", state),
 	getUpdateState: () => ipcRenderer.invoke("desktop:get-update-state"),
+	getFullScreen: () => ipcRenderer.invoke("desktop:get-fullscreen"),
 	checkForUpdates: () => ipcRenderer.invoke("desktop:check-for-updates"),
 	installUpdate: () => ipcRenderer.invoke("desktop:install-update"),
 	onOpenFile: (callback) =>
@@ -91,6 +92,10 @@ const desktopApi = {
 	onMenuSyncWorkspace: (callback) =>
 		subscribe("desktop:menu-sync-workspace", callback),
 	onWindowFocus: (callback) => subscribe("desktop:window-focus", callback),
+	onFullScreenChange: (callback) =>
+		subscribe("desktop:fullscreen-change", (isFullScreen: boolean) =>
+			callback(isFullScreen),
+		),
 } satisfies DesktopApi;
 
 contextBridge.exposeInMainWorld("desktopApi", desktopApi);

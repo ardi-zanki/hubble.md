@@ -12,7 +12,18 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ### Changed
 
 ### Fixed
+
+## [0.1.13] - 2026-06-24
+
+### Added
+- You can now adjust the window zoom with `⌘=/⌘-/⌘0`
+
+### Changed
+- Sidebar folders now reflect real workspace directories, including empty folders, while hiding Hubble-owned config and asset folders
+
+### Fixed
 - App title now always shows Hubble instead of the starter template name
+- Top bar no longer reserves empty space for the traffic lights in fullscreen
 
 ## [0.1.12] - 2026-06-23
 
