@@ -169,7 +169,7 @@ const ccLogo =
               <a class="btn gold" href="https://github.com/bholmesdev/hubble.md/releases/latest" data-download>Download</a>
               <span class="download-soon" data-download-soon hidden>
                 <span><span data-download-os>Windows</span> coming soon</span>
-                <span class="tip" tabindex="0" data-download-tip aria-label="It should be easy to bring Hubble to your platform. I just don't have a machine to test on yet. I'll release to your platform as soon as I do. :)">?</span>
+                <span class="tip" tabindex="0" data-download-tip aria-label="It should be easy to bring Hubble to your platform. I just don't have a test environment set up yet. If you want to drive a release for your platform, get in the GitHub issues!">?</span>
               </span>
               <a class="btn ghost" href="https://github.com/bholmesdev/hubble.md" target="_blank" rel="noopener">★ Star on GitHub</a>
             </div>
@@ -650,7 +650,7 @@ const ccLogo =
   </script>
 
   <script>
-    // Smart download: macOS → direct .dmg from the latest GitHub release; other OSes → "coming soon".
+    // Smart download: macOS → direct .dmg from the latest GitHub release; Windows/Linux → "coming soon"; unknown → releases.
     // Falls back to the releases page if detection or the API fails, so the button always does something.
     (async () => {
       const btn = document.querySelector<HTMLAnchorElement>("[data-download]");
@@ -664,9 +664,12 @@ const ccLogo =
 
       if (!isMac) {
         const detected = /Windows/i.test(ua) ? "Windows" : /Linux|X11|CrOS/i.test(ua) ? "Linux" : null;
-        const osName = detected ?? "your platform";
-        if (osLabel) osLabel.textContent = osName;
-        if (tip && detected) tip.setAttribute("aria-label", `It should be easy to bring Hubble to ${detected}. I just don't have a machine to test on yet. I'll release to your platform as soon as I do. :)`);
+        if (!detected) {
+          btn.href = "https://github.com/bholmesdev/hubble.md/releases";
+          return;
+        }
+        if (osLabel) osLabel.textContent = detected;
+        if (tip) tip.setAttribute("aria-label", `It should be easy to bring Hubble to ${detected}. I just don't have a test environment set up yet. If you want to drive a release for your platform, get in the GitHub issues!`);
         btn.hidden = true;
         soon.hidden = false;
         return;
