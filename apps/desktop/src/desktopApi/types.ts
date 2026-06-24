@@ -99,6 +99,7 @@ export type DesktopApi = {
 	getLaunchWorkspacePath(): Promise<string | null>;
 	setMenuState(state: MenuState): Promise<void>;
 	getUpdateState(): Promise<DesktopUpdateState>;
+	getFullScreen(): Promise<boolean>;
 	checkForUpdates(): Promise<void>;
 	installUpdate(): Promise<void>;
 	onOpenFile(callback: (path: string) => void): Unsubscribe;
@@ -112,4 +113,5 @@ export type DesktopApi = {
 	onMenuShowWorkspaceSwitcher(callback: () => void): Unsubscribe;
 	onMenuSyncWorkspace(callback: () => void): Unsubscribe;
 	onWindowFocus(callback: () => void): Unsubscribe;
+	onFullScreenChange(callback: (isFullScreen: boolean) => void): Unsubscribe;
 };

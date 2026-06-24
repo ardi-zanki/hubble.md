@@ -946,6 +946,12 @@ async function createWindow() {
 	});
 
 	window.on("focus", () => sendToRenderer("desktop:window-focus"));
+	window.on("enter-full-screen", () =>
+		sendToRenderer("desktop:fullscreen-change", true),
+	);
+	window.on("leave-full-screen", () =>
+		sendToRenderer("desktop:fullscreen-change", false),
+	);
 	window.on("resize", () => queueSaveWindowState(window));
 	window.on("move", () => queueSaveWindowState(window));
 	window.on("close", () => {
@@ -1271,6 +1277,11 @@ function registerIpc() {
 	);
 
 	ipcMain.handle("desktop:get-update-state", () => updateState);
+
+	ipcMain.handle(
+		"desktop:get-fullscreen",
+		() => mainWindow?.isFullScreen() ?? false,
+	);
 
 	ipcMain.handle("desktop:check-for-updates", async () => {
 		await checkForUpdates();

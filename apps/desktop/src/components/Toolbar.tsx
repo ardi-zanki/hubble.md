@@ -1,7 +1,7 @@
 import { Menu } from "@base-ui/react/menu";
 import { Button, Toolbar as SharedToolbar } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
-import type { CSSProperties } from "react";
+import { type CSSProperties, useEffect, useState } from "react";
 import { toast } from "sonner";
 import MingcuteCopy2Line from "~icons/mingcute/copy-2-line";
 import MingcuteFolderOpenLine from "~icons/mingcute/folder-open-line";
@@ -19,6 +19,16 @@ const dragRegionStyle = {
 	WebkitAppRegion: "drag",
 } as CSSProperties;
 
+// Traffic lights are hidden in fullscreen, so drop their reserved inset.
+function useIsFullScreen() {
+	const [isFullScreen, setIsFullScreen] = useState(false);
+	useEffect(() => {
+		void desktopApi.getFullScreen().then(setIsFullScreen);
+		return desktopApi.onFullScreenChange(setIsFullScreen);
+	}, []);
+	return isFullScreen;
+}
+
 export function Toolbar({
 	scrollContainer,
 	showSidebarBadge = false,
@@ -29,6 +39,7 @@ export function Toolbar({
 	const workspacePath = useStoreValue(workspacePathStore);
 	const sidebarOpen = useStoreValue(sidebarOpenStore);
 	const currentPath = useStoreValue(currentPathStore);
+	const isFullScreen = useIsFullScreen();
 
 	return (
 		<SharedToolbar
@@ -36,6 +47,7 @@ export function Toolbar({
 			sidebarOpen={sidebarOpen}
 			sidebarBadge={showSidebarBadge}
 			scrollContainer={scrollContainer}
+			platformInset={!isFullScreen}
 			rootProps={{ style: dragRegionStyle }}
 			onToggleSidebar={toggleSidebar}
 			onRenameCurrentPath={(nextName) =>
