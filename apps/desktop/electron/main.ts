@@ -1178,17 +1178,32 @@ function registerIpc() {
 	});
 
 	ipcMain.handle("desktop:create-folder-picker", async () => {
-		const result = await dialog.showSaveDialog(mainWindow ?? undefined, {
+		// macOS save dialog supports naming a new folder inline via createDirectory.
+		if (process.platform === "darwin") {
+			const result = await dialog.showSaveDialog(mainWindow ?? undefined, {
+				title: "New Folder",
+				nameFieldLabel: "Folder name:",
+				buttonLabel: "Create",
+				properties: ["createDirectory"],
+			});
+			if (result.canceled || !result.filePath) return null;
+			const folderPath = result.filePath;
+			await fs.mkdir(folderPath, { recursive: true });
+			grantRoot(folderPath);
+			return folderPath;
+		}
+		// Linux/Windows: the native directory picker has a "New Folder" button,
+		// so create + select happen there and the path opens as the workspace.
+		const result = await dialog.showOpenDialog(mainWindow ?? undefined, {
 			title: "New Folder",
-			nameFieldLabel: "Folder name:",
 			buttonLabel: "Create",
-			properties: ["createDirectory"],
+			properties: ["openDirectory", "createDirectory"],
 		});
-		if (result.canceled || !result.filePath) return null;
-		const folderPath = result.filePath;
-		await fs.mkdir(folderPath, { recursive: true });
-		grantRoot(folderPath);
-		return folderPath;
+		const selected = result.filePaths[0] ?? null;
+		if (!selected) return null;
+		await fs.mkdir(selected, { recursive: true });
+		grantRoot(selected);
+		return selected;
 	});
 
 	ipcMain.handle(

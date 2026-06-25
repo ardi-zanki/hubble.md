@@ -11,10 +11,10 @@ import MingcuteLayoutLeftLine from "~icons/mingcute/layout-left-line";
 import { fileNameFromPath } from "../lib/filePath";
 import { Button } from "../primitives/button";
 
-const START_INSET = isMac()
-	? "var(--hubble-traffic-light-inset, 70px)"
-	: "8px";
-const END_INSET = isMac() ? "0px" : "138px";
+const START_INSET = isMac() ? "var(--hubble-traffic-light-inset, 70px)" : "8px";
+const END_INSET = isMac()
+	? "0px"
+	: "calc(100vw - env(titlebar-area-width, calc(100vw - 138px)))";
 const ACTIONS_BASIS = "114px";
 const NO_DRAG_STYLE = {
 	WebkitAppRegion: "no-drag",
@@ -161,7 +161,7 @@ export function Toolbar({
 				)}
 			</div>
 			<ToolbarActions>
-				<div 
+				<div
 					className="flex items-center justify-end"
 					style={{ paddingInlineEnd: platformInset ? END_INSET : 0 }}
 				>
