@@ -25,21 +25,14 @@ import MingcuteStrikethroughLine from "~icons/mingcute/strikethrough-line";
 import MingcuteTextLine from "~icons/mingcute/text-line";
 import { cn } from "../lib/utils";
 import { useCommandMenuPosition } from "./commandMenuPosition";
+import {
+	applyFormatCommand,
+	type FormatCommandKind,
+	isFormatActive,
+} from "./formatCommands";
 
-type FormatCommandKind =
-	| "paragraph"
-	| "heading1"
-	| "heading2"
-	| "heading3"
-	| "bulletList"
-	| "orderedList"
-	| "taskList"
-	| "blockquote"
-	| "divider"
-	| "bold"
-	| "italic"
-	| "strike"
-	| "link";
+/** Opens the `Cmd+/` format command menu from elsewhere (e.g. the selection toolbar's "More" button). */
+export const OPEN_FORMAT_COMMAND_MENU_EVENT = "hubble:open-format-command-menu";
 
 type FormatCommand = {
 	kind: FormatCommandKind;
@@ -189,6 +182,15 @@ export function FormatCommandMenu({
 		setQuery("");
 		setPosition(null);
 	}, []);
+	const openMenu = useCallback(() => {
+		const viewport = viewportRef.current;
+		if (!viewport) return;
+		setQuery("");
+		setSelectedKind("paragraph");
+		setPosition(null);
+		setOpen(true);
+		requestAnimationFrame(() => inputRef.current?.focus());
+	}, [viewportRef]);
 
 	useEffect(() => {
 		if (!editor) return;
@@ -201,18 +203,23 @@ export function FormatCommandMenu({
 				closeMenu();
 				return;
 			}
-			const viewport = viewportRef.current;
-			if (!viewport) return;
-			setQuery("");
-			setSelectedKind("paragraph");
-			setPosition(null);
-			setOpen(true);
-			requestAnimationFrame(() => inputRef.current?.focus());
+			openMenu();
 		};
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [closeMenu, editor, open, viewportRef]);
+	}, [closeMenu, editor, open, openMenu]);
+
+	useEffect(() => {
+		if (!editor) return;
+		const handleOpenRequest = () => openMenu();
+		window.addEventListener(OPEN_FORMAT_COMMAND_MENU_EVENT, handleOpenRequest);
+		return () =>
+			window.removeEventListener(
+				OPEN_FORMAT_COMMAND_MENU_EVENT,
+				handleOpenRequest,
+			);
+	}, [editor, openMenu]);
 
 	useCommandMenuPosition({
 		editor,
@@ -361,91 +368,4 @@ function isSubsequence(needle: string, haystack: string) {
 		if (index === needle.length) return true;
 	}
 	return false;
-}
-
-function isFormatActive(editor: Editor, kind: FormatCommandKind) {
-	const taskListActive =
-		editor.isActive("listItem", { checked: false }) ||
-		editor.isActive("listItem", { checked: true });
-
-	switch (kind) {
-		case "paragraph":
-			return (
-				editor.isActive("paragraph") &&
-				!editor.isActive("bulletList") &&
-				!editor.isActive("orderedList") &&
-				!editor.isActive("blockquote")
-			);
-		case "heading1":
-			return editor.isActive("heading", { level: 1 });
-		case "heading2":
-			return editor.isActive("heading", { level: 2 });
-		case "heading3":
-			return editor.isActive("heading", { level: 3 });
-		case "bulletList":
-			return editor.isActive("bulletList") && !taskListActive;
-		case "orderedList":
-			return editor.isActive("orderedList");
-		case "taskList":
-			return taskListActive;
-		case "blockquote":
-			return editor.isActive("blockquote");
-		case "bold":
-			return editor.isActive("bold");
-		case "italic":
-			return editor.isActive("italic");
-		case "strike":
-			return editor.isActive("strike");
-		case "link":
-			return editor.isActive("link");
-		case "divider":
-			return false;
-	}
-}
-
-function applyFormatCommand(editor: Editor, kind: FormatCommandKind) {
-	const chain = editor.chain().focus(undefined, { scrollIntoView: false });
-
-	switch (kind) {
-		case "paragraph":
-			chain.setParagraph().run();
-			return;
-		case "heading1":
-			chain.setHeading({ level: 1 }).run();
-			return;
-		case "heading2":
-			chain.setHeading({ level: 2 }).run();
-			return;
-		case "heading3":
-			chain.setHeading({ level: 3 }).run();
-			return;
-		case "bulletList":
-			chain.toggleParentBulletList().run();
-			return;
-		case "orderedList":
-			chain.toggleParentOrderedList().run();
-			return;
-		case "taskList":
-			chain.toggleParentTaskList().run();
-			return;
-		case "blockquote":
-			chain.toggleBlockquote().run();
-			return;
-		case "divider":
-			chain.setHorizontalRule().run();
-			return;
-		case "bold":
-			chain.toggleBold().run();
-			return;
-		case "italic":
-			chain.toggleItalic().run();
-			return;
-		case "strike":
-			chain.toggleStrike().run();
-			return;
-		case "link":
-			editor.commands.focus(undefined, { scrollIntoView: false });
-			editor.commands.toggleLinkAtSelection();
-			return;
-	}
 }

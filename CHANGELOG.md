@@ -8,6 +8,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ## [Unreleased]
 
 ### Added
+- Selecting text now shows a floating formatting toolbar for bold, italic, strikethrough, links, headings, lists, and quotes
 - Linux desktop builds (AppImage and Debian package)
 - Native window controls (minimize, maximize, close) on Windows and Linux
 
