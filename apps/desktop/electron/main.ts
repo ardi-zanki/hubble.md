@@ -354,7 +354,16 @@ function resolvePath(input: string): string {
 	if (input.startsWith("~/") || input.startsWith("~\\")) {
 		return path.resolve(app.getPath("home"), input.slice(2));
 	}
-	return path.resolve(input);
+	// Asset and workspace paths can arrive POSIX-style with a leading slash
+	// before the drive letter (e.g. "/C:/notes" from the forward-slash asset
+	// URLs HTML Apps use as their base). On Windows path.resolve would treat
+	// that as drive-relative and prepend the current drive ("C:\C:\notes"),
+	// breaking the granted-scope check, so strip the leading slash first.
+	const normalized =
+		process.platform === "win32"
+			? input.replace(/^[\\/]+([A-Za-z]:)/, "$1")
+			: input;
+	return path.resolve(normalized);
 }
 
 function grantFile(filePath: string) {
@@ -389,6 +398,17 @@ function isIgnoredWorkspacePath(candidatePath: string): boolean {
 }
 
 function toIgnorePath(input: string): string {
+	return input.split(path.sep).join("/");
+}
+
+/**
+ * Paths sent to the renderer always use forward slashes so the UI's path
+ * helpers (relative/absolute joins, prefix checks) stay consistent across
+ * platforms. On Windows the OS-native separator is a backslash, which otherwise
+ * mixes with the forward-slash paths the renderer builds and produces doubled
+ * paths like "C:\\ws/C:/ws/new-file.md".
+ */
+function toRendererPath(input: string): string {
 	return input.split(path.sep).join("/");
 }
 
@@ -848,14 +868,14 @@ async function collectDocumentFiles(
 			if (isHiddenSidebarFolderName(entry.name)) continue;
 			const stat = await fs.stat(entryPath);
 			out.folders.push({
-				path: entryPath,
+				path: toRendererPath(entryPath),
 				modified_at: Math.floor(stat.mtimeMs / 1000),
 			});
 			await collectDocumentFiles(entryPath, out, rules);
 		} else if (isDocumentPath(entry.name)) {
 			const stat = await fs.stat(entryPath);
 			out.files.push({
-				path: entryPath,
+				path: toRendererPath(entryPath),
 				modified_at: Math.floor(stat.mtimeMs / 1000),
 			});
 		}
@@ -1199,7 +1219,7 @@ function registerIpc() {
 		});
 		const selected = result.filePaths[0] ?? null;
 		if (selected) grantFileWithParent(selected);
-		return selected;
+		return selected ? toRendererPath(selected) : null;
 	});
 
 	ipcMain.handle("desktop:open-folder-picker", async () => {
@@ -1209,7 +1229,7 @@ function registerIpc() {
 		});
 		const selected = result.filePaths[0] ?? null;
 		if (selected) grantRoot(selected);
-		return selected;
+		return selected ? toRendererPath(selected) : null;
 	});
 
 	ipcMain.handle("desktop:create-folder-picker", async () => {
@@ -1225,7 +1245,7 @@ function registerIpc() {
 			const folderPath = result.filePath;
 			await fs.mkdir(folderPath, { recursive: true });
 			grantRoot(folderPath);
-			return folderPath;
+			return toRendererPath(folderPath);
 		}
 		// Linux/Windows: the native directory picker has a "New Folder" button,
 		// so create + select happen there and the path opens as the workspace.
@@ -1238,7 +1258,7 @@ function registerIpc() {
 		if (!selected) return null;
 		await fs.mkdir(selected, { recursive: true });
 		grantRoot(selected);
-		return selected;
+		return toRendererPath(selected);
 	});
 
 	ipcMain.handle(
@@ -1255,7 +1275,7 @@ function registerIpc() {
 			if (result.canceled || !result.filePath) return null;
 			const selected = withMarkdownExtension(result.filePath);
 			grantFileWithParent(selected);
-			return selected;
+			return toRendererPath(selected);
 		},
 	);
 
@@ -1266,7 +1286,7 @@ function registerIpc() {
 			const resolved = assertGranted(watchPath);
 			const emit = (changedPath: string) => {
 				sendToRenderer(`desktop:watch-path:${watchId}`, [
-					path.resolve(changedPath),
+					toRendererPath(path.resolve(changedPath)),
 				]);
 			};
 
@@ -1317,22 +1337,21 @@ function registerIpc() {
 	});
 
 	ipcMain.handle("desktop:resolve-path", (_event, { path }) =>
-		resolvePath(path),
+		toRendererPath(resolvePath(path)),
 	);
 
 	ipcMain.handle("desktop:real-path", async (_event, { path: filePath }) =>
-		fs.realpath(assertGranted(filePath)),
+		toRendererPath(await fs.realpath(assertGranted(filePath))),
 	);
 
 	ipcMain.handle("desktop:get-launch-file-path", () => {
 		const pathToOpen = pendingOpenPath;
 		pendingOpenPath = null;
-		return pathToOpen;
+		return pathToOpen ? toRendererPath(pathToOpen) : null;
 	});
 
-	ipcMain.handle(
-		"desktop:get-launch-workspace-path",
-		() => launchWorkspacePath,
+	ipcMain.handle("desktop:get-launch-workspace-path", () =>
+		launchWorkspacePath ? toRendererPath(launchWorkspacePath) : null,
 	);
 
 	ipcMain.handle("desktop:get-update-state", () => updateState);
@@ -1382,7 +1401,7 @@ if (!singleInstanceLock) {
 		if (mainWindow) {
 			if (mainWindow.isMinimized()) mainWindow.restore();
 			mainWindow.focus();
-			sendToRenderer("desktop:open-file", openPath);
+			sendToRenderer("desktop:open-file", toRendererPath(openPath));
 		}
 	});
 
@@ -1391,7 +1410,7 @@ if (!singleInstanceLock) {
 		const resolved = resolvePath(filePath);
 		grantFileWithParent(resolved);
 		pendingOpenPath = resolved;
-		sendToRenderer("desktop:open-file", resolved);
+		sendToRenderer("desktop:open-file", toRendererPath(resolved));
 	});
 
 	app.whenReady().then(async () => {

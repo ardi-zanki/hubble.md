@@ -24,7 +24,7 @@ Hubble is a free, open-source notetaking app for you and your agents.
 
 Hubble ships as a desktop app. Install the latest build from the [releases page](https://github.com/bholmesdev/hubble.md/releases/latest).
 
-macOS is supported today. Windows and Linux are not built yet, mostly because I haven't tested on those operating systems yet :) They should be straightforward to add, so contributions are welcome!
+macOS, Windows, and Linux are supported. macOS builds are signed and notarized; Windows and Linux builds are unsigned, so your OS may warn before the first launch.
 
 ## Compile from source
 
@@ -39,6 +39,8 @@ Then from the repo root:
 ```sh
 pnpm install
 pnpm bundle:desktop:mac
+# or for windows:
+pnpm bundle:desktop:win
 # or for linux:
 pnpm bundle:desktop:linux
 ```
