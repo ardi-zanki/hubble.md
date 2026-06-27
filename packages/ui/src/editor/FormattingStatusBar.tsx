@@ -136,7 +136,7 @@ export function FormattingStatusBar({
 	);
 }
 
-export function getFormattingStatusCounts(editor: Editor): CountState {
+function getFormattingStatusCounts(editor: Editor): CountState {
 	const { state } = editor;
 	const isSelectionCount = editor.isFocused && !state.selection.empty;
 	const text = isSelectionCount
@@ -150,7 +150,7 @@ export function getFormattingStatusCounts(editor: Editor): CountState {
 	};
 }
 
-export function formatCountLabel(mode: CountMode, counts: CountState) {
+function formatCountLabel(mode: CountMode, counts: CountState) {
 	const suffix = counts.isSelectionCount ? " selected" : "";
 	return mode === "words"
 		? `${counts.wordCount} words${suffix}`
