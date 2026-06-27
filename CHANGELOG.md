@@ -8,9 +8,15 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ## [Unreleased]
 
 ### Added
-- Windows desktop builds (NSIS installer)
 
 ### Changed
+
+### Fixed
+
+## [0.1.15] - 2026-06-27
+
+### Added
+- Windows desktop builds (NSIS installer)
 
 ### Fixed
 - HTML Apps and local images now load correctly on Windows
