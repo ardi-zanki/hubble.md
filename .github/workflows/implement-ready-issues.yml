@@ -4,9 +4,9 @@ name: Implement Ready Issues
 # The agent follows .agents/skills/implementation/SKILL.md to implement the issue,
 # open a pull request, and report progress back to the original issue.
 
+# Paused: keep manual dispatch only, no issue-label trigger.
 on:
-  issues:
-    types: [labeled]
+  workflow_dispatch:
 
 concurrency:
   group: implement-issue-${{ github.event.issue.number }}
