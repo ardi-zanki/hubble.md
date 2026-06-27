@@ -1,7 +1,7 @@
 import {
 	combineMarkdownFrontMatter,
-	HeadingExtension,
 	FindExtension,
+	HeadingExtension,
 	LinkExtension,
 	listExtensions,
 	MarkdownRolloverExtension,

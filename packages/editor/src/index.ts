@@ -1,11 +1,11 @@
 export { FakeSelectionExtension } from "./FakeSelectionExtension";
 export {
 	FindExtension,
+	type FindMatch,
+	type FindState,
 	findMatches,
 	getFindState,
 	selectFindMatch,
-	type FindMatch,
-	type FindState,
 } from "./FindExtension";
 export {
 	combineMarkdownFrontMatter,

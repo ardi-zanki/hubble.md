@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { Schema } from "@tiptap/pm/model";
+import { describe, expect, it } from "vitest";
 import { findMatches } from "./FindExtension";
 
 const schema = new Schema({

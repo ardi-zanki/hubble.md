@@ -1,7 +1,7 @@
 import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { TextSelection, Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 export type FindMatch = {
@@ -38,7 +38,9 @@ export const FindExtension = Extension.create({
 				(query: string) =>
 				({ state, dispatch }) => {
 					if (!dispatch) return true;
-					dispatch(state.tr.setMeta(findPluginKey, { type: "setQuery", query }));
+					dispatch(
+						state.tr.setMeta(findPluginKey, { type: "setQuery", query }),
+					);
 					return true;
 				},
 			setFindActiveIndex:
@@ -46,7 +48,10 @@ export const FindExtension = Extension.create({
 				({ state, dispatch }) => {
 					if (!dispatch) return true;
 					dispatch(
-						state.tr.setMeta(findPluginKey, { type: "setActiveIndex", activeIndex }),
+						state.tr.setMeta(findPluginKey, {
+							type: "setActiveIndex",
+							activeIndex,
+						}),
 					);
 					return true;
 				},
@@ -146,13 +151,21 @@ export function findMatches(doc: ProseMirrorNode, query: string) {
 	while (matchIndex !== -1) {
 		const from = index.offsets[matchIndex]?.docPos;
 		const to = index.offsets[matchIndex + query.length - 1]?.docPos;
-		if (from !== null && from !== undefined && to !== null && to !== undefined) {
+		if (
+			from !== null &&
+			from !== undefined &&
+			to !== null &&
+			to !== undefined
+		) {
 			matches.push({
 				from,
 				to: to + 1,
 			});
 		}
-		matchIndex = text.indexOf(normalizedQuery, matchIndex + normalizedQuery.length);
+		matchIndex = text.indexOf(
+			normalizedQuery,
+			matchIndex + normalizedQuery.length,
+		);
 	}
 
 	return matches;
