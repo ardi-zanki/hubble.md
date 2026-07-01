@@ -30,8 +30,15 @@ const desktopApi = {
 		}),
 	readFileText: (path) =>
 		ipcRenderer.invoke("desktop:read-file-text", { path }),
-	writeFileText: (path, content) =>
-		ipcRenderer.invoke("desktop:write-file-text", { path, content }),
+	writeFileText: (path, content) => {
+		// Encode in the renderer before IPC. Main should write these bytes as-is,
+		// because re-encoding the string there has truncated multibyte characters.
+		const bytes = Array.from(new TextEncoder().encode(String(content)));
+		return ipcRenderer.invoke("desktop:write-file-text", {
+			path,
+			bytes,
+		});
+	},
 	createFolder: (path) => ipcRenderer.invoke("desktop:create-folder", { path }),
 	renameFile: (fromPath, toPath) =>
 		ipcRenderer.invoke("desktop:rename-file", { fromPath, toPath }),

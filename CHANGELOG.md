@@ -12,6 +12,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ### Changed
 
 ### Fixed
+- Desktop saves no longer drop trailing content in notes with multibyte characters
 
 ## [0.1.16] - 2026-06-27
 
