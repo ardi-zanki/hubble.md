@@ -21,6 +21,11 @@ export { LinkCreationGhostExtension } from "./editor/LinkCreationGhostExtension"
 export { SmartLinkExtension } from "./editor/SmartLinkExtension";
 export { VirtualCursor } from "./editor/VirtualCursor";
 export type { VirtualCursorMode } from "./editor/virtualCursorMode";
+export {
+	type ResizeAxis,
+	type ResizePointerContext,
+	useResizeSeparator,
+} from "./hooks/useResizeSeparator";
 export { formatShortcut } from "./lib/shortcut";
 export { Button, buttonVariants } from "./primitives/button";
 export { Input } from "./primitives/input";

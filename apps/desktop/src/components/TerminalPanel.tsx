@@ -1,3 +1,4 @@
+import { useResizeSeparator } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
@@ -30,6 +31,15 @@ const EMPTY_TERMINAL_STATE: TerminalState = {
 	sessions: [],
 	activeSessionId: null,
 };
+
+const MIN_PANEL_HEIGHT = 100;
+
+function clampPanelHeight(height: number) {
+	return Math.max(
+		MIN_PANEL_HEIGHT,
+		Math.min(window.innerHeight - MIN_PANEL_HEIGHT, height),
+	);
+}
 
 function fallbackActiveSessionId(
 	sessions: Session[],
@@ -140,34 +150,19 @@ export function TerminalPanel() {
 	);
 	const [height, setHeight] = useState(256);
 	const isInitializingRef = useRef(false);
-	const isDraggingRef = useRef(false);
 	const suppressAutoCloseRef = useRef(false);
 	const previousSessionCountRef = useRef(0);
 	const previousWorkspacePathRef = useRef<string | null | undefined>(undefined);
 
-	useEffect(() => {
-		const handleMouseMove = (e: MouseEvent) => {
-			if (!isDraggingRef.current) return;
-			const newHeight = Math.max(
-				100,
-				Math.min(window.innerHeight - 100, window.innerHeight - e.clientY),
-			);
-			setHeight(newHeight);
-		};
-		const handleMouseUp = () => {
-			if (isDraggingRef.current) {
-				isDraggingRef.current = false;
-				document.body.style.cursor = "";
-			}
-		};
-
-		window.addEventListener("mousemove", handleMouseMove);
-		window.addEventListener("mouseup", handleMouseUp);
-		return () => {
-			window.removeEventListener("mousemove", handleMouseMove);
-			window.removeEventListener("mouseup", handleMouseUp);
-		};
-	}, []);
+	const { isResizing, separatorProps } = useResizeSeparator({
+		axis: "row",
+		label: "Resize terminal panel",
+		value: height,
+		min: MIN_PANEL_HEIGHT,
+		max: () => window.innerHeight - MIN_PANEL_HEIGHT,
+		onChange: (nextHeight) => setHeight(clampPanelHeight(nextHeight)),
+		getPointerValue: ({ event }) => window.innerHeight - event.clientY,
+	});
 
 	useEffect(() => {
 		if (sessions.length === 0 && previousSessionCountRef.current > 0) {
@@ -249,21 +244,22 @@ export function TerminalPanel() {
 		<div
 			style={{ height: isOpen ? height : undefined }}
 			className={cn(
-				"flex flex-col border-t border-border bg-background z-20 shadow-[0_-4px_16px_rgba(0,0,0,0.05)] relative",
+				"flex flex-col border-t border-border bg-background z-20 relative",
+				isResizing && "select-none",
 				!isOpen && "hidden",
 			)}
 		>
-			{/* Resizer Handle */}
-			<button
-				type="button"
-				aria-label="Resize terminal panel"
-				className="absolute -top-1 left-0 right-0 h-2 cursor-row-resize z-30 hover:bg-ring/30 transition-colors"
-				onMouseDown={(e) => {
-					e.preventDefault();
-					isDraggingRef.current = true;
-					document.body.style.cursor = "row-resize";
-				}}
-			/>
+			<div
+				className="group absolute -top-[5px] left-0 right-0 h-2.5 cursor-row-resize outline-none z-30"
+				{...separatorProps}
+			>
+				<span
+					className={cn(
+						"absolute left-0 right-0 top-1/2 h-px bg-transparent group-focus:bg-primary",
+						isResizing && "bg-primary",
+					)}
+				/>
+			</div>
 			{/* Terminal Tabs */}
 			<div className="flex items-center h-9 px-2 border-b border-border bg-muted/30 select-none">
 				<div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
@@ -273,7 +269,7 @@ export function TerminalPanel() {
 							className={cn(
 								"group flex max-w-32 items-center rounded-md text-xs transition-colors",
 								activeSessionId === session.id
-									? "bg-background text-foreground shadow-sm border border-border"
+									? "bg-background text-foreground border border-border"
 									: "text-muted-foreground hover:bg-muted",
 							)}
 						>
@@ -362,6 +358,9 @@ function TerminalInstance({
 	const containerRef = useRef<HTMLDivElement>(null);
 	const termRef = useRef<Terminal | null>(null);
 	const fitAddonRef = useRef<FitAddon | null>(null);
+	// Read via ref so an unstable callback prop can never remount xterm.
+	const onExitRef = useRef(onExit);
+	onExitRef.current = onExit;
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: intentional
 	useEffect(() => {
@@ -430,7 +429,7 @@ function TerminalInstance({
 			term.write(data);
 		});
 		const unsubscribeExit = desktopApi.onTerminalExit(sessionId, () => {
-			onExit(sessionId);
+			onExitRef.current(sessionId);
 		});
 
 		let fitTimeout: ReturnType<typeof setTimeout>;
@@ -460,7 +459,7 @@ function TerminalInstance({
 			themeObserver.disconnect();
 			term.dispose();
 		};
-	}, [onExit, sessionId]); // Important: Do NOT include isActive here, we don't want to re-mount xterm
+	}, [sessionId]); // Important: only sessionId — anything else here remounts xterm
 
 	useEffect(() => {
 		if (

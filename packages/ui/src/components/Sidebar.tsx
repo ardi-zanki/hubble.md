@@ -20,7 +20,6 @@ import {
 	forwardRef,
 	type KeyboardEvent as ReactKeyboardEvent,
 	type ReactNode,
-	type PointerEvent as ReactPointerEvent,
 	useCallback,
 	useEffect,
 	useRef,
@@ -39,6 +38,7 @@ import MingcutePinFill from "~icons/mingcute/pin-fill";
 import MingcutePinLine from "~icons/mingcute/pin-line";
 import MingcuteRightLine from "~icons/mingcute/right-line";
 import MingcuteSortDescendingLine from "~icons/mingcute/sort-descending-line";
+import { useResizeSeparator } from "../hooks/useResizeSeparator";
 import {
 	dirname,
 	fileNameFromPath,
@@ -1540,15 +1540,12 @@ export function SidebarFrame({
 	storageScope?: string | null;
 }) {
 	const asideRef = useRef<HTMLElement | null>(null);
-	const pointerIdRef = useRef<number | null>(null);
-	const inlineStartRef = useRef(0);
 	const widthStorageKey = sidebarWidthStorageKey(storageScope);
 	const [sidebarWidth, setSidebarWidth] = useState(() =>
 		readSidebarWidth(widthStorageKey),
 	);
 	const sidebarWidthRef = useRef(sidebarWidth);
 	const previewCollapsedRef = useRef(false);
-	const [isResizing, setIsResizing] = useState(false);
 	const [previewCollapsed, setPreviewCollapsedState] = useState(false);
 
 	useEffect(() => {
@@ -1569,18 +1566,8 @@ export function SidebarFrame({
 		setPreviewCollapsedState(nextPreviewCollapsed);
 	}
 
-	function finishResize(event?: ReactPointerEvent<HTMLDivElement>) {
-		const pointerId = pointerIdRef.current;
-		if (
-			pointerId !== null &&
-			event?.currentTarget.hasPointerCapture(pointerId)
-		) {
-			event.currentTarget.releasePointerCapture(pointerId);
-		}
-		pointerIdRef.current = null;
-		setIsResizing(false);
+	function commitResize() {
 		const shouldCollapse = previewCollapsedRef.current;
-		setPreviewCollapsed(false);
 		if (shouldCollapse && onCollapse) {
 			onCollapse();
 			return;
@@ -1588,43 +1575,33 @@ export function SidebarFrame({
 		writeSidebarWidth(widthStorageKey, sidebarWidthRef.current);
 	}
 
-	function beginResize(event: ReactPointerEvent<HTMLDivElement>) {
-		event.preventDefault();
-		pointerIdRef.current = event.pointerId;
-		inlineStartRef.current =
-			asideRef.current?.getBoundingClientRect().left ?? 0;
-		event.currentTarget.setPointerCapture(event.pointerId);
-		setPreviewCollapsed(false);
-		setIsResizing(true);
-	}
-
-	function resize(event: ReactPointerEvent<HTMLDivElement>) {
-		if (pointerIdRef.current !== event.pointerId) return;
-		event.preventDefault();
-		if (onCollapse && event.clientX <= COLLAPSE_EDGE_DISTANCE) {
-			setPreviewCollapsed(true);
-			return;
-		}
-		setPreviewCollapsed(false);
-		setWidth(event.clientX - inlineStartRef.current);
-	}
-
-	function resizeWithKeyboard(event: ReactKeyboardEvent<HTMLDivElement>) {
-		let nextWidth: number | null = null;
-		if (event.key === "ArrowLeft") {
-			nextWidth = sidebarWidth - 16;
-		} else if (event.key === "ArrowRight") {
-			nextWidth = sidebarWidth + 16;
-		} else if (event.key === "Home") {
-			nextWidth = MIN_SIDEBAR_WIDTH;
-		} else if (event.key === "End") {
-			nextWidth = MAX_SIDEBAR_WIDTH;
-		}
-		if (nextWidth === null) return;
-		event.preventDefault();
-		setWidth(nextWidth);
-		writeSidebarWidth(widthStorageKey, sidebarWidthRef.current);
-	}
+	const { isResizing, separatorProps } = useResizeSeparator({
+		axis: "col",
+		label: "Resize sidebar",
+		value: sidebarWidth,
+		min: MIN_SIDEBAR_WIDTH,
+		max: MAX_SIDEBAR_WIDTH,
+		onChange: setWidth,
+		targetRef: asideRef,
+		onResizeStart: () => {
+			setPreviewCollapsed(false);
+		},
+		onResizeEnd: () => {
+			setPreviewCollapsed(false);
+		},
+		onCommit: () => {
+			commitResize();
+			setPreviewCollapsed(false);
+		},
+		getPointerValue: ({ event, startRect }) => {
+			if (onCollapse && event.clientX <= COLLAPSE_EDGE_DISTANCE) {
+				setPreviewCollapsed(true);
+				return null;
+			}
+			setPreviewCollapsed(false);
+			return event.clientX - (startRect?.left ?? 0);
+		},
+	});
 
 	return (
 		<aside
@@ -1646,7 +1623,6 @@ export function SidebarFrame({
 			<div className="flex min-h-0 flex-1 flex-col overflow-hidden">
 				{children}
 			</div>
-			{/* biome-ignore lint/a11y/useSemanticElements: interactive splitters use ARIA separator semantics; hr is not reliable for pointer dragging here. */}
 			<div
 				className="group absolute z-20 cursor-col-resize outline-none [inset-block:0]"
 				style={{
@@ -1655,18 +1631,7 @@ export function SidebarFrame({
 				}}
 				// A resizable split pane maps to the ARIA separator pattern:
 				// arrow keys resize, Home/End jump to min/max, and pointer drag works normally.
-				aria-label="Resize sidebar"
-				role="separator"
-				aria-orientation="vertical"
-				aria-valuemin={MIN_SIDEBAR_WIDTH}
-				aria-valuemax={MAX_SIDEBAR_WIDTH}
-				aria-valuenow={sidebarWidth}
-				tabIndex={0}
-				onKeyDown={resizeWithKeyboard}
-				onPointerDown={beginResize}
-				onPointerMove={resize}
-				onPointerUp={finishResize}
-				onPointerCancel={finishResize}
+				{...separatorProps}
 			>
 				<span
 					className={cn(
