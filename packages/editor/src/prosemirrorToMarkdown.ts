@@ -109,7 +109,8 @@ function blockToMarkdown(node: JSONContent): string {
 		case "tableHeader": {
 			const cellContent = (node.content ?? [])
 				.map(blockToMarkdown)
-				.join("<br>");
+				.join("<br>")
+				.replace(/ {2}\n/g, "<br>");
 			return cellContent.replace(/\|/g, "\\|");
 		}
 
