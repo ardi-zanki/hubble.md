@@ -22,17 +22,22 @@ describe("table cell selection extension", () => {
 		const editor = createTableEditor(tableDoc());
 		setCursorInsideText(editor, "one");
 
-		editor.view.dom.dispatchEvent(
-			new KeyboardEvent("keydown", {
-				key: "a",
-				ctrlKey: true,
-				bubbles: true,
-				cancelable: true,
-			}),
-		);
+		pressSelectAll(editor);
 
 		const { from, to } = editor.state.selection;
 		expect(editor.state.doc.textBetween(from, to)).toBe("one");
+	});
+
+	it("does not select the document for Mod-a inside an empty table cell", () => {
+		const editor = createTableEditor(tableDoc(""));
+		setCursorInsideFirstCell(editor);
+
+		pressSelectAll(editor);
+
+		const { from, to } = editor.state.selection;
+		expect(from).toBe(to);
+		expect(from).toBeGreaterThan(0);
+		expect(to).toBeLessThan(editor.state.doc.content.size);
 	});
 });
 
@@ -69,7 +74,35 @@ function setCursorInsideText(editor: Editor, text: string) {
 	);
 }
 
-function tableDoc(): JSONContent {
+function setCursorInsideFirstCell(editor: Editor) {
+	let cursorPos: number | null = null;
+	editor.state.doc.descendants((node, pos) => {
+		if (cursorPos !== null) return false;
+		if (node.type.name !== "tableCell") return true;
+		cursorPos = pos + 2;
+		return false;
+	});
+	if (cursorPos === null) throw new Error("Could not find table cell");
+
+	editor.view.dispatch(
+		editor.state.tr.setSelection(
+			TextSelection.create(editor.state.doc, cursorPos),
+		),
+	);
+}
+
+function pressSelectAll(editor: Editor) {
+	editor.view.dom.dispatchEvent(
+		new KeyboardEvent("keydown", {
+			key: "a",
+			ctrlKey: true,
+			bubbles: true,
+			cancelable: true,
+		}),
+	);
+}
+
+function tableDoc(firstCellText = "one"): JSONContent {
 	return {
 		type: "doc",
 		content: [
@@ -78,7 +111,7 @@ function tableDoc(): JSONContent {
 				content: [
 					{
 						type: "tableRow",
-						content: [cell("one"), cell("two")],
+						content: [cell(firstCellText), cell("two")],
 					},
 				],
 			},
@@ -96,7 +129,7 @@ function cell(text: string): JSONContent {
 		content: [
 			{
 				type: "paragraph",
-				content: [{ type: "text", text }],
+				content: text ? [{ type: "text", text }] : undefined,
 			},
 		],
 	};

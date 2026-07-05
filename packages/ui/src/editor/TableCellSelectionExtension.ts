@@ -30,8 +30,8 @@ function selectCurrentCellContents(editor: Editor) {
 					TextSelection.create(doc, range.from, range.to),
 				),
 			);
-			return true;
 		}
+		return true;
 	}
 
 	return false;
