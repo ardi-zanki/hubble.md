@@ -72,7 +72,12 @@ export function applySlashCommand(
 
 	if (kind === "table") {
 		const range = { from: token.from, to: token.to };
-		editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+		editor
+			.chain()
+			.focus()
+			.deleteRange(range)
+			.insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+			.run();
 		return;
 	}
 
