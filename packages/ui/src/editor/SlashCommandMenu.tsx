@@ -16,6 +16,7 @@ import MingcuteListCheckLine from "~icons/mingcute/list-check-line";
 import MingcuteListOrderedLine from "~icons/mingcute/list-ordered-line";
 import MingcuteQuoteLeftLine from "~icons/mingcute/quote-left-line";
 import MingcuteStrikethroughLine from "~icons/mingcute/strikethrough-line";
+import MingcuteTable2Line from "~icons/mingcute/table-2-line";
 import MingcuteTextLine from "~icons/mingcute/text-line";
 import { cn } from "../lib/utils";
 import { useCommandMenuPosition } from "./commandMenuPosition";
@@ -110,7 +111,17 @@ const SLASH_COMMANDS: SlashCommand[] = [
 		aliases: ["strike", "s", "delete"],
 		icon: MingcuteStrikethroughLine,
 	},
+	{
+		kind: "table",
+		title: "Table",
+		description: "Insert a table",
+		aliases: ["table", "grid"],
+		icon: MingcuteTable2Line,
+	},
 ];
+
+// Table cells only hold inline content, so block commands are hidden there.
+const INLINE_COMMANDS = new Set<SlashCommandKind>(["strike"]);
 
 export function SlashCommandMenu({
 	editor,
@@ -126,8 +137,11 @@ export function SlashCommandMenu({
 	const suppressedFromRef = useRef<number | null>(null);
 	const positionedFromRef = useRef<number | null>(null);
 	const menuRef = useRef<HTMLDivElement | null>(null);
-	const visibleCommands = SLASH_COMMANDS.filter((command) =>
-		matchesCommand(command, token?.query ?? ""),
+	const insideTable = editor?.isActive("table") ?? false;
+	const visibleCommands = SLASH_COMMANDS.filter(
+		(command) =>
+			matchesCommand(command, token?.query ?? "") &&
+			(!insideTable || INLINE_COMMANDS.has(command.kind)),
 	);
 	// Keep selection visible even when the current query filters out the
 	// previously selected command.
