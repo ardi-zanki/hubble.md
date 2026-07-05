@@ -295,7 +295,7 @@ export function TerminalPanel() {
 						<div
 							key={session.id}
 							className={cn(
-								"group flex max-w-32 items-center rounded-md text-xs transition-colors",
+								"group relative flex max-w-48 items-center rounded-md text-xs transition-colors",
 								activeSessionId === session.id
 									? "bg-background text-foreground border border-border"
 									: "text-muted-foreground hover:bg-muted",
@@ -306,7 +306,7 @@ export function TerminalPanel() {
 									// biome-ignore lint/a11y/noAutofocus: rename input appears on explicit double click
 									autoFocus
 									aria-label="Rename terminal session"
-									className="w-24 min-w-0 bg-transparent [padding-block:0.25rem] [padding-inline:0.75rem] text-xs outline-none"
+									className="w-40 min-w-0 bg-transparent [padding-block:0.25rem] [padding-inline:0.75rem] text-xs outline-none"
 									value={renameDraft}
 									onFocus={(event) => event.currentTarget.select()}
 									onChange={(event) => setRenameDraft(event.target.value)}
@@ -335,17 +335,21 @@ export function TerminalPanel() {
 									<span className="truncate flex-1">{session.title}</span>
 								</button>
 							)}
-							<button
-								type="button"
-								aria-label={`Close terminal session ${session.title}`}
-								className={cn(
-									"me-1 rounded-sm p-0.5 opacity-0 transition-opacity hover:bg-muted-foreground/20 group-hover:opacity-100",
-									activeSessionId === session.id && "opacity-100",
-								)}
-								onClick={() => void handleCloseSession(session.id)}
-							>
-								<MingcuteCloseLine className="w-3 h-3" />
-							</button>
+							{renamingSessionId !== session.id ? (
+								<button
+									type="button"
+									aria-label={`Close terminal session ${session.title}`}
+									className={cn(
+										"pointer-events-none absolute z-10 -translate-y-1/2 rounded-sm p-0.5 opacity-0 transition-opacity [inset-block-start:50%] [inset-inline-end:0.25rem] group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 focus:pointer-events-auto focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-ring",
+										activeSessionId === session.id
+											? "bg-background"
+											: "bg-muted",
+									)}
+									onClick={() => void handleCloseSession(session.id)}
+								>
+									<MingcuteCloseLine className="w-3 h-3" />
+								</button>
+							) : null}
 						</div>
 					))}
 					<button
