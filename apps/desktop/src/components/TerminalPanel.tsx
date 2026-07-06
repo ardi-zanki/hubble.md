@@ -307,7 +307,7 @@ export function TerminalPanel() {
 						<div
 							key={session.id}
 							className={cn(
-								"group relative flex max-w-48 items-center rounded-md text-xs transition-colors",
+								"group relative flex min-w-20 max-w-48 items-center rounded-md text-xs transition-colors",
 								activeSessionId === session.id
 									? "bg-background text-foreground border border-border"
 									: "text-muted-foreground hover:bg-muted",
