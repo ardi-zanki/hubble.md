@@ -4,6 +4,7 @@ import {
 	classifyHref,
 	EditorView,
 	Input,
+	MarkdownSourceEditor,
 	type WikiTarget,
 } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
@@ -52,6 +53,7 @@ import {
 	savePathContent,
 	setChatCommand,
 	setSidebarOpen,
+	setViewerMode,
 	setWorkspaceSwitcherOpen,
 	toggleTerminal,
 	updateEditorContent,
@@ -60,6 +62,7 @@ import {
 	chatCommandStore,
 	sidebarOpenStore,
 	uiStore,
+	type ViewMode,
 	viewerStore,
 	workspacePathStore,
 	workspaceStore,
@@ -190,8 +193,14 @@ function App() {
 	}, []);
 
 	useEffect(() => {
-		void desktopApi.setMenuState({ hasWorkspace });
-	}, [hasWorkspace]);
+		const currentPath = state.currentPath;
+		void desktopApi.setMenuState({
+			hasWorkspace,
+			hasMarkdownNoteOpen:
+				typeof currentPath === "string" && hasMarkdownExtension(currentPath),
+			isSourceMode: state.viewMode === "source",
+		});
+	}, [hasWorkspace, state.currentPath, state.viewMode]);
 
 	useEffect(() => {
 		if (!sidebarOpen) setFocusedSidebarPath(null);
@@ -284,6 +293,16 @@ function App() {
 			),
 			desktopApi.onMenuSyncWorkspace(() => void refreshFiles()),
 			desktopApi.onMenuToggleTerminal(() => toggleTerminal()),
+			desktopApi.onMenuToggleSourceMode(() => {
+				const current = viewerStore.get();
+				if (
+					!current.currentPath ||
+					!hasMarkdownExtension(current.currentPath)
+				) {
+					return;
+				}
+				setViewerMode(current.viewMode === "source" ? "rich" : "source");
+			}),
 		];
 		return () => {
 			for (const dispose of disposers) dispose();
@@ -394,6 +413,7 @@ function App() {
 									path={state.currentPath}
 									content={state.content}
 									copyAsMarkdownRequest={copyAsMarkdownRequest}
+									viewMode={state.viewMode}
 									onScrollContainerChange={setScrollContainerEl}
 								/>
 							</div>
@@ -443,11 +463,13 @@ function DocumentViewer({
 	path,
 	content,
 	copyAsMarkdownRequest,
+	viewMode,
 	onScrollContainerChange,
 }: {
 	path: string;
 	content: string;
 	copyAsMarkdownRequest: number;
+	viewMode: ViewMode;
 	onScrollContainerChange?: (el: HTMLDivElement | null) => void;
 }) {
 	if (hasHtmlExtension(path)) {
@@ -464,13 +486,26 @@ function DocumentViewer({
 	}
 
 	return (
-		<MarkdownEditor
-			key={`${path}:${HMR_REV}`}
-			path={path}
-			initialMarkdown={content}
-			copyAsMarkdownRequest={copyAsMarkdownRequest}
-			onScrollContainerChange={onScrollContainerChange}
-		/>
+		<>
+			{viewMode === "source" ? (
+				<MarkdownSourceEditor
+					key={`${path}:source:${HMR_REV}`}
+					path={path}
+					initialMarkdown={content}
+					onLocalChange={updateEditorContent}
+					onSave={savePathContent}
+					onScrollContainerChange={onScrollContainerChange}
+				/>
+			) : (
+				<MarkdownEditor
+					key={`${path}:rich:${HMR_REV}`}
+					path={path}
+					initialMarkdown={content}
+					copyAsMarkdownRequest={copyAsMarkdownRequest}
+					onScrollContainerChange={onScrollContainerChange}
+				/>
+			)}
+		</>
 	);
 }
 
