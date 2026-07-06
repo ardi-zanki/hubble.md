@@ -655,6 +655,7 @@ type TextContextMenuItem =
 	| {
 			id: "copy-as-markdown";
 			label: string;
+			accelerator?: string;
 			flag: keyof Electron.EditFlags;
 			click: (webContents: Electron.WebContents) => void;
 	  };
@@ -665,6 +666,7 @@ const textContextMenuItems: TextContextMenuItem[] = [
 	{
 		id: "copy-as-markdown",
 		label: "Copy as Markdown",
+		accelerator: "Alt+CmdOrCtrl+C",
 		flag: "canCopy",
 		click: (webContents) => {
 			webContents.send("desktop:menu-copy-as-markdown");
@@ -688,6 +690,7 @@ function buildTextContextMenu(
 				: {
 						id: item.id,
 						label: item.label,
+						accelerator: item.accelerator,
 						enabled: params.editFlags[item.flag],
 						click: () => item.click(webContents),
 					},
@@ -761,6 +764,7 @@ function buildMenu() {
 				{
 					id: "copy-as-markdown",
 					label: "Copy as Markdown",
+					accelerator: "Alt+CmdOrCtrl+C",
 					click: () => sendToRenderer("desktop:menu-copy-as-markdown"),
 				},
 				{ role: "paste" },
