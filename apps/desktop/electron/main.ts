@@ -92,6 +92,17 @@ const updateCheckIntervalMs = 4 * 60 * 60 * 1000;
 // class-based Tailwind dark variant and `.dark { … }` token block activate.
 nativeTheme.themeSource = "system";
 
+// Windows/Linux draw the min/max/close buttons as a native overlay whose colors
+// are static unless we update them. Mirror the app palette so the button strip
+// follows the OS appearance instead of staying light in dark mode. Hex values
+// are the resolved sRGB of the `--background`/`--muted-foreground` tokens in
+// `index.css` (light) and its `.dark` block (dark).
+function titleBarOverlayColors() {
+	return nativeTheme.shouldUseDarkColors
+		? { color: "#181715", symbolColor: "#a6a5a0" }
+		: { color: "#ffffff", symbolColor: "#454545" };
+}
+
 app.setName(appName);
 if (devAppName) {
 	app.setPath("userData", path.join(app.getPath("appData"), devAppName));
@@ -104,6 +115,16 @@ if (isDev && process.env.HUBBLE_DESKTOP_ENABLE_CDP === "1") {
 
 let mainWindow: BrowserWindow | null = null;
 let saveWindowStateTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Repaint the native window-control overlay when the OS appearance changes so it
+// tracks the live theme switch (macOS manages its traffic lights itself).
+if (process.platform !== "darwin") {
+	nativeTheme.on("updated", () => {
+		if (mainWindow && !mainWindow.isDestroyed()) {
+			mainWindow.setTitleBarOverlay(titleBarOverlayColors());
+		}
+	});
+}
 let pendingOpenPath: string | null = firstExistingFileArg(
 	process.argv.slice(1),
 );
@@ -1105,7 +1126,7 @@ async function createWindow() {
 		show: false,
 		titleBarStyle: "hidden",
 		...(process.platform !== "darwin"
-			? { titleBarOverlay: { color: "#ffffff", symbolColor: "#454545" } }
+			? { titleBarOverlay: titleBarOverlayColors() }
 			: {}),
 		trafficLightPosition: trafficLightPositionForZoom(zoomFactor),
 		webPreferences: {
