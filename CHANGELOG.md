@@ -8,7 +8,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ## [Unreleased]
 
 ### Added
-- Selecting text now shows a floating formatting toolbar for bold, italic, strikethrough, links, headings, lists, and quotes
+- Selecting text now shows a floating formatting toolbar for bold, italic, strikethrough, links, headings, lists, and quotes. Thanks [@hwong103](https://github.com/hwong103) for the suggestion! [#108](https://github.com/bholmesdev/hubble.md/issues/108)
 - Terminal panel in the desktop app: toggle with Cmd+J to run shell commands in your workspace, with tabs, drag resize, and double click to rename
 - Chat about the open note with your agent CLI: pick it from the note's ⋯ menu or press Cmd+Shift+J, and customize the command in Settings
 - Add table support. Markdown tables now render as expected, and you can create new tables using `/table`. There are still editing features left to add, like adding and removing rows. Track progress on GitHub: [#99](https://github.com/bholmesdev/hubble.md/issues/99)
