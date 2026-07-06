@@ -1,6 +1,7 @@
 import { WorkspaceSwitcherMenu } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
 import MingcuteAddLine from "~icons/mingcute/add-line";
+import { tildePath } from "../lib/tildePath";
 import { openWorkspace, setWorkspaceSwitcherOpen } from "../store/actions";
 import {
 	recentWorkspacesStore,
@@ -23,17 +24,17 @@ export function WorkspaceSwitcher() {
 	return (
 		<WorkspaceSwitcherMenu
 			label={workspaceName}
-			title={workspacePath}
+			title={tildePath(workspacePath)}
 			open={open}
 			onOpenChange={setWorkspaceSwitcherOpen}
 		>
-			<WorkspaceSwitcherMenu.Item selected title={workspacePath}>
+			<WorkspaceSwitcherMenu.Item selected title={tildePath(workspacePath)}>
 				<span className="truncate">{workspaceName}</span>
 			</WorkspaceSwitcherMenu.Item>
 			{others.map((path) => (
 				<WorkspaceSwitcherMenu.Item
 					key={path}
-					title={path}
+					title={tildePath(path)}
 					onClick={() => void openWorkspace(path)}
 				>
 					<span className="truncate">{folderName(path)}</span>
