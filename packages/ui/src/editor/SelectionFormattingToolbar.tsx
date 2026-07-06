@@ -7,7 +7,14 @@ import {
 } from "@floating-ui/dom";
 import type { Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
-import { type ComponentType, type RefObject, useEffect, useState } from "react";
+import {
+	type ComponentType,
+	type CSSProperties,
+	type RefObject,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import MingcuteBoldLine from "~icons/mingcute/bold-line";
 import MingcuteHeading1Line from "~icons/mingcute/heading-1-line";
 import MingcuteHeading2Line from "~icons/mingcute/heading-2-line";
@@ -38,33 +45,74 @@ type ToolbarPosition = {
 type ToolbarAction = {
 	kind: FormatCommandKind;
 	label: string;
+	shortcut: string;
 	icon: ComponentType<{ className?: string }>;
 };
+
+// Keyboard-driven selections (shift+arrow) debounce before revealing so the
+// toolbar does not flicker in while the selection is still growing.
+const KEYBOARD_SHOW_DELAY_MS = 150;
 
 // Inline marks and block styles surfaced directly on the toolbar. Less common
 // commands (divider, plain text) stay in the `Cmd+/` menu behind "More".
 const INLINE_ACTIONS: ToolbarAction[] = [
-	{ kind: "bold", label: "Bold", icon: MingcuteBoldLine },
-	{ kind: "italic", label: "Italic", icon: MingcuteItalicLine },
-	{ kind: "strike", label: "Strikethrough", icon: MingcuteStrikethroughLine },
-	{ kind: "link", label: "Link", icon: MingcuteLinkLine },
+	{ kind: "bold", label: "Bold", shortcut: "⌘B", icon: MingcuteBoldLine },
+	{ kind: "italic", label: "Italic", shortcut: "⌘I", icon: MingcuteItalicLine },
+	{
+		kind: "strike",
+		label: "Strikethrough",
+		shortcut: "⌘⇧X",
+		icon: MingcuteStrikethroughLine,
+	},
+	{ kind: "link", label: "Link", shortcut: "⌘K", icon: MingcuteLinkLine },
 ];
 
 const HEADING_ACTIONS: ToolbarAction[] = [
-	{ kind: "heading1", label: "Heading 1", icon: MingcuteHeading1Line },
-	{ kind: "heading2", label: "Heading 2", icon: MingcuteHeading2Line },
-	{ kind: "heading3", label: "Heading 3", icon: MingcuteHeading3Line },
+	{
+		kind: "heading1",
+		label: "Heading 1",
+		shortcut: "⌘⌥1",
+		icon: MingcuteHeading1Line,
+	},
+	{
+		kind: "heading2",
+		label: "Heading 2",
+		shortcut: "⌘⌥2",
+		icon: MingcuteHeading2Line,
+	},
+	{
+		kind: "heading3",
+		label: "Heading 3",
+		shortcut: "⌘⌥3",
+		icon: MingcuteHeading3Line,
+	},
 ];
 
 const BLOCK_ACTIONS: ToolbarAction[] = [
-	{ kind: "bulletList", label: "Bulleted list", icon: MingcuteListCheckLine },
+	{
+		kind: "bulletList",
+		label: "Bulleted list",
+		shortcut: "⌘⇧8",
+		icon: MingcuteListCheckLine,
+	},
 	{
 		kind: "orderedList",
 		label: "Numbered list",
+		shortcut: "⌘⇧7",
 		icon: MingcuteListOrderedLine,
 	},
-	{ kind: "taskList", label: "To-do list", icon: MingcuteListCheck2Line },
-	{ kind: "blockquote", label: "Quote", icon: MingcuteQuoteLeftLine },
+	{
+		kind: "taskList",
+		label: "To-do list",
+		shortcut: "⌘⇧9",
+		icon: MingcuteListCheck2Line,
+	},
+	{
+		kind: "blockquote",
+		label: "Quote",
+		shortcut: "⌘⇧B",
+		icon: MingcuteQuoteLeftLine,
+	},
 ];
 
 function shouldShowToolbar(editor: Editor) {
@@ -91,24 +139,32 @@ export function SelectionFormattingToolbar({
 	viewportRef: RefObject<HTMLDivElement | null>;
 }) {
 	const [position, setPosition] = useState<ToolbarPosition | null>(null);
-	const [visible, setVisible] = useState(false);
+	// Scale from the edge facing the selection, like Base UI popups do via
+	// their --transform-origin variable.
+	const [transformOrigin, setTransformOrigin] = useState("center bottom");
+	// `open` drives the enter/exit animation; `present` keeps the toolbar
+	// rendered until the exit animation finishes.
+	const [open, setOpen] = useState(false);
+	const [present, setPresent] = useState(false);
 	// Active marks/blocks are derived from editor state during render. Bump a
 	// revision on every relevant change so the button highlights stay current
 	// even when the toolbar's position does not move.
 	const [, setRevision] = useState(0);
 	const [toolbarEl, setToolbarEl] = useState<HTMLDivElement | null>(null);
+	const openRef = useRef(false);
 
 	useEffect(() => {
 		if (!editor) return;
+		let pointerDown = false;
+		let showTimer: number | null = null;
 
-		const update = () => {
-			if (!shouldShowToolbar(editor)) {
-				setVisible(false);
-				return;
-			}
-			setVisible(true);
-			setRevision((value) => value + 1);
+		const clearShowTimer = () => {
+			if (showTimer === null) return;
+			window.clearTimeout(showTimer);
+			showTimer = null;
+		};
 
+		const positionToolbar = () => {
 			const viewport = viewportRef.current;
 			if (!viewport || !toolbarEl) return;
 
@@ -150,25 +206,86 @@ export function SelectionFormattingToolbar({
 					}),
 					shift({ boundary: viewport, padding: 8 }),
 				],
-			}).then(({ x, y }) => setPosition({ x, y }));
+			}).then(({ x, y, placement }) => {
+				setPosition({ x, y });
+				setTransformOrigin(
+					placement === "bottom" ? "center top" : "center bottom",
+				);
+			});
+		};
+
+		const show = () => {
+			clearShowTimer();
+			openRef.current = true;
+			setOpen(true);
+			setPresent(true);
+			setRevision((value) => value + 1);
+			positionToolbar();
+		};
+
+		const hide = () => {
+			clearShowTimer();
+			openRef.current = false;
+			setOpen(false);
+		};
+
+		const update = (immediate = false) => {
+			// Stay hidden while the pointer is down so the toolbar never covers
+			// text mid-drag; it reappears on pointerup once the selection is set.
+			if (pointerDown || !shouldShowToolbar(editor)) {
+				hide();
+				return;
+			}
+			if (openRef.current) {
+				setRevision((value) => value + 1);
+				positionToolbar();
+				return;
+			}
+			if (immediate) {
+				show();
+				return;
+			}
+			clearShowTimer();
+			showTimer = window.setTimeout(() => {
+				showTimer = null;
+				update(true);
+			}, KEYBOARD_SHOW_DELAY_MS);
+		};
+
+		const handleUpdate = () => update();
+		const handlePointerDown = () => {
+			pointerDown = true;
+			hide();
+		};
+		const handlePointerUp = () => {
+			if (!pointerDown) return;
+			pointerDown = false;
+			update(true);
 		};
 
 		update();
 		const viewport = viewportRef.current;
-		editor.on("selectionUpdate", update);
-		editor.on("transaction", update);
-		editor.on("focus", update);
-		editor.on("blur", update);
-		viewport?.addEventListener("scroll", update, { passive: true });
-		window.addEventListener("resize", update);
+		const editorDom = editor.view.dom;
+		editor.on("selectionUpdate", handleUpdate);
+		editor.on("transaction", handleUpdate);
+		editor.on("focus", handleUpdate);
+		editor.on("blur", handleUpdate);
+		editorDom.addEventListener("pointerdown", handlePointerDown);
+		// The drag can end outside the editor, so listen on window.
+		window.addEventListener("pointerup", handlePointerUp);
+		viewport?.addEventListener("scroll", handleUpdate, { passive: true });
+		window.addEventListener("resize", handleUpdate);
 
 		return () => {
-			editor.off("selectionUpdate", update);
-			editor.off("transaction", update);
-			editor.off("focus", update);
-			editor.off("blur", update);
-			viewport?.removeEventListener("scroll", update);
-			window.removeEventListener("resize", update);
+			clearShowTimer();
+			editor.off("selectionUpdate", handleUpdate);
+			editor.off("transaction", handleUpdate);
+			editor.off("focus", handleUpdate);
+			editor.off("blur", handleUpdate);
+			editorDom.removeEventListener("pointerdown", handlePointerDown);
+			window.removeEventListener("pointerup", handlePointerUp);
+			viewport?.removeEventListener("scroll", handleUpdate);
+			window.removeEventListener("resize", handleUpdate);
 		};
 	}, [editor, viewportRef, toolbarEl]);
 
@@ -179,13 +296,24 @@ export function SelectionFormattingToolbar({
 			ref={setToolbarEl}
 			role="toolbar"
 			aria-label="Text formatting"
-			aria-hidden={!visible}
-			className="absolute z-[4] flex items-center gap-0.5 rounded-[var(--radius-popover)] border border-border bg-popover p-1 text-popover-foreground shadow-overlay"
-			style={{
-				insetInlineStart: `${position?.x ?? 0}px`,
-				insetBlockStart: `${position?.y ?? 0}px`,
-				visibility: visible && position ? "visible" : "hidden",
-				pointerEvents: visible ? "auto" : "none",
+			aria-hidden={!open}
+			data-open={open ? "" : undefined}
+			data-closed={!open && present ? "" : undefined}
+			// Same enter/exit treatment as the dropdown popups (see Sidebar's
+			// Menu.Popup / Select.Popup classes).
+			className="absolute z-[4] flex origin-(--transform-origin) items-center gap-0.5 rounded-[var(--radius-popover)] border border-border bg-popover p-1 text-popover-foreground shadow-overlay transition-[transform,opacity] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
+			style={
+				{
+					insetInlineStart: `${position?.x ?? 0}px`,
+					insetBlockStart: `${position?.y ?? 0}px`,
+					visibility: present && position ? "visible" : "hidden",
+					pointerEvents: open ? "auto" : "none",
+					"--transform-origin": transformOrigin,
+				} as CSSProperties
+			}
+			onAnimationEnd={(event) => {
+				if (event.target !== event.currentTarget) return;
+				if (!openRef.current) setPresent(false);
 			}}
 		>
 			{INLINE_ACTIONS.map((action) => (
@@ -205,7 +333,7 @@ export function SelectionFormattingToolbar({
 				variant="ghost"
 				size="icon-sm"
 				aria-label="More formatting"
-				title="More formatting"
+				title="More formatting (⌘/)"
 				className="text-muted-foreground"
 				onMouseDown={(event) => event.preventDefault()}
 				onClick={() =>
@@ -234,7 +362,7 @@ function ToolbarButton({
 			size="icon-sm"
 			aria-label={action.label}
 			aria-pressed={active}
-			title={action.label}
+			title={`${action.label} (${action.shortcut})`}
 			className={cn(
 				"text-muted-foreground",
 				active && "bg-muted text-foreground",

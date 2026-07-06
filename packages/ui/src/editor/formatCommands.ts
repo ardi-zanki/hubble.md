@@ -102,7 +102,56 @@ export function applyFormatCommand(editor: Editor, kind: FormatCommandKind) {
 			return;
 		case "link":
 			editor.commands.focus(undefined, { scrollIntoView: false });
+			// Selections touching a link remove it. Otherwise reuse the Cmd+K
+			// flow so the link popover opens instead of silently creating an
+			// empty link.
+			if (removeLinksInSelection(editor)) return;
 			editor.commands.toggleLinkAtSelection();
 			return;
 	}
+}
+
+/**
+ * Removes every link the current selection touches. Partial selections remove
+ * the whole link instead of splitting it, mirroring how `getActiveLinkRange`
+ * treats adjacent linked text as a single link.
+ */
+export function removeLinksInSelection(editor: Editor): boolean {
+	const { state } = editor;
+	const linkType = state.schema.marks.link;
+	if (!linkType) return false;
+
+	const { from, to } = state.selection;
+	const linkRanges: { from: number; to: number }[] = [];
+	state.doc.nodesBetween(from, to, (node, pos) => {
+		if (!node.isTextblock) return true;
+		// Collect runs of adjacent linked text so a link split across marks
+		// (e.g. a bold word inside a link) still counts as one link.
+		let runStart: number | null = null;
+		let runEnd = 0;
+		node.forEach((child, offset) => {
+			const childFrom = pos + 1 + offset;
+			if (!linkType.isInSet(child.marks)) {
+				if (runStart !== null) linkRanges.push({ from: runStart, to: runEnd });
+				runStart = null;
+				return;
+			}
+			if (runStart === null) runStart = childFrom;
+			runEnd = childFrom + child.nodeSize;
+		});
+		if (runStart !== null) linkRanges.push({ from: runStart, to: runEnd });
+		return false;
+	});
+
+	const touching = linkRanges.filter((range) =>
+		from === to
+			? range.from <= from && from <= range.to
+			: range.from < to && from < range.to,
+	);
+	if (touching.length === 0) return false;
+
+	const tr = state.tr;
+	for (const range of touching) tr.removeMark(range.from, range.to, linkType);
+	editor.view.dispatch(tr);
+	return true;
 }

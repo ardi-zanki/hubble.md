@@ -148,7 +148,7 @@ const FORMAT_COMMANDS: FormatCommand[] = [
 	{
 		kind: "link",
 		title: "Link",
-		description: "Add or edit link",
+		description: "Add or remove link",
 		aliases: ["url", "href", "wiki"],
 		icon: MingcuteLinkLine,
 		group: "Inline",
