@@ -52,6 +52,40 @@ describe("desktop savePathContent", () => {
 		vi.unstubAllGlobals();
 	});
 
+	it("hydrates the default chat command and persists edits", async () => {
+		const api = createDesktopApi();
+		const { chatCommandStore, setChatCommand } = await loadStoreActions(api);
+		const { STORAGE_KEY } = await import("./persistence");
+		const { DEFAULT_CHAT_COMMAND } = await import("./settings");
+
+		expect(chatCommandStore.get()).toBe(DEFAULT_CHAT_COMMAND);
+
+		setChatCommand("codex exec");
+
+		expect(chatCommandStore.get()).toBe("codex exec");
+		expect(localStorage.setItem).toHaveBeenLastCalledWith(
+			STORAGE_KEY,
+			expect.stringContaining('"chatCommand":"codex exec"'),
+		);
+	});
+
+	it("requests chat with the default command when the setting is blank", async () => {
+		const api = createDesktopApi();
+		const {
+			appStore,
+			requestChatAboutNote,
+			setChatCommand,
+			pendingTerminalCommandStore,
+		} = await loadStoreActions(api);
+		const { DEFAULT_CHAT_COMMAND } = await import("./settings");
+
+		setChatCommand("   ");
+		requestChatAboutNote();
+
+		expect(appStore.get().ui.isTerminalOpen).toBe(true);
+		expect(pendingTerminalCommandStore.get()).toBe(DEFAULT_CHAT_COMMAND);
+	});
+
 	it("preserves newer editor content when an older save finishes", async () => {
 		const api = createDesktopApi();
 		let finishWrite: () => void = () => {};

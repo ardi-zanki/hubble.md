@@ -13,9 +13,11 @@ onlyBuiltDependencies:
   - esbuild
   - msw
   - sharp
+  - node-pty
 
 allowBuilds:
   electron-winstaller: true
   esbuild: true
   msw: true
   sharp: true
+  node-pty: true

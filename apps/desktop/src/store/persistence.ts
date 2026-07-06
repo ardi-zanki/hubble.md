@@ -1,3 +1,4 @@
+import { DEFAULT_CHAT_COMMAND } from "./settings";
 import { emptyDoc, type SortMode } from "./state";
 
 type WorkspaceState = {
@@ -15,12 +16,19 @@ type DocumentState = ReturnType<typeof emptyDoc>;
 type UiState = {
 	sidebarOpen: boolean;
 	isSwitcherOpen: boolean;
+	isTerminalOpen: boolean;
+	pendingTerminalCommand: string | null;
+};
+
+type SettingsState = {
+	chatCommand: string;
 };
 
 export type DesktopState = {
 	workspace: WorkspaceState;
 	document: DocumentState;
 	ui: UiState;
+	settings: SettingsState;
 };
 
 type Persisted = {
@@ -31,7 +39,8 @@ type Persisted = {
 		sortMode?: SortMode;
 	};
 	document?: { lastOpenedPath?: string | null };
-	ui?: { sidebarOpen?: boolean };
+	ui?: { sidebarOpen?: boolean; isTerminalOpen?: boolean };
+	settings?: { chatCommand?: string };
 };
 
 export const STORAGE_KEY = "hubble-desktop-app";
@@ -72,7 +81,18 @@ export function getInitialState(): DesktopState {
 	return {
 		workspace: hydrateWorkspace(p?.workspace),
 		document: emptyDoc(p?.document?.lastOpenedPath ?? null),
-		ui: { sidebarOpen: p?.ui?.sidebarOpen ?? false, isSwitcherOpen: false },
+		ui: {
+			sidebarOpen: p?.ui?.sidebarOpen ?? false,
+			isSwitcherOpen: false,
+			isTerminalOpen: p?.ui?.isTerminalOpen ?? false,
+			pendingTerminalCommand: null,
+		},
+		settings: {
+			chatCommand:
+				typeof p?.settings?.chatCommand === "string"
+					? p.settings.chatCommand
+					: DEFAULT_CHAT_COMMAND,
+		},
 	};
 }
 
@@ -89,6 +109,10 @@ export function serialize(state: DesktopState): Persisted {
 		},
 		ui: {
 			sidebarOpen: state.ui.sidebarOpen,
+			isTerminalOpen: state.ui.isTerminalOpen,
+		},
+		settings: {
+			chatCommand: state.settings.chatCommand,
 		},
 	};
 }

@@ -105,11 +105,31 @@ const desktopApi = {
 		subscribe("desktop:menu-show-workspace-switcher", callback),
 	onMenuSyncWorkspace: (callback) =>
 		subscribe("desktop:menu-sync-workspace", callback),
+	onMenuToggleTerminal: (callback) =>
+		subscribe("desktop:menu-toggle-terminal", callback),
 	onWindowFocus: (callback) => subscribe("desktop:window-focus", callback),
 	onFullScreenChange: (callback) =>
 		subscribe("desktop:fullscreen-change", (isFullScreen: boolean) =>
 			callback(isFullScreen),
 		),
+	terminalStart: (cwd, options) =>
+		ipcRenderer.invoke("desktop:terminal-start", { cwd, ...options }),
+	terminalWrite: (sessionId, data) =>
+		ipcRenderer.invoke("desktop:terminal-write", { sessionId, data }),
+	terminalResize: (sessionId, cols, rows) =>
+		ipcRenderer.invoke("desktop:terminal-resize", { sessionId, cols, rows }),
+	terminalStop: (sessionId) =>
+		ipcRenderer.invoke("desktop:terminal-stop", { sessionId }),
+	onTerminalData: (sessionId, callback) => {
+		const unsubscribe = subscribe(
+			`desktop:terminal-data-${sessionId}`,
+			callback,
+		);
+		void ipcRenderer.invoke("desktop:terminal-subscribe", { sessionId });
+		return unsubscribe;
+	},
+	onTerminalExit: (sessionId, callback) =>
+		subscribe(`desktop:terminal-exit-${sessionId}`, callback),
 } satisfies DesktopApi;
 
 contextBridge.exposeInMainWorld("desktopApi", desktopApi);

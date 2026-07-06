@@ -148,3 +148,10 @@ export const recentWorkspacesStore = workspaceStore.select("recentWorkspaces");
 export const currentPathStore = viewerStore.select("currentPath");
 export const sidebarOpenStore = uiStore.select("sidebarOpen");
 export const switcherOpenStore = uiStore.select("isSwitcherOpen");
+export const terminalOpenStore = uiStore.select("isTerminalOpen");
+export const pendingTerminalCommandStore = uiStore.select(
+	"pendingTerminalCommand",
+);
+export const chatCommandStore = appStore
+	.select("settings")
+	.select("chatCommand");

@@ -3,15 +3,18 @@ import {
 	Button,
 	classifyHref,
 	EditorView,
+	Input,
 	type WikiTarget,
 } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
 import { keymatch } from "keymatch";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import MingcutePencilLine from "~icons/mingcute/pencil-line";
 import { HtmlAppEmptyState } from "./components/HtmlAppEmptyState";
-import { SettingsDialog } from "./components/SettingsDialog";
+import { SettingsDialog, SettingsSection } from "./components/SettingsDialog";
 import { Sidebar } from "./components/Sidebar";
+import { TerminalPanel } from "./components/TerminalPanel";
 import { Toolbar } from "./components/Toolbar";
 import {
 	SidebarUpdateCallout,
@@ -45,12 +48,16 @@ import {
 	refreshFiles,
 	refreshFilesDebounced,
 	reloadFromDiskConflict,
+	requestChatAboutNote,
 	savePathContent,
+	setChatCommand,
 	setSidebarOpen,
 	setWorkspaceSwitcherOpen,
+	toggleTerminal,
 	updateEditorContent,
 } from "./store/actions";
 import {
+	chatCommandStore,
 	sidebarOpenStore,
 	uiStore,
 	viewerStore,
@@ -217,6 +224,14 @@ function App() {
 				if (!path) return;
 				event.preventDefault();
 				await revealPath(path);
+			} else if (keymatch(event, "CmdOrCtrl+Shift+J")) {
+				if (
+					!viewerStore.get().currentPath ||
+					!workspaceStore.get().workspacePath
+				)
+					return;
+				event.preventDefault();
+				requestChatAboutNote();
 			} else if (keymatch(event, "CmdOrCtrl+Shift+E")) {
 				event.preventDefault();
 				const opening = !uiStore.get().sidebarOpen;
@@ -264,6 +279,7 @@ function App() {
 				setWorkspaceSwitcherOpen(true),
 			),
 			desktopApi.onMenuSyncWorkspace(() => void refreshFiles()),
+			desktopApi.onMenuToggleTerminal(() => toggleTerminal()),
 		];
 		return () => {
 			for (const dispose of disposers) dispose();
@@ -337,45 +353,52 @@ function App() {
 						) : undefined
 					}
 				/>
-				<section className="flex-1 overflow-hidden" aria-live="polite">
-					{state.status === "loading" && <p>Loading…</p>}
-					{state.status === "error" && (
-						<p>{state.error ?? "Failed to open file."}</p>
-					)}
-					{state.status !== "loading" &&
-						state.status !== "error" &&
-						!state.currentPath && (
-							<div className="flex h-full items-center justify-center p-6">
-								{hasWorkspace ? (
-									<Button onClick={() => void openFilePicker()}>
-										Open file
-									</Button>
-								) : (
-									<WelcomeScreen
-										onCreateFolder={() => void createWorkspaceWithSidebar()}
-										onOpenFolder={() => void openWorkspaceWithSidebar()}
+				<section
+					className="flex-1 flex flex-col overflow-hidden"
+					aria-live="polite"
+				>
+					<div className="flex-1 min-h-0 relative">
+						{state.status === "loading" && <p>Loading…</p>}
+						{state.status === "error" && (
+							<p>{state.error ?? "Failed to open file."}</p>
+						)}
+						{state.status !== "loading" &&
+							state.status !== "error" &&
+							!state.currentPath && (
+								<div className="flex h-full items-center justify-center p-6">
+									{hasWorkspace ? (
+										<Button onClick={() => void openFilePicker()}>
+											Open file
+										</Button>
+									) : (
+										<WelcomeScreen
+											onCreateFolder={() => void createWorkspaceWithSidebar()}
+											onOpenFolder={() => void openWorkspaceWithSidebar()}
+										/>
+									)}
+								</div>
+							)}
+						{state.status === "ready" && state.currentPath && (
+							<div className="flex h-full min-h-0 flex-col">
+								{state.externalChange.kind === "conflict" && (
+									<ExternalChangeBanner
+										onKeepMyEdits={() => void forceKeepLocalEdits()}
+										onReloadFromDisk={reloadFromDiskConflict}
 									/>
 								)}
+								<DocumentViewer
+									path={state.currentPath}
+									content={state.content}
+									onScrollContainerChange={setScrollContainerEl}
+								/>
 							</div>
 						)}
-					{state.status === "ready" && state.currentPath && (
-						<div className="flex h-full min-h-0 flex-col">
-							{state.externalChange.kind === "conflict" && (
-								<ExternalChangeBanner
-									onKeepMyEdits={() => void forceKeepLocalEdits()}
-									onReloadFromDisk={reloadFromDiskConflict}
-								/>
-							)}
-							<DocumentViewer
-								path={state.currentPath}
-								content={state.content}
-								onScrollContainerChange={setScrollContainerEl}
-							/>
-						</div>
-					)}
+					</div>
+					<TerminalPanel />
 				</section>
 			</div>
 			<SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+				<ChatAboutNoteSettingsSection />
 				{updateState ? (
 					<UpdatesSection
 						state={updateState}
@@ -384,6 +407,30 @@ function App() {
 				) : null}
 			</SettingsDialog>
 		</main>
+	);
+}
+
+function ChatAboutNoteSettingsSection() {
+	const [draft, setDraft] = useState(() => chatCommandStore.get());
+
+	return (
+		<SettingsSection
+			title="Chat about this note"
+			description={`This command runs in a new terminal when you pick "Chat about this note" from a note's ⋯ menu. The shell replaces $HUBBLE_NOTE_PATH with the current note's file path.`}
+		>
+			<div className="relative">
+				<Input
+					className="font-mono pe-8"
+					spellCheck={false}
+					value={draft}
+					onChange={(event) => {
+						setDraft(event.currentTarget.value);
+						setChatCommand(event.currentTarget.value);
+					}}
+				/>
+				<MingcutePencilLine className="pointer-events-none absolute end-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground/60" />
+			</div>
+		</SettingsSection>
 	);
 }
 
