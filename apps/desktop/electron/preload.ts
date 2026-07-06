@@ -30,6 +30,8 @@ const desktopApi = {
 		}),
 	readFileText: (path) =>
 		ipcRenderer.invoke("desktop:read-file-text", { path }),
+	detectHubbleSkills: (workspacePath) =>
+		ipcRenderer.invoke("desktop:detect-hubble-skills", { workspacePath }),
 	writeFileText: (path, content) =>
 		ipcRenderer.invoke("desktop:write-file-text", { path, content }),
 	createFolder: (path) => ipcRenderer.invoke("desktop:create-folder", { path }),
@@ -83,6 +85,8 @@ const desktopApi = {
 		subscribe("desktop:update-state", callback),
 	onMenuCreateMarkdownFile: (callback) =>
 		subscribe("desktop:menu-create-markdown-file", callback),
+	onMenuCreateHtmlFile: (callback) =>
+		subscribe("desktop:menu-create-html-file", callback),
 	onMenuOpenFile: (callback) => subscribe("desktop:menu-open-file", callback),
 	onMenuOpenFolder: (callback) =>
 		subscribe("desktop:menu-open-folder", callback),

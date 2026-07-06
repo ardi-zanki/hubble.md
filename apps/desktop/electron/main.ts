@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import fsSync from "node:fs";
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import hubbleRuntime from "@hubble.md/runtime/global.js?raw";
 import htmlAppTheme from "@hubble.md/runtime/html-app-theme.css?raw";
@@ -495,6 +496,41 @@ async function pathExists(input: string): Promise<boolean> {
 	}
 }
 
+// HUBBLE_SKILL_DIR_NAMES tracks the skill folders in
+// github.com/bholmesdev/hubble-skills and must be updated if those skills are
+// renamed; the /hubble/ substring match is a resilient fallback.
+const HUBBLE_SKILL_DIR_NAMES = ["create-html-app", "embed-html-app"];
+
+async function skillsDirHasHubble(dirPath: string): Promise<boolean> {
+	try {
+		const entries = await fs.readdir(dirPath);
+		return entries.some((name) => {
+			const lower = name.toLocaleLowerCase();
+			return HUBBLE_SKILL_DIR_NAMES.includes(lower) || lower.includes("hubble");
+		});
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Detects Hubble skills across the workspace and the user's global agent
+ * folders. Runs in the main process because the global paths live outside the
+ * renderer's granted file scope. Fast and ENOENT-quiet: every location is probed
+ * in parallel and missing paths resolve to false.
+ */
+async function detectHubbleSkills(workspacePath: unknown): Promise<boolean> {
+	const workspace = typeof workspacePath === "string" ? workspacePath : null;
+	const roots = workspace ? [os.homedir(), workspace] : [os.homedir()];
+	const skillDirs = roots.flatMap((root) => [
+		path.join(root, ".claude", "skills"),
+		path.join(root, ".agents", "skills"),
+	]);
+
+	const results = await Promise.all(skillDirs.map(skillsDirHasHubble));
+	return results.some(Boolean);
+}
+
 function firstExistingFileArg(args: string[]): string | null {
 	for (const arg of args) {
 		if (arg.startsWith("-")) continue;
@@ -600,6 +636,11 @@ function buildMenu() {
 					label: "New File",
 					accelerator: "CmdOrCtrl+N",
 					click: () => sendToRenderer("desktop:menu-create-markdown-file"),
+				},
+				{
+					id: "new-html-file",
+					label: "New HTML App",
+					click: () => sendToRenderer("desktop:menu-create-html-file"),
 				},
 				{
 					id: "new-workspace",
@@ -1111,6 +1152,11 @@ function registerIpc() {
 
 	ipcMain.handle("desktop:path-exists", async (_event, { path: filePath }) =>
 		pathExists(assertGranted(filePath)),
+	);
+
+	ipcMain.handle(
+		"desktop:detect-hubble-skills",
+		async (_event, { workspacePath }) => detectHubbleSkills(workspacePath),
 	);
 
 	ipcMain.handle(
