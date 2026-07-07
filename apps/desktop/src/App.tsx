@@ -61,6 +61,7 @@ import {
 import {
 	chatCommandStore,
 	sidebarOpenStore,
+	terminalPositionStore,
 	uiStore,
 	type ViewMode,
 	viewerStore,
@@ -99,6 +100,7 @@ function App() {
 	const state = useStoreValue(viewerStore);
 	const workspacePath = useStoreValue(workspacePathStore);
 	const sidebarOpen = useStoreValue(sidebarOpenStore);
+	const terminalPosition = useStoreValue(terminalPositionStore);
 	const hasWorkspace = workspacePath !== null;
 	const [scrollContainerEl, setScrollContainerEl] =
 		useState<HTMLDivElement | null>(null);
@@ -377,10 +379,14 @@ function App() {
 					}
 				/>
 				<section
-					className="flex-1 flex flex-col overflow-hidden"
+					className={
+						terminalPosition === "right"
+							? "flex-1 flex flex-row overflow-hidden"
+							: "flex-1 flex flex-col overflow-hidden"
+					}
 					aria-live="polite"
 				>
-					<div className="flex-1 min-h-0 relative">
+					<div className="flex-1 min-h-0 min-w-0 relative">
 						{state.status === "loading" && <p>Loading…</p>}
 						{state.status === "error" && (
 							<p>{state.error ?? "Failed to open file."}</p>

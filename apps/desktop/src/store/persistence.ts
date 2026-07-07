@@ -13,10 +13,13 @@ type WorkspaceState = {
 
 type DocumentState = ReturnType<typeof emptyDoc>;
 
+export type TerminalPosition = "bottom" | "right";
+
 type UiState = {
 	sidebarOpen: boolean;
 	isSwitcherOpen: boolean;
 	isTerminalOpen: boolean;
+	terminalPosition: TerminalPosition;
 	pendingTerminalCommand: string | null;
 };
 
@@ -39,7 +42,11 @@ type Persisted = {
 		sortMode?: SortMode;
 	};
 	document?: { lastOpenedPath?: string | null };
-	ui?: { sidebarOpen?: boolean; isTerminalOpen?: boolean };
+	ui?: {
+		sidebarOpen?: boolean;
+		isTerminalOpen?: boolean;
+		terminalPosition?: TerminalPosition;
+	};
 	settings?: { chatCommand?: string };
 };
 
@@ -85,6 +92,8 @@ export function getInitialState(): DesktopState {
 			sidebarOpen: p?.ui?.sidebarOpen ?? false,
 			isSwitcherOpen: false,
 			isTerminalOpen: p?.ui?.isTerminalOpen ?? false,
+			terminalPosition:
+				p?.ui?.terminalPosition === "right" ? "right" : "bottom",
 			pendingTerminalCommand: null,
 		},
 		settings: {
@@ -110,6 +119,7 @@ export function serialize(state: DesktopState): Persisted {
 		ui: {
 			sidebarOpen: state.ui.sidebarOpen,
 			isTerminalOpen: state.ui.isTerminalOpen,
+			terminalPosition: state.ui.terminalPosition,
 		},
 		settings: {
 			chatCommand: state.settings.chatCommand,

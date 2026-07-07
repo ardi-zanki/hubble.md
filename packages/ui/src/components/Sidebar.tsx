@@ -1178,7 +1178,12 @@ export function Sidebar({
 							)}
 						</Select.Trigger>
 						<Select.Portal>
-							<Select.Positioner align="end" side="bottom" sideOffset={4}>
+							<Select.Positioner
+								align="end"
+								side="bottom"
+								sideOffset={4}
+								className="isolate z-50"
+							>
 								<Select.Popup className="z-50 w-36 origin-(--transform-origin) rounded-[var(--radius-popover)] border border-border bg-popover p-1 text-[11px] text-popover-foreground shadow-overlay outline-hidden transition-[transform,opacity] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
 									<p className="px-2 py-1 text-[10px] font-medium text-muted-foreground">
 										Sort by
@@ -1667,7 +1672,12 @@ function NewFileMenu({
 				<MingcuteEditLine className="size-3.5" />
 			</Menu.Trigger>
 			<Menu.Portal>
-				<Menu.Positioner align="end" side="bottom" sideOffset={4}>
+				<Menu.Positioner
+					align="end"
+					side="bottom"
+					sideOffset={4}
+					className="isolate z-50"
+				>
 					<Menu.Popup className="z-50 w-44 origin-(--transform-origin) rounded-[var(--radius-popover)] border border-border bg-popover p-1 text-[11px] text-popover-foreground shadow-overlay outline-hidden transition-[transform,opacity] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
 						<ActionItem
 							icon={<MingcuteEditLine />}
@@ -1882,7 +1892,12 @@ function ActionsMenu({
 				<MingcuteMore2Line className="size-3.5" />
 			</Menu.Trigger>
 			<Menu.Portal>
-				<Menu.Positioner align="end" side="bottom" sideOffset={4}>
+				<Menu.Positioner
+					align="end"
+					side="bottom"
+					sideOffset={4}
+					className="isolate z-50"
+				>
 					<Menu.Popup className="z-50 w-44 origin-(--transform-origin) rounded-[var(--radius-popover)] border border-border bg-popover p-1 text-[11px] text-popover-foreground shadow-overlay outline-hidden transition-[transform,opacity] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
 						{children}
 					</Menu.Popup>
