@@ -9,12 +9,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 
-- Edit a note's raw Markdown with source mode: toggle from the note's ⋯ menu or press Cmd+Option+U. [#144](https://github.com/bholmesdev/hubble.md/pull/144)
-- Dock the terminal panel to the right side of the window: right click the terminal tab bar and pick a position. [#148](https://github.com/bholmesdev/hubble.md/pull/148)
-
 ### Changed
 
 ### Fixed
+
+## [0.1.18] - 2026-07-07
+
+### Added
+
+- Edit a note's raw Markdown with source mode: toggle from the note's ⋯ menu or press Cmd+Option+U. [#144](https://github.com/bholmesdev/hubble.md/pull/144)
+- Dock the terminal panel to the right side of the window: right click the terminal tab bar and pick a position. [#148](https://github.com/bholmesdev/hubble.md/pull/148)
 
 ## [0.1.17] - 2026-07-06
 
