@@ -1,24 +1,31 @@
+import { ContextMenu } from "@base-ui/react/context-menu";
 import { useResizeSeparator } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
-import { useEffect, useReducer, useRef, useState } from "react";
+import { type ReactNode, useEffect, useReducer, useRef, useState } from "react";
 import { desktopApi } from "../desktopApi";
 import { cn } from "../lib/utils";
 import {
 	clearPendingTerminalCommand,
 	setTerminalOpen,
+	setTerminalPosition,
 	toggleTerminal,
 } from "../store/actions";
+import type { TerminalPosition } from "../store/persistence";
 import {
 	pendingTerminalCommandStore,
 	terminalOpenStore,
+	terminalPositionStore,
 	viewerStore,
 	workspacePathStore,
 } from "../store/state";
 import "@xterm/xterm/css/xterm.css";
 import MingcuteAddLine from "~icons/mingcute/add-line";
+import MingcuteCheckLine from "~icons/mingcute/check-line";
 import MingcuteCloseLine from "~icons/mingcute/close-line";
+import MingcuteLayoutBottomLine from "~icons/mingcute/layout-bottom-line";
+import MingcuteLayoutRightLine from "~icons/mingcute/layout-right-line";
 
 type Session = {
 	id: string;
@@ -43,11 +50,19 @@ const EMPTY_TERMINAL_STATE: TerminalState = {
 };
 
 const MIN_PANEL_HEIGHT = 100;
+const MIN_PANEL_WIDTH = 240;
 
 function clampPanelHeight(height: number) {
 	return Math.max(
 		MIN_PANEL_HEIGHT,
 		Math.min(window.innerHeight - MIN_PANEL_HEIGHT, height),
+	);
+}
+
+function clampPanelWidth(width: number) {
+	return Math.max(
+		MIN_PANEL_WIDTH,
+		Math.min(window.innerWidth - MIN_PANEL_WIDTH, width),
 	);
 }
 
@@ -168,7 +183,10 @@ export function TerminalPanel() {
 		terminalStateReducer,
 		EMPTY_TERMINAL_STATE,
 	);
+	const position = useStoreValue(terminalPositionStore);
+	const isRight = position === "right";
 	const [height, setHeight] = useState(256);
+	const [width, setWidth] = useState(420);
 	const [renamingSessionId, setRenamingSessionId] = useState<string | null>(
 		null,
 	);
@@ -180,13 +198,22 @@ export function TerminalPanel() {
 	const previousWorkspacePathRef = useRef<string | null | undefined>(undefined);
 
 	const { isResizing, separatorProps } = useResizeSeparator({
-		axis: "row",
+		axis: isRight ? "col" : "row",
 		label: "Resize terminal panel",
-		value: height,
-		min: MIN_PANEL_HEIGHT,
-		max: () => window.innerHeight - MIN_PANEL_HEIGHT,
-		onChange: (nextHeight) => setHeight(clampPanelHeight(nextHeight)),
-		getPointerValue: ({ event }) => window.innerHeight - event.clientY,
+		value: isRight ? width : height,
+		min: isRight ? MIN_PANEL_WIDTH : MIN_PANEL_HEIGHT,
+		max: () =>
+			isRight
+				? window.innerWidth - MIN_PANEL_WIDTH
+				: window.innerHeight - MIN_PANEL_HEIGHT,
+		onChange: (next) =>
+			isRight
+				? setWidth(clampPanelWidth(next))
+				: setHeight(clampPanelHeight(next)),
+		getPointerValue: ({ event }) =>
+			isRight
+				? window.innerWidth - event.clientX
+				: window.innerHeight - event.clientY,
 	});
 
 	useEffect(() => {
@@ -317,26 +344,39 @@ export function TerminalPanel() {
 
 	return (
 		<div
-			style={{ height: isOpen ? height : undefined }}
+			style={
+				isRight
+					? { width: isOpen ? width : undefined }
+					: { height: isOpen ? height : undefined }
+			}
 			className={cn(
-				"flex flex-col border-t border-border bg-background z-20 relative",
+				"flex flex-col border-border bg-background z-20 relative",
+				isRight ? "border-l" : "border-t",
 				isResizing && "select-none",
 				!isOpen && "hidden",
 			)}
 		>
 			<div
-				className="group absolute -top-[5px] left-0 right-0 h-2.5 cursor-row-resize outline-none z-30"
+				className={cn(
+					"group absolute outline-none z-30",
+					isRight
+						? "-left-[5px] top-0 bottom-0 w-2.5 cursor-col-resize"
+						: "-top-[5px] left-0 right-0 h-2.5 cursor-row-resize",
+				)}
 				{...separatorProps}
 			>
 				<span
 					className={cn(
-						"absolute left-0 right-0 top-1/2 h-px bg-transparent group-focus:bg-primary",
+						"absolute bg-transparent group-focus:bg-primary",
+						isRight
+							? "top-0 bottom-0 left-1/2 w-px"
+							: "left-0 right-0 top-1/2 h-px",
 						isResizing && "bg-primary",
 					)}
 				/>
 			</div>
 			{/* Terminal Tabs */}
-			<div className="flex items-center h-9 px-2 border-b border-border bg-muted/30 select-none">
+			<TerminalRibbonMenu position={position}>
 				<div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
 					{sessions.map((session) => (
 						<div
@@ -418,7 +458,7 @@ export function TerminalPanel() {
 						<MingcuteCloseLine className="w-4 h-4" />
 					</button>
 				</div>
-			</div>
+			</TerminalRibbonMenu>
 
 			{/* Terminal Viewports */}
 			<div className="flex-1 relative overflow-hidden bg-background p-2 pb-0">
@@ -451,6 +491,67 @@ export function TerminalPanel() {
 				)}
 			</div>
 		</div>
+	);
+}
+
+function TerminalRibbonMenu({
+	position,
+	children,
+}: {
+	position: TerminalPosition;
+	children: ReactNode;
+}) {
+	return (
+		<ContextMenu.Root>
+			<ContextMenu.Trigger className="flex items-center h-9 px-2 border-b border-border bg-muted/30 select-none">
+				{children}
+			</ContextMenu.Trigger>
+			<ContextMenu.Portal>
+				<ContextMenu.Positioner className="isolate z-50 outline-none">
+					<ContextMenu.Popup className="z-50 w-44 origin-(--transform-origin) rounded-sm border border-border bg-popover p-1 text-[11px] text-popover-foreground outline-hidden transition-[transform,opacity] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+						<TerminalPositionItem
+							position="bottom"
+							activePosition={position}
+							icon={<MingcuteLayoutBottomLine className="size-3 shrink-0" />}
+						>
+							Dock to bottom
+						</TerminalPositionItem>
+						<TerminalPositionItem
+							position="right"
+							activePosition={position}
+							icon={<MingcuteLayoutRightLine className="size-3 shrink-0" />}
+						>
+							Dock to right
+						</TerminalPositionItem>
+					</ContextMenu.Popup>
+				</ContextMenu.Positioner>
+			</ContextMenu.Portal>
+		</ContextMenu.Root>
+	);
+}
+
+function TerminalPositionItem({
+	position,
+	activePosition,
+	icon,
+	children,
+}: {
+	position: TerminalPosition;
+	activePosition: TerminalPosition;
+	icon: ReactNode;
+	children: ReactNode;
+}) {
+	return (
+		<ContextMenu.Item
+			className="flex w-full cursor-pointer items-center gap-2 rounded-sm [padding-block:0.375rem] [padding-inline:0.5rem] text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent"
+			onClick={() => setTerminalPosition(position)}
+		>
+			{icon}
+			<span className="min-w-0 flex-1">{children}</span>
+			{activePosition === position && (
+				<MingcuteCheckLine className="size-3 shrink-0" />
+			)}
+		</ContextMenu.Item>
 	);
 }
 

@@ -13,3 +13,11 @@ description: Use when testing the Hubble Electron desktop app, especially when i
 4. Prefer the Chrome DevTools Protocol endpoint for interaction-heavy verification. It can inspect DOM state, evaluate JavaScript, click controls, inspect iframe contents, and capture screenshots from the real Electron renderer. This is useful when Computer Use has limitations interacting with the dev app window.
 5. For CDP setup, fetch `http://127.0.0.1:9222/json/list`, connect to the page `webSocketDebuggerUrl`, and drive the renderer with DevTools Protocol commands.
 6. When you're done, stop the dev server and confirm no `Hubble Dev` process remains.
+
+Gotchas:
+
+- Build `packages/ui` and `packages/editor` first; the desktop app imports their dist output.
+- Screenshots are DPR 2: CSS px times 2.
+- Right clicks need real `Input.dispatchMouseEvent` events; synthetic `contextmenu` events don't open base-ui context menus.
+- Popup open in the DOM but missing from a screenshot? Check stacking with `document.elementFromPoint`.
+- xterm refits through a debounced ResizeObserver and can lag layout changes by a few seconds; re-measure before calling it a bug.

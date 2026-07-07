@@ -23,6 +23,7 @@ import {
 	pathAfterMove,
 	rewriteMovedLinks,
 } from "../lib/markdownLinkRewrite";
+import type { TerminalPosition } from "./persistence";
 import { DEFAULT_CHAT_COMMAND } from "./settings";
 import {
 	applyFileAction,
@@ -374,6 +375,10 @@ export function setTerminalOpen(isOpen: boolean) {
 
 export function toggleTerminal() {
 	uiStore.select("isTerminalOpen").set((open) => !open);
+}
+
+export function setTerminalPosition(position: TerminalPosition) {
+	uiStore.select("terminalPosition").set(position);
 }
 
 export function setChatCommand(command: string) {

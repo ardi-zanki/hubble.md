@@ -153,6 +153,7 @@ export const currentPathStore = viewerStore.select("currentPath");
 export const sidebarOpenStore = uiStore.select("sidebarOpen");
 export const switcherOpenStore = uiStore.select("isSwitcherOpen");
 export const terminalOpenStore = uiStore.select("isTerminalOpen");
+export const terminalPositionStore = uiStore.select("terminalPosition");
 export const pendingTerminalCommandStore = uiStore.select(
 	"pendingTerminalCommand",
 );

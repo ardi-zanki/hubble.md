@@ -128,7 +128,12 @@ function NoteActionsMenu({
 				<MingcuteMore2Line className="size-4" />
 			</Menu.Trigger>
 			<Menu.Portal>
-				<Menu.Positioner align="end" side="bottom" sideOffset={4}>
+				<Menu.Positioner
+					align="end"
+					side="bottom"
+					sideOffset={4}
+					className="isolate z-50"
+				>
 					<Menu.Popup className="z-50 w-52 origin-(--transform-origin) rounded-sm border border-border bg-popover p-1 text-[11px] text-popover-foreground outline-hidden transition-[transform,opacity] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
 						{canChatAboutNote && (
 							<Menu.Item

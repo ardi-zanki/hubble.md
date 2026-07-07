@@ -60,7 +60,12 @@ export function WorkspaceSwitcherMenu({
 				<MingcuteSelectorVerticalLine className="size-4 shrink-0 text-muted-foreground" />
 			</Menu.Trigger>
 			<Menu.Portal>
-				<Menu.Positioner align="start" side="bottom" sideOffset={4}>
+				<Menu.Positioner
+					align="start"
+					side="bottom"
+					sideOffset={4}
+					className="isolate z-50"
+				>
 					<Menu.Popup className="z-50 w-56 origin-(--transform-origin) rounded-[var(--radius-popover)] border border-border bg-popover p-1 text-[11px] text-popover-foreground shadow-overlay outline-hidden transition-[transform,opacity] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
 						{children}
 					</Menu.Popup>
