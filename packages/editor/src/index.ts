@@ -50,6 +50,10 @@ export {
 	selectionToMarkdown,
 	tiptapDocToMarkdown,
 } from "./prosemirrorToMarkdown";
+export {
+	createRichTextClipboardSerializer,
+	RichTextClipboardExtension,
+} from "./RichTextClipboardExtension";
 export { StoredMarksDecorationExtension } from "./StoredMarksDecorationExtension";
 export { StrikethroughShortcutExtension } from "./StrikethroughShortcutExtension";
 export {

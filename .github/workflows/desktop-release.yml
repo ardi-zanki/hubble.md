@@ -6,8 +6,50 @@ on:
       - "desktop-v*"
 
 jobs:
-  release:
+  prepare-release:
+    name: Prepare GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify tag matches desktop version
+        run: |
+          VERSION="$(node -p "require('./apps/desktop/package.json').version")"
+          TAG="${GITHUB_REF_NAME#desktop-v}"
+          if [ "$VERSION" != "$TAG" ]; then
+            echo "Tag desktop-v$TAG does not match apps/desktop package version $VERSION"
+            exit 1
+          fi
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#desktop-v}"
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { flag=1; next }
+            /^## / && flag { flag=0 }
+            flag { print }
+          ' CHANGELOG.md | sed -e '/./,$!d' > notes.md
+
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            if [ -s notes.md ]; then
+              gh release edit "$GITHUB_REF_NAME" --notes-file notes.md --draft=false --latest
+            else
+              gh release edit "$GITHUB_REF_NAME" --draft=false --latest
+            fi
+          elif [ -s notes.md ]; then
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file notes.md --latest
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --generate-notes --latest
+          fi
+  release-macos:
     name: Build and publish desktop app (macOS)
+    needs: prepare-release
     runs-on: macos-latest
     permissions:
       contents: write
@@ -57,25 +99,9 @@ jobs:
           fi
           pnpm --filter @hubble.md/desktop exec electron-builder --mac --publish always
 
-      - name: Attach changelog as release notes
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          VERSION="${GITHUB_REF_NAME#desktop-v}"
-          awk -v ver="$VERSION" '
-            $0 ~ "^## \\[" ver "\\]" { flag=1; next }
-            /^## / && flag { flag=0 }
-            flag { print }
-          ' CHANGELOG.md | sed -e '/./,$!d' > notes.md
-          if [ -s notes.md ]; then
-            gh release edit "$GITHUB_REF_NAME" --notes-file notes.md
-          else
-            echo "No CHANGELOG section for $VERSION; leaving release notes as-is."
-          fi
-          gh release edit "$GITHUB_REF_NAME" --draft=false --latest
-
   release-linux:
     name: Build and publish desktop app (Linux ${{ matrix.arch }})
+    needs: prepare-release
     runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
@@ -126,6 +152,7 @@ jobs:
 
   release-windows:
     name: Build and publish desktop app (Windows ${{ matrix.arch }})
+    needs: prepare-release
     runs-on: windows-latest
     strategy:
       fail-fast: false

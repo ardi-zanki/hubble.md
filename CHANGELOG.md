@@ -9,13 +9,20 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 
-- Edit a note's raw Markdown with source mode: toggle from the note's ⋯ menu or press Cmd+Option+U. [#144](https://github.com/bholmesdev/hubble.md/pull/144)
-- Dock the terminal panel to the right side of the window: right click the terminal tab bar and pick a position. [#148](https://github.com/bholmesdev/hubble.md/pull/148)
-- Dark mode: the desktop app, editor (including code-block syntax highlighting), and embedded HTML apps now follow your system appearance. [#110](https://github.com/bholmesdev/hubble.md/issues/110)
+- Dark mode: the desktop app, editor (including code-block syntax highlighting), and embedded HTML apps now follow your system appearance. Thanks [@saucy-tech](https://github.com/saucy-tech)! [#110](https://github.com/bholmesdev/hubble.md/issues/110)
 
 ### Changed
 
 ### Fixed
+
+- Copying linked rich text now preserves hyperlinks when pasted into other rich text editors. Thanks [@snvtac](https://github.com/snvtac)! [#149](https://github.com/bholmesdev/hubble.md/issues/149)
+
+## [0.1.18] - 2026-07-07
+
+### Added
+
+- Edit a note's raw Markdown with source mode: toggle from the note's ⋯ menu or press Cmd+Option+U. [#144](https://github.com/bholmesdev/hubble.md/pull/144)
+- Dock the terminal panel to the right side of the window: right click the terminal tab bar and pick a position. [#148](https://github.com/bholmesdev/hubble.md/pull/148)
 
 ## [0.1.17] - 2026-07-06
 
