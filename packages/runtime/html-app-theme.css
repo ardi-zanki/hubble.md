@@ -24,8 +24,6 @@
 	--radius: 0.625rem;
 }
 
-/* Dark mode. The sandboxed iframe inherits the host's resolved color scheme, so
-   prefers-color-scheme works without host-to-iframe messaging. Mirrors `.dark`. */
 @media (prefers-color-scheme: dark) {
 	:root {
 		--background: oklch(0.2 0.004 60);

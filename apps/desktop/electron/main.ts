@@ -94,9 +94,7 @@ nativeTheme.themeSource = "system";
 
 // Windows/Linux draw the min/max/close buttons as a native overlay whose colors
 // are static unless we update them. Mirror the app palette so the button strip
-// follows the OS appearance instead of staying light in dark mode. Hex values
-// are the resolved sRGB of the `--background`/`--muted-foreground` tokens in
-// `index.css` (light) and its `.dark` block (dark).
+// follows the OS appearance instead of staying light in dark mode.
 function titleBarOverlayColors() {
 	return nativeTheme.shouldUseDarkColors
 		? { color: "#181715", symbolColor: "#a6a5a0" }

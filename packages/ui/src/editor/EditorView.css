@@ -471,10 +471,7 @@
 
 /*
  * Dark-mode syntax palette (Atom One Dark), paired with the Xcode-style light
- * theme above. The light rules' hardcoded hex would be unreadable on a dark
- * surface, so each selector group is re-colored when a `.dark` ancestor is
- * present (the class-based dark variant). The weight/style rules above are
- * color-agnostic and need no override.
+ * theme above.
  */
 .dark [data-hubble-editor] .ProseMirror pre code {
 	color: #abb2bf;
