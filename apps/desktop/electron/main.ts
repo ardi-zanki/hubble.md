@@ -134,6 +134,8 @@ let menuState: MenuState = {
 	hasWorkspace: false,
 	hasMarkdownNoteOpen: false,
 	isSourceMode: false,
+	canGoBack: false,
+	canGoForward: false,
 };
 let updateState: DesktopUpdateState = {
 	isSupported: supportsAutoUpdates,
@@ -806,6 +808,21 @@ function buildMenu() {
 		{
 			label: "View",
 			submenu: [
+				{
+					id: "go-back",
+					label: "Go Back",
+					accelerator: "CmdOrCtrl+[",
+					enabled: menuState.canGoBack,
+					click: () => sendToRenderer("desktop:menu-go-back"),
+				},
+				{
+					id: "go-forward",
+					label: "Go Forward",
+					accelerator: "CmdOrCtrl+]",
+					enabled: menuState.canGoForward,
+					click: () => sendToRenderer("desktop:menu-go-forward"),
+				},
+				{ type: "separator" },
 				{
 					id: "zoom-in",
 					label: "Zoom In",
@@ -1577,6 +1594,8 @@ function registerIpc() {
 			hasWorkspace: state.hasWorkspace === true,
 			hasMarkdownNoteOpen: state.hasMarkdownNoteOpen === true,
 			isSourceMode: state.isSourceMode === true,
+			canGoBack: state.canGoBack === true,
+			canGoForward: state.canGoForward === true,
 		};
 		buildMenu();
 	});

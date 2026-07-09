@@ -38,6 +38,17 @@ const NO_CONFLICT: ExternalChange = { kind: "none" };
 
 export const MAX_RECENT = 10;
 export const LOADING_DELAY_MS = 150;
+export const MAX_NAVIGATION_HISTORY = 50;
+
+export type NavigationHistoryStack = {
+	entries: string[];
+	index: number;
+};
+
+export type NavigationHistoryState = {
+	byWorkspace: Record<string, NavigationHistoryStack>;
+	isNavigating: boolean;
+};
 
 export const emptyDoc = (
 	lastOpenedPath: string | null = null,
@@ -141,6 +152,11 @@ export function withOpenedDoc(
 
 export const appStore = store<DesktopState>(getInitialState(), {
 	middleware: [localStoragePersist(STORAGE_KEY, serialize)],
+});
+
+export const navigationHistoryStore = store<NavigationHistoryState>({
+	byWorkspace: {},
+	isNavigating: false,
 });
 
 export const workspaceStore = appStore.select("workspace");

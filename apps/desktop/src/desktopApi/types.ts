@@ -42,6 +42,8 @@ export type MenuState = {
 	hasWorkspace: boolean;
 	hasMarkdownNoteOpen: boolean;
 	isSourceMode: boolean;
+	canGoBack: boolean;
+	canGoForward: boolean;
 };
 
 export type DesktopUpdateStatus =
@@ -136,6 +138,8 @@ export type DesktopApi = {
 	onMenuShowWorkspaceSwitcher(callback: () => void): Unsubscribe;
 	onMenuSyncWorkspace(callback: () => void): Unsubscribe;
 	onMenuToggleTerminal(callback: () => void): Unsubscribe;
+	onMenuGoBack(callback: () => void): Unsubscribe;
+	onMenuGoForward(callback: () => void): Unsubscribe;
 	onMenuToggleSourceMode(callback: () => void): Unsubscribe;
 	onWindowFocus(callback: () => void): Unsubscribe;
 	onFullScreenChange(callback: (isFullScreen: boolean) => void): Unsubscribe;

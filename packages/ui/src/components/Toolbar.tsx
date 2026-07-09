@@ -20,14 +20,27 @@ const ACTIONS_BASIS = "114px";
 const NO_DRAG_STYLE = {
 	WebkitAppRegion: "no-drag",
 } as CSSProperties;
-
-function ToolbarActions({ children }: { children?: React.ReactNode }) {
+function ToolbarActions({
+	align = "start",
+	children,
+	sidebarOpen = false,
+}: {
+	align?: "start" | "end";
+	children?: React.ReactNode;
+	sidebarOpen?: boolean;
+}) {
+	const basis = sidebarOpen
+		? `calc(var(--sidebar-width, ${ACTIONS_BASIS}) - 1px)`
+		: ACTIONS_BASIS;
 	return (
-		<div
-			className="px-2"
-			style={{ flex: `0 100 ${ACTIONS_BASIS}`, ...NO_DRAG_STYLE }}
-		>
-			{children}
+		<div className="px-2" style={{ flex: `0 100 ${basis}`, ...NO_DRAG_STYLE }}>
+			<div
+				className={`flex items-center gap-1 ${
+					align === "end" ? "justify-end" : ""
+				}`}
+			>
+				{children}
+			</div>
 		</div>
 	);
 }
@@ -108,10 +121,15 @@ export function Toolbar({
 			{...rootProps}
 			className={`flex h-9 items-center ${borderClass} ${rootProps?.className ?? ""}`}
 		>
-			<ToolbarActions>
+			<ToolbarActions
+				align={sidebarOpen ? "end" : "start"}
+				sidebarOpen={sidebarOpen}
+			>
 				<div
 					className="flex items-center gap-1"
-					style={{ paddingInlineStart: platformInset ? START_INSET : 0 }}
+					style={{
+						paddingInlineStart: platformInset && !sidebarOpen ? START_INSET : 0,
+					}}
 				>
 					{onToggleSidebar && (
 						<Button

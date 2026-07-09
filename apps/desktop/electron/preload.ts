@@ -109,6 +109,8 @@ const desktopApi = {
 		subscribe("desktop:menu-sync-workspace", callback),
 	onMenuToggleTerminal: (callback) =>
 		subscribe("desktop:menu-toggle-terminal", callback),
+	onMenuGoBack: (callback) => subscribe("desktop:menu-go-back", callback),
+	onMenuGoForward: (callback) => subscribe("desktop:menu-go-forward", callback),
 	onMenuToggleSourceMode: (callback) =>
 		subscribe("desktop:menu-toggle-source-mode", callback),
 	onWindowFocus: (callback) => subscribe("desktop:window-focus", callback),

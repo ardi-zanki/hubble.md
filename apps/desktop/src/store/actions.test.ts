@@ -986,6 +986,126 @@ describe("desktop loadPath", () => {
 		vi.unstubAllGlobals();
 	});
 
+	it("tracks back and forward history through successful opens", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		api.readFileText.mockImplementation(
+			async (path: string) => `content:${path}`,
+		);
+		const {
+			canGoBack,
+			canGoForward,
+			goBack,
+			goForward,
+			loadPath,
+			viewerStore,
+		} = await loadStoreActions(api);
+
+		await loadPath("/workspace/a.md");
+		await loadPath("/workspace/b.md");
+		await loadPath("/workspace/c.md");
+
+		expect(canGoBack()).toBe(true);
+		expect(canGoForward()).toBe(false);
+
+		await goBack();
+
+		expect(viewerStore.get().currentPath).toBe("/workspace/b.md");
+		expect(viewerStore.get().content).toBe("content:/workspace/b.md");
+		expect(canGoBack()).toBe(true);
+		expect(canGoForward()).toBe(true);
+
+		await goForward();
+
+		expect(viewerStore.get().currentPath).toBe("/workspace/c.md");
+		expect(canGoForward()).toBe(false);
+	});
+
+	it("truncates forward history when a new file opens after going back", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		api.readFileText.mockImplementation(
+			async (path: string) => `content:${path}`,
+		);
+		const { canGoForward, goBack, loadPath, viewerStore } =
+			await loadStoreActions(api);
+
+		await loadPath("/workspace/a.md");
+		await loadPath("/workspace/b.md");
+		await loadPath("/workspace/c.md");
+		await goBack();
+		await loadPath("/workspace/d.md");
+
+		expect(viewerStore.get().currentPath).toBe("/workspace/d.md");
+		expect(canGoForward()).toBe(false);
+	});
+
+	it("keeps navigation history separate per workspace", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		api.readFileText.mockImplementation(
+			async (path: string) => `content:${path}`,
+		);
+		const { appStore, canGoBack, loadPath } = await loadStoreActions(api);
+
+		appStore.set((current) => ({
+			...current,
+			workspace: { ...current.workspace, workspacePath: "/workspace-a" },
+		}));
+		await loadPath("/workspace-a/a.md");
+		await loadPath("/workspace-a/b.md");
+		expect(canGoBack()).toBe(true);
+
+		appStore.set((current) => ({
+			...current,
+			workspace: { ...current.workspace, workspacePath: "/workspace-b" },
+		}));
+
+		expect(canGoBack()).toBe(false);
+	});
+
+	it("saves dirty content before navigating history", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		api.readFileText.mockImplementation(
+			async (path: string) => `content:${path}`,
+		);
+		const { goBack, loadPath, updateEditorContent } =
+			await loadStoreActions(api);
+
+		await loadPath("/workspace/a.md");
+		await loadPath("/workspace/b.md");
+		updateEditorContent("/workspace/b.md", "dirty");
+
+		await goBack();
+
+		expect(api.writeFileText).toHaveBeenCalledWith("/workspace/b.md", "dirty");
+	});
+
+	it("blocks history navigation while the current file has a disk conflict", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		api.readFileText.mockImplementation(
+			async (path: string) => `content:${path}`,
+		);
+		const { appStore, goBack, loadPath, viewerStore } =
+			await loadStoreActions(api);
+
+		await loadPath("/workspace/a.md");
+		await loadPath("/workspace/b.md");
+		appStore.set((current) => ({
+			...current,
+			document: {
+				...current.document,
+				externalChange: { kind: "conflict", diskContent: "disk" },
+			},
+		}));
+
+		await goBack();
+
+		expect(viewerStore.get().currentPath).toBe("/workspace/b.md");
+	});
+
 	it("refreshes the sidebar when a selected file no longer exists", async () => {
 		const api = createDesktopApi();
 		const missingPath = "/workspace/missing.md";

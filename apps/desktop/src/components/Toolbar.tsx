@@ -7,6 +7,8 @@ import {
 import { useStoreValue } from "@simplestack/store/react";
 import { type CSSProperties, useEffect, useState } from "react";
 import { toast } from "sonner";
+import MingcuteArrowLeftLine from "~icons/mingcute/arrow-left-line";
+import MingcuteArrowRightLine from "~icons/mingcute/arrow-right-line";
 import MingcuteCodeLine from "~icons/mingcute/code-line";
 import MingcuteCopy2Line from "~icons/mingcute/copy-2-line";
 import MingcuteFolderOpenLine from "~icons/mingcute/folder-open-line";
@@ -17,6 +19,10 @@ import { copyText } from "../lib/clipboard";
 import { hasMarkdownExtension } from "../lib/filePath";
 import { revealFileLabel } from "../lib/revealFile";
 import {
+	canGoBack,
+	canGoForward,
+	goBack,
+	goForward,
 	renameCurrentMarkdownFile,
 	requestChatAboutNote,
 	setViewerMode,
@@ -25,6 +31,7 @@ import {
 } from "../store/actions";
 import {
 	currentPathStore,
+	navigationHistoryStore,
 	sidebarOpenStore,
 	viewerStore,
 	workspacePathStore,
@@ -54,6 +61,7 @@ export function Toolbar({
 	const workspacePath = useStoreValue(workspacePathStore);
 	const sidebarOpen = useStoreValue(sidebarOpenStore);
 	const currentPath = useStoreValue(currentPathStore);
+	useStoreValue(navigationHistoryStore);
 	const isFullScreen = useIsFullScreen();
 
 	return (
@@ -65,6 +73,7 @@ export function Toolbar({
 			platformInset={!isFullScreen}
 			rootProps={{ style: dragRegionStyle }}
 			onToggleSidebar={toggleSidebar}
+			leftSlot={<NavigationControls />}
 			onRenameCurrentPath={(nextName) =>
 				void renameCurrentMarkdownFile(nextName)
 			}
@@ -88,6 +97,35 @@ export function Toolbar({
 				</div>
 			}
 		/>
+	);
+}
+
+function NavigationControls() {
+	const backLabel = `Go Back (${formatShortcut("CmdOrCtrl+[")})`;
+	const forwardLabel = `Go Forward (${formatShortcut("CmdOrCtrl+]")})`;
+	return (
+		<>
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				aria-label={backLabel}
+				title={backLabel}
+				disabled={!canGoBack()}
+				onClick={() => void goBack()}
+			>
+				<MingcuteArrowLeftLine className="size-4" />
+			</Button>
+			<Button
+				variant="ghost"
+				size="icon-sm"
+				aria-label={forwardLabel}
+				title={forwardLabel}
+				disabled={!canGoForward()}
+				onClick={() => void goForward()}
+			>
+				<MingcuteArrowRightLine className="size-4" />
+			</Button>
+		</>
 	);
 }
 

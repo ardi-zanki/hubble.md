@@ -39,9 +39,13 @@ import { resolveRelativeLinkPath } from "./lib/relativeLinkPath";
 import { resolveWikiPath } from "./lib/wikiPath";
 import { SIDEBAR_NAV_SELECTOR } from "./selectors";
 import {
+	canGoBack,
+	canGoForward,
 	createWorkspaceWithSidebar,
 	forceKeepLocalEdits,
 	getPendingRenameTarget,
+	goBack,
+	goForward,
 	handleExternalFileChange,
 	loadPath,
 	openWorkspace,
@@ -60,6 +64,7 @@ import {
 } from "./store/actions";
 import {
 	chatCommandStore,
+	navigationHistoryStore,
 	sidebarOpenStore,
 	terminalPositionStore,
 	uiStore,
@@ -100,8 +105,13 @@ function App() {
 	const state = useStoreValue(viewerStore);
 	const workspacePath = useStoreValue(workspacePathStore);
 	const sidebarOpen = useStoreValue(sidebarOpenStore);
+	const navigationHistory = useStoreValue(navigationHistoryStore);
 	const terminalPosition = useStoreValue(terminalPositionStore);
 	const hasWorkspace = workspacePath !== null;
+	const menuCanGoBack = navigationHistory.isNavigating ? false : canGoBack();
+	const menuCanGoForward = navigationHistory.isNavigating
+		? false
+		: canGoForward();
 	const [scrollContainerEl, setScrollContainerEl] =
 		useState<HTMLDivElement | null>(null);
 	const [settingsOpen, setSettingsOpen] = useState(false);
@@ -201,8 +211,16 @@ function App() {
 			hasMarkdownNoteOpen:
 				typeof currentPath === "string" && hasMarkdownExtension(currentPath),
 			isSourceMode: state.viewMode === "source",
+			canGoBack: menuCanGoBack,
+			canGoForward: menuCanGoForward,
 		});
-	}, [hasWorkspace, state.currentPath, state.viewMode]);
+	}, [
+		hasWorkspace,
+		menuCanGoBack,
+		menuCanGoForward,
+		state.currentPath,
+		state.viewMode,
+	]);
 
 	useEffect(() => {
 		if (!sidebarOpen) setFocusedSidebarPath(null);
@@ -210,7 +228,15 @@ function App() {
 
 	useEffect(() => {
 		const onKeyDown = async (event: KeyboardEvent) => {
-			if (keymatch(event, "CmdOrCtrl+N")) {
+			if (keymatch(event, "CmdOrCtrl+[")) {
+				if (!canGoBack()) return;
+				event.preventDefault();
+				await goBack();
+			} else if (keymatch(event, "CmdOrCtrl+]")) {
+				if (!canGoForward()) return;
+				event.preventDefault();
+				await goForward();
+			} else if (keymatch(event, "CmdOrCtrl+N")) {
 				event.preventDefault();
 				await createMarkdownFile();
 			} else if (keymatch(event, "CmdOrCtrl+,")) {
@@ -295,6 +321,8 @@ function App() {
 			),
 			desktopApi.onMenuSyncWorkspace(() => void refreshFiles()),
 			desktopApi.onMenuToggleTerminal(() => toggleTerminal()),
+			desktopApi.onMenuGoBack(() => void goBack()),
+			desktopApi.onMenuGoForward(() => void goForward()),
 			desktopApi.onMenuToggleSourceMode(() => {
 				const current = viewerStore.get();
 				if (
