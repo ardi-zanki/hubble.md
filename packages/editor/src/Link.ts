@@ -38,8 +38,15 @@ export const LinkExtension = Mark.create({
 			{
 				tag: "a[href]",
 				getAttrs: (element) => {
-					const href = (element as HTMLAnchorElement).getAttribute("href");
-					return { href: href ?? "", kind: "url", target: null };
+					const anchor = element as HTMLAnchorElement;
+					const href = anchor.getAttribute("href");
+					const kind = anchor.getAttribute("data-link-kind");
+					const target = anchor.getAttribute("data-target");
+					return {
+						href: href ?? "",
+						kind: kind === "wiki" ? "wiki" : "url",
+						target,
+					};
 				},
 			},
 		];

@@ -9,11 +9,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 
-- Linux desktop builds now ship an RPM package alongside the existing AppImage and deb, for install on Fedora/RHEL/openSUSE and other RPM-based distros. [#151](https://github.com/bholmesdev/hubble.md/pull/151)
+- Linux desktop builds now ship an RPM package alongside the existing AppImage and deb, for install on Fedora/RHEL/openSUSE and other RPM-based distros. Thanks [@ricardoraposo](https://github.com/ricardoraposo)! [#151](https://github.com/bholmesdev/hubble.md/pull/151)
+- Dark mode: the desktop app, editor (including code-block syntax highlighting), and embedded HTML apps now follow your system appearance. Thanks [@saucy-tech](https://github.com/saucy-tech)! [#110](https://github.com/bholmesdev/hubble.md/issues/110)
 
 ### Changed
 
 ### Fixed
+
+- Copying linked rich text now preserves hyperlinks when pasted into other rich text editors. Thanks [@snvtac](https://github.com/snvtac)! [#149](https://github.com/bholmesdev/hubble.md/issues/149)
 
 ## [0.1.18] - 2026-07-07
 

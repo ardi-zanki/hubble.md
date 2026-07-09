@@ -5,6 +5,15 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hubble</title>
+    <script>
+      // Apply the theme class before first paint so a cold launch into dark mode
+      // doesn't flash light. The live listener is attached in src/theme.ts.
+      try {
+        if (matchMedia("(prefers-color-scheme: dark)").matches) {
+          document.documentElement.classList.add("dark");
+        }
+      } catch {}
+    </script>
   </head>
 
   <body>

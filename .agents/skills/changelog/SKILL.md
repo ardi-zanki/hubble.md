@@ -20,12 +20,11 @@ the entry now while the change is fresh.
    - Describe the effect, not the implementation or file paths.
    - Skip internal-only churn (refactors, deps, CI, tests) unless it changes
      what the user experiences.
-4. Link the PR for every entry. Do not link issues in changelog entries. If
-   the PR came from an external contributor, add
-   `Thanks [@handle](https://github.com/handle)!` before the PR link. If
-   `bholmesdev` opened the PR for an issue suggested by an external
-   contributor, add `Thanks [@handle](https://github.com/handle) for the
-   suggestion!` before the PR link. Do not thank `bholmesdev`.
+4. Link the PR for every entry (not the issue). Check the PR author: if it's
+   not `bholmesdev`, put `Thanks [@handle](https://github.com/handle)!` before
+   the link. If `bholmesdev` landed someone else's suggestion, put
+   `Thanks [@handle](https://github.com/handle) for the suggestion!` before the
+   link. Never thank `bholmesdev`.
 
 Create a subhead only if it has at least one entry. Leave the empty scaffold
 subheads as-is for the next entry.

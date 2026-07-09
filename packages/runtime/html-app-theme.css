@@ -1,5 +1,5 @@
 :root {
-	color-scheme: light;
+	color-scheme: light dark;
 	--brand: oklch(0.426 0.08 159.6);
 	--brand-accent: oklch(0.847 0.168 84.7);
 	--brand-accent-foreground: oklch(0.327 0.051 164.9);
@@ -22,6 +22,30 @@
 	--input: oklch(0.91 0.004 95);
 	--ring: var(--brand-accent);
 	--radius: 0.625rem;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--background: oklch(0.2 0.004 60);
+		--foreground: oklch(0.945 0.002 60);
+		--card: oklch(0.24 0.005 60);
+		--primary: oklch(0.47 0.08 159.6);
+		--primary-foreground: oklch(0.985 0 0);
+		--secondary: oklch(0.285 0.005 60);
+		--muted: oklch(0.275 0.005 60);
+		--muted-foreground: oklch(0.72 0.006 60);
+		--accent: oklch(0.32 0.04 88);
+		--selected: oklch(0.73 0.125 88);
+		--selected-foreground: oklch(0.24 0.03 85);
+		--destructive: oklch(0.704 0.191 22.216);
+		--border: oklch(1 0 0 / 10%);
+		--input: oklch(1 0 0 / 14%);
+		--ring: oklch(0.75 0.13 85);
+	}
+
+	::selection {
+		background: color-mix(in oklab, #8a764b 88%, transparent);
+	}
 }
 
 @theme inline {

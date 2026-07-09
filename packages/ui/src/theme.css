@@ -99,8 +99,14 @@
 /* Selected row goes yellow only while the sidebar pane is focused (else gray). */
 [data-sidebar-root]:focus-within {
 	--sidebar-accent: var(--selected);
+	--sidebar-accent-foreground: var(--selected-foreground);
 }
 
 ::selection {
 	background: color-mix(in oklab, var(--selected) 70%, transparent);
+}
+
+/* muted highlight; the brand gold is too loud on dark */
+.dark ::selection {
+	background: color-mix(in oklab, #8a764b 88%, transparent);
 }
