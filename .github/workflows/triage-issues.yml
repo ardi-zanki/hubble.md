@@ -1,10 +1,15 @@
 name: Triage New Issues
 
-# Triages a newly opened issue with an Oz cloud agent.
+# Guarantees every newly opened issue carries a readiness label, then triages
+# it with an Oz cloud agent when possible.
 #
-# The agent runs read-only (issues: read) and emits a structured JSON result;
-# the separate `apply` job (issues: write) applies the label and comment to the
-# triggering issue only.
+# Flow:
+# 1. `seed` always applies `needs-triage` if the issue has no readiness label.
+#    This covers blank issues, API/CLI creates, and template misses — so agent
+#    failure still leaves the issue in a known inbox state.
+# 2. `triage` runs the read-only triage skill and emits structured JSON.
+# 3. `apply` replaces `needs-triage` with the agent's readiness label and posts
+#    the triage comment. If triage/apply fail, the seeded `needs-triage` remains.
 #
 # Setup: the WARP_API_KEY repository secret must be set (the Oz API key).
 
@@ -17,9 +22,52 @@ concurrency:
   group: triage-issue-${{ github.event.issue.number }}
   cancel-in-progress: true
 
+env:
+  # Exactly one of these should be present on every open issue after triage
+  # (or after seed, if triage has not finished yet).
+  READINESS_LABELS: needs-triage,ready-to-implement,needs-discussion,wontfix
+
 jobs:
+  seed:
+    name: Seed needs-triage
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Ensure a readiness label exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          EXISTING_LABELS: ${{ join(github.event.issue.labels.*.name, ',') }}
+        run: |
+          set -euo pipefail
+
+          IFS=',' read -r -a readiness <<< "$READINESS_LABELS"
+          IFS=',' read -r -a existing <<< "${EXISTING_LABELS:-}"
+
+          has_readiness=false
+          for label in "${existing[@]}"; do
+            [ -z "$label" ] && continue
+            for ready in "${readiness[@]}"; do
+              if [ "$label" = "$ready" ]; then
+                has_readiness=true
+                break 2
+              fi
+            done
+          done
+
+          if [ "$has_readiness" = true ]; then
+            echo "Issue already has a readiness label; leaving labels unchanged."
+            exit 0
+          fi
+
+          echo "No readiness label present; applying needs-triage."
+          gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --add-label "needs-triage"
+
   triage:
     name: Triage issue
+    needs: seed
     runs-on: ubuntu-latest
     permissions:
       contents: read # let the agent inspect the checked-out codebase
@@ -53,6 +101,7 @@ jobs:
   apply:
     name: Apply triage result
     needs: triage
+    if: needs.triage.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -67,7 +116,7 @@ jobs:
           set -euo pipefail
 
           if [ -z "${TRIAGE_RESULT:-}" ]; then
-            echo "::error::Triage job produced no output; nothing to apply." >&2
+            echo "::error::Triage job produced no output; keeping seeded needs-triage." >&2
             exit 1
           fi
 
@@ -98,7 +147,7 @@ jobs:
           json.dump(result, sys.stdout)
           PY
           then
-            echo "::error::Could not find a JSON object in the agent output. Raw output:" >&2
+            echo "::error::Could not find a JSON object in the agent output; keeping seeded needs-triage. Raw output:" >&2
             cat raw_output.txt >&2
             exit 1
           fi
@@ -110,25 +159,34 @@ jobs:
           # states/labels is owned by the triage skill, so it is intentionally
           # not duplicated here.
           if [ -z "$STATE" ]; then
-            echo "::error::Triage result is missing a 'state'." >&2
+            echo "::error::Triage result is missing a 'state'; keeping seeded needs-triage." >&2
             exit 1
           fi
 
           if [ -z "$LABEL" ]; then
-            echo "::error::Triage result is missing a 'label' to apply." >&2
+            echo "::error::Triage result is missing a 'label' to apply; keeping seeded needs-triage." >&2
             exit 1
           fi
 
           echo "Triage state: $STATE"
           echo "Applying label: $LABEL"
 
-          # Remove any superseded triage-state labels the agent listed. Failures
-          # (e.g. a label that is not present) are non-fatal.
+          # Always clear other readiness labels so exactly one remains after apply.
+          # Agent-listed remove_labels are applied first; then every readiness
+          # label other than the chosen one is removed as a safety net.
           while IFS= read -r remove_label; do
             [ -z "$remove_label" ] && continue
             echo "Removing label: $remove_label"
             gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --remove-label "$remove_label" || true
           done < <(jq -r '(.remove_labels // [])[]' triage_result.json)
+
+          IFS=',' read -r -a readiness <<< "$READINESS_LABELS"
+          for ready in "${readiness[@]}"; do
+            if [ "$ready" != "$LABEL" ]; then
+              echo "Ensuring readiness label removed: $ready"
+              gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --remove-label "$ready" || true
+            fi
+          done
 
           # Apply the chosen triage-state label to the triggering issue only.
           gh issue edit "$ISSUE_NUMBER" --repo "$REPO" --add-label "$LABEL"
