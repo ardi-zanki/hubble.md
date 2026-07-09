@@ -8,6 +8,7 @@ import {
 	MarkdownRolloverExtension,
 	markdownToTiptapDoc,
 	parseMarkdownFrontMatter,
+	RichTextClipboardExtension,
 	StrikethroughShortcutExtension,
 	tiptapDocToMarkdown,
 } from "@hubble.md/editor";
@@ -150,6 +151,7 @@ export function EditorView({
 			StarterKit.configure({ codeBlock: false, listItem: false }),
 			HubbleCodeBlock,
 			LinkExtension,
+			RichTextClipboardExtension,
 			SmartLinkExtension,
 			LinkClickExtension.configure({ onOpenExternalLink, onOpenWikiLink }),
 			LinkCreationGhostExtension,
