@@ -3,13 +3,15 @@ import {
 	Button,
 	classifyHref,
 	EditorView,
+	GlobalSearchPalette,
 	Input,
 	MarkdownSourceEditor,
+	type PaletteFile,
 	type WikiTarget,
 } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
 import { keymatch } from "keymatch";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import MingcutePencilLine from "~icons/mingcute/pencil-line";
 import { HtmlAppEmptyState } from "./components/HtmlAppEmptyState";
@@ -100,6 +102,23 @@ async function revealPath(path: string | null) {
 	}
 }
 
+let nextSearchRequestId = 0;
+
+/**
+ * Content search reads the sidebar snapshot's paths rather than asking main to
+ * re-crawl, so search and the sidebar always agree on what exists (ADR-0008).
+ */
+async function searchFileContents(query: string) {
+	nextSearchRequestId += 1;
+	const { files } = workspaceStore.get();
+	const { results, truncated } = await desktopApi.searchFileContents({
+		requestId: nextSearchRequestId,
+		paths: files.map((file) => file.path),
+		query,
+	});
+	return { results, truncated };
+}
+
 function App() {
 	const state = useStoreValue(viewerStore);
 	const workspacePath = useStoreValue(workspacePathStore);
@@ -119,6 +138,17 @@ function App() {
 		null,
 	);
 	const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
+	const [searchOpen, setSearchOpen] = useState(false);
+	const workspaceFiles = useStoreValue(workspaceStore).files;
+	const paletteFiles: PaletteFile[] = useMemo(
+		() =>
+			workspaceFiles.map((file) => ({
+				path: file.path,
+				relativePath: relativeWorkspacePath(file.path, workspacePath ?? null),
+				modifiedAt: file.modified_at,
+			})),
+		[workspaceFiles, workspacePath],
+	);
 
 	const readyVersion =
 		updateState?.status === "ready"
@@ -242,6 +272,11 @@ function App() {
 				if (!workspaceStore.get().workspacePath) return;
 				event.preventDefault();
 				setWorkspaceSwitcherOpen(true);
+			} else if (keymatch(event, "CmdOrCtrl+P")) {
+				if (!workspaceStore.get().workspacePath) return;
+				event.preventDefault();
+				// The File menu accelerator fires too, but opening is idempotent.
+				setSearchOpen(true);
 			} else if (keymatch(event, "CmdOrCtrl+Shift+N")) {
 				event.preventDefault();
 				await openWorkspaceWithSidebar();
@@ -315,6 +350,7 @@ function App() {
 			desktopApi.onMenuShowWorkspaceSwitcher(() =>
 				setWorkspaceSwitcherOpen(true),
 			),
+			desktopApi.onMenuGoToFile(() => setSearchOpen(true)),
 			desktopApi.onMenuSyncWorkspace(() => void refreshFiles()),
 			desktopApi.onMenuToggleTerminal(() => toggleTerminal()),
 			desktopApi.onMenuGoBack(() => void goBack()),
@@ -453,6 +489,13 @@ function App() {
 					<TerminalPanel />
 				</section>
 			</div>
+			<GlobalSearchPalette
+				open={searchOpen}
+				onOpenChange={setSearchOpen}
+				files={paletteFiles}
+				onSelectFile={(path) => void loadPath(path)}
+				searchContents={searchFileContents}
+			/>
 			<SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen}>
 				<ChatAboutNoteSettingsSection />
 				{updateState ? (
