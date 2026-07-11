@@ -5,6 +5,7 @@ import {
 	sidebarMoveCandidateFromRow,
 	sidebarMoveItemsForDrag,
 	sidebarRowKey,
+	snapSidebarSelection,
 } from "./Sidebar";
 import type { SidebarRow } from "./useSidebarTree";
 
@@ -116,6 +117,28 @@ describe("sidebar selection helpers", () => {
 
 		expect([...selection.selectedKeys]).toEqual(["file:/workspace/c.md"]);
 		expect(selection.anchorKey).toBe("file:/workspace/c.md");
+	});
+
+	it("snaps the selection to a file activated without a click", () => {
+		let selection = select(emptySelection, 1, "replace");
+		selection = snapSidebarSelection(selection, "/workspace/c.md");
+
+		expect([...selection.selectedKeys]).toEqual(["file:/workspace/c.md"]);
+		expect(selection.anchorKey).toBe("file:/workspace/c.md");
+	});
+
+	it("keeps the same selection object when already on the active file", () => {
+		const selection = select(emptySelection, 1, "replace");
+
+		expect(snapSidebarSelection(selection, "/workspace/a.md")).toBe(selection);
+	});
+
+	it("clears the selection when no file is active", () => {
+		const selection = select(emptySelection, 1, "replace");
+		const snapped = snapSidebarSelection(selection, null);
+
+		expect(snapped.selectedKeys.size).toBe(0);
+		expect(snapped.anchorKey).toBeNull();
 	});
 
 	it("ignores section rows", () => {

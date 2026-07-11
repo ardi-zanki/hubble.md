@@ -112,9 +112,35 @@ export type SidebarMoveCandidate =
 			parentFolderId: string | null;
 	  };
 
+function sidebarFileKey(path: string) {
+	return `file:${path}`;
+}
+
 export function sidebarRowKey(row: SidebarRow): string | null {
 	if (row.kind === "section") return null;
-	return row.kind === "file" ? `file:${row.file.path}` : `folder:${row.id}`;
+	return row.kind === "file"
+		? sidebarFileKey(row.file.path)
+		: `folder:${row.id}`;
+}
+
+/**
+ * Snaps the click selection to the active file. A file can become active
+ * without a row click (history navigation, note links), and the selection
+ * highlight would otherwise stay on the last clicked row.
+ */
+export function snapSidebarSelection(
+	selection: SidebarSelectionState,
+	activePath: string | null,
+): SidebarSelectionState {
+	const key = activePath ? sidebarFileKey(activePath) : null;
+	const unchanged = key
+		? selection.selectedKeys.size === 1 && selection.selectedKeys.has(key)
+		: selection.selectedKeys.size === 0;
+	if (unchanged) return selection;
+	return {
+		selectedKeys: new Set(key ? [key] : []),
+		anchorKey: key,
+	};
 }
 
 export function applySidebarSelection({
@@ -607,6 +633,10 @@ export function Sidebar({
 	useEffect(() => {
 		setSelection((current) => pruneSidebarSelection(current, rows));
 	}, [rows]);
+
+	useEffect(() => {
+		setSelection((current) => snapSidebarSelection(current, highlightPath));
+	}, [highlightPath]);
 
 	const handleDragStart = useCallback(
 		(event: DragStartEvent) => {
