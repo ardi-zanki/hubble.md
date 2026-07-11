@@ -11,6 +11,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 - Linux desktop builds now ship an RPM package alongside the existing AppImage and deb, for install on Fedora/RHEL/openSUSE and other RPM-based distros. Thanks [@ricardoraposo](https://github.com/ricardoraposo)! [#151](https://github.com/bholmesdev/hubble.md/pull/151)
 - Dark mode: the desktop app, editor (including code-block syntax highlighting), and embedded HTML apps now follow your system appearance. Thanks [@saucy-tech](https://github.com/saucy-tech)! [#110](https://github.com/bholmesdev/hubble.md/issues/110)
+- Go back and forward between recently opened files: use the toolbar arrows, Cmd+[ and Cmd+], or the View menu. History is kept per workspace and follows files through renames, moves, and deletes. [#154](https://github.com/bholmesdev/hubble.md/pull/154)
 
 ### Changed
 
