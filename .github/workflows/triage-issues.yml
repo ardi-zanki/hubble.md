@@ -214,7 +214,7 @@ jobs:
     if: needs.apply.outputs.label == 'ready-to-implement'
     permissions:
       contents: write
-      issues: write
+      issues: read
       pull-requests: write
     uses: ./.github/workflows/implement-ready-issues.yml
     with:
