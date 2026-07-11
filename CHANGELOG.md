@@ -10,6 +10,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 ### Added
 
 - Global search: press Cmd+P (or File → Go to File…) to find notes by name, by path, or by a phrase inside them. Results show a matching excerpt, and selecting one opens the note. Thanks [@zcuric](https://github.com/zcuric)! [#159](https://github.com/bholmesdev/hubble.md/pull/159)
+- Pin, unpin, or trash multiple sidebar items at once, including with Cmd+Delete. [#129](https://github.com/bholmesdev/hubble.md/pull/129)
 
 ### Changed
 
