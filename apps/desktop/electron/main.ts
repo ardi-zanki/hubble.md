@@ -26,6 +26,7 @@ import type {
 	DesktopUpdateState,
 	DirectoryListing,
 	MenuState,
+	SearchFileResult,
 	WorkspaceConfig,
 } from "../src/desktopApi/types";
 import {
@@ -35,6 +36,13 @@ import {
 	markdownAssetFolderPath,
 	withMarkdownExtension,
 } from "../src/lib/filePath";
+import {
+	findMatchesInContent,
+	SEARCH_CONCURRENCY,
+	SEARCH_MAX_FILE_BYTES,
+	SEARCH_MAX_RESULT_FILES,
+	SEARCH_MIN_QUERY_LENGTH,
+} from "../src/lib/searchContent";
 import { setupTerminalIpc } from "./terminal";
 import {
 	loadZoomFactor,
@@ -154,6 +162,9 @@ const watchers = new Map<string, FSWatcher>();
 const grantedFiles = new Set<string>();
 const grantedRoots = new Set<string>();
 let grantsLoaded = false;
+// An AbortSignal cannot cross IPC, so a superseded search is abandoned by
+// comparing its id against the newest one between files.
+let latestSearchRequestId = 0;
 
 const ignoreConfigFiles = [".gitignore", ".ignore"];
 const ignoredWorkspaceDirs = new Set([".git", "dist", "node_modules"]);
@@ -779,6 +790,14 @@ function buildMenu() {
 				},
 				{ type: "separator" },
 				{
+					id: "go-to-file",
+					label: "Go to File...",
+					accelerator: "CmdOrCtrl+P",
+					enabled: menuState.hasWorkspace,
+					click: () => sendToRenderer("desktop:menu-go-to-file"),
+				},
+				{ type: "separator" },
+				{
 					id: "sync-workspace",
 					label: "Sync Workspace",
 					enabled: menuState.hasWorkspace,
@@ -1275,6 +1294,71 @@ function registerIpc() {
 		async (_event, { path: filePath }) => {
 			const resolved = assertGranted(filePath);
 			return await fs.readFile(resolved, "utf8");
+		},
+	);
+
+	ipcMain.handle(
+		"desktop:search-file-contents",
+		async (_event, { requestId, paths, query }) => {
+			latestSearchRequestId = requestId;
+			const needle = String(query ?? "").trim();
+			const empty = { requestId, results: [], truncated: false };
+			if (needle.length < SEARCH_MIN_QUERY_LENGTH) return empty;
+
+			// The renderer hands us the sidebar snapshot's paths, so search sees
+			// exactly what the sidebar sees (ADR-0008) and main never re-walks.
+			const candidates = (paths as string[]).filter(hasMarkdownExtension);
+			const results: SearchFileResult[] = [];
+			const isStale = () => requestId !== latestSearchRequestId;
+			let cursor = 0;
+			let capped = false;
+
+			async function worker() {
+				while (true) {
+					if (isStale()) return;
+					if (results.length >= SEARCH_MAX_RESULT_FILES) {
+						capped = true;
+						return;
+					}
+					const index = cursor;
+					cursor += 1;
+					if (index >= candidates.length) return;
+
+					const candidate = candidates[index];
+					try {
+						const resolved = assertGranted(candidate);
+						const stat = await fs.stat(resolved);
+						if (!stat.isFile() || stat.size > SEARCH_MAX_FILE_BYTES) continue;
+						const content = await fs.readFile(resolved, "utf8");
+						const matches = findMatchesInContent(content, needle);
+						if (matches.length > 0) results.push({ path: candidate, matches });
+					} catch {}
+				}
+			}
+
+			await Promise.all(
+				Array.from(
+					{ length: Math.min(SEARCH_CONCURRENCY, candidates.length) },
+					worker,
+				),
+			);
+			if (isStale()) return empty;
+
+			return {
+				requestId,
+				// The worker pool finishes out of order; sort so equal-ranked results
+				// do not jitter between keystrokes.
+				results: results
+					.slice(0, SEARCH_MAX_RESULT_FILES)
+					.sort((a, b) => a.path.localeCompare(b.path)),
+				// Workers can push a few past the cap between awaits; the slice hides
+				// them, so they must count as truncation. `capped` alone is not
+				// enough of a signal in the other direction: a scan that finished
+				// with exactly the cap dropped nothing.
+				truncated:
+					(capped && cursor < candidates.length) ||
+					results.length > SEARCH_MAX_RESULT_FILES,
+			};
 		},
 	);
 
