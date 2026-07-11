@@ -1,6 +1,12 @@
 import { toast } from "sonner";
+import changelogRaw from "../../../../CHANGELOG.md?raw";
 import { desktopApi } from "../desktopApi";
 import { classifyFileChange } from "../externalFileChange";
+import {
+	CHANGELOG_PATH,
+	isChangelogPath,
+	prepareChangelogMarkdown,
+} from "../lib/changelogNote";
 import {
 	absoluteWorkspacePath,
 	basename,
@@ -48,6 +54,7 @@ import {
 	historyStore,
 	isInWorkspace,
 	LOADING_DELAY_MS,
+	lastSeenVersionStore,
 	MAX_RECENT,
 	pendingTerminalCommandStore,
 	type SortMode,
@@ -402,7 +409,12 @@ export function setChatCommand(command: string) {
 	chatCommandStore.set(command);
 }
 
+export function setLastSeenVersion(version: string) {
+	lastSeenVersionStore.set(version);
+}
+
 export function requestChatAboutNote() {
+	if (isChangelogPath(viewerStore.get().currentPath)) return;
 	const command = chatCommandStore.get().trim() || DEFAULT_CHAT_COMMAND;
 	// Set the command before opening so the panel's open effect can see it
 	// and defer to the chat launch instead of starting a plain session.
@@ -503,6 +515,8 @@ export async function savePathContent(
 	content: string,
 	options?: { force?: boolean },
 ) {
+	// The changelog note is virtual and read-only; nothing to write.
+	if (isChangelogPath(path)) return;
 	const current = viewerStore.get();
 	const force = options?.force === true;
 	if (current.currentPath !== path) return;
@@ -661,7 +675,7 @@ export async function renameMarkdownFile(path: string, nextName: string) {
 
 export async function renameCurrentMarkdownFile(nextName: string) {
 	const current = viewerStore.get();
-	if (!current.currentPath) return;
+	if (!current.currentPath || isChangelogPath(current.currentPath)) return;
 	await renameMarkdownFile(current.currentPath, nextName);
 }
 
@@ -1086,7 +1100,7 @@ export async function forceKeepLocalEdits() {
 	await savePathContent(current.currentPath, current.content, { force: true });
 }
 
-export const loadPath = latest(
+const { run: loadPath, invalidate: invalidateLoadPath } = latest(
 	async ({ isStale }, path: string, options?: LoadPathOptions) => {
 		const historyMode = options?.history ?? "push";
 		const missingMode = options?.missing ?? "toast";
@@ -1139,12 +1153,41 @@ export const loadPath = latest(
 		}
 	},
 );
+export { loadPath };
+
+/**
+ * Opens the app changelog as an ephemeral note. It never touches disk or
+ * history: `lastOpenedPath` and the workspace's `lastOpenedPaths` keep the
+ * real note so relaunch restores it, and the stack index stays put so back
+ * returns to the note the user was on. Returns whether it opened.
+ */
+export async function openChangelog(): Promise<boolean> {
+	const current = viewerStore.get();
+	if (isChangelogPath(current.currentPath)) return true;
+	if (current.currentPath) {
+		await savePathContent(current.currentPath, current.content);
+		if (viewerStore.get().externalChange.kind === "conflict") return false;
+	}
+	// An in-flight loadPath must not resolve over the changelog.
+	invalidateLoadPath();
+	viewerStore.set((state) => ({
+		...state,
+		currentPath: CHANGELOG_PATH,
+		...cleanFileState(prepareChangelogMarkdown(changelogRaw)),
+		viewMode: "rich",
+	}));
+	return true;
+}
 
 async function navigateHistory(delta: -1 | 1) {
 	if (!(delta < 0 ? canGoBack() : canGoForward())) return;
 
 	const current = viewerStore.get();
 	if (current.externalChange.kind === "conflict") return;
+	// The changelog note is never pushed, so back re-opens the entry the user
+	// was on (`entries[index]`, not `index - 1`). Forward never gets here:
+	// canGoForward is false on the changelog.
+	const fromChangelog = isChangelogPath(current.currentPath);
 
 	// Block concurrent history ops for the whole leave (save + load).
 	historyStore.set((state) => ({ ...state, isNavigating: true }));
@@ -1155,7 +1198,7 @@ async function navigateHistory(delta: -1 | 1) {
 		}
 
 		let working = activeHistory();
-		let nextIndex = working.index + delta;
+		let nextIndex = working.index + (fromChangelog ? 0 : delta);
 		while (nextIndex >= 0 && nextIndex < working.entries.length) {
 			const target = working.entries[nextIndex];
 			if (await desktopApi.pathExists(target)) {

@@ -176,3 +176,6 @@ export const pendingTerminalCommandStore = uiStore.select(
 export const chatCommandStore = appStore
 	.select("settings")
 	.select("chatCommand");
+export const lastSeenVersionStore = appStore
+	.select("settings")
+	.select("lastSeenVersion");

@@ -44,7 +44,7 @@ jobs:
           # Authenticates the `gh` CLI the agent uses for issues, branches, and PRs.
           GH_TOKEN: ${{ github.token }}
         with:
-          model: gpt-5-5-low
+          model: gpt-5-6-sol-low
           name: "Implement issue #${{ env.ISSUE_NUMBER }}"
           prompt: |
             Use the Implementation skill in this repository to implement the GitHub issue that was just labeled ready to implement.

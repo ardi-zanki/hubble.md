@@ -58,6 +58,7 @@ export type { WikiTarget };
 export type EditorViewProps = {
 	path: string;
 	initialMarkdown: string;
+	editable?: boolean;
 	wikiTargets?: WikiTarget[];
 	extensions?: EditorOptions["extensions"];
 	editorProps?: EditorOptions["editorProps"];
@@ -76,6 +77,7 @@ export type EditorViewProps = {
 export function EditorView({
 	path,
 	initialMarkdown,
+	editable = true,
 	wikiTargets = [],
 	extensions = [],
 	editorProps,
@@ -142,18 +144,24 @@ export function EditorView({
 			window.clearTimeout(saveTimerRef.current);
 		}
 		saveTimerRef.current = window.setTimeout(() => {
+			saveTimerRef.current = null;
 			void onSave(savePath, latestMarkdownRef.current);
 		}, saveDebounceMs);
 	}, [onSave, saveDebounceMs]);
 
 	const editor = useEditor({
+		editable,
 		extensions: [
 			StarterKit.configure({ codeBlock: false, listItem: false }),
 			HubbleCodeBlock,
 			LinkExtension,
 			RichTextClipboardExtension,
 			SmartLinkExtension,
-			LinkClickExtension.configure({ onOpenExternalLink, onOpenWikiLink }),
+			LinkClickExtension.configure({
+				onOpenExternalLink,
+				onOpenWikiLink,
+				requireModifier: editable,
+			}),
 			LinkCreationGhostExtension,
 			FakeSelectionExtension,
 			FindExtension,
@@ -281,21 +289,23 @@ export function EditorView({
 				className="editorViewport relative min-h-0 flex-1 overflow-auto overscroll-contain"
 				ref={setEditorViewport}
 			>
-				<FilePropertiesPanel
-					path={path}
-					state={frontMatterState}
-					onChange={(nextState, frontMatter) => {
-						setFrontMatterState(nextState);
-						partsRef.current = { ...partsRef.current, frontMatter };
-						const markdown = combineMarkdownFrontMatter(
-							frontMatter,
-							partsRef.current.body,
-						);
-						latestMarkdownRef.current = markdown;
-						onLocalChange(pathRef.current, markdown);
-						scheduleSave();
-					}}
-				/>
+				{editable && (
+					<FilePropertiesPanel
+						path={path}
+						state={frontMatterState}
+						onChange={(nextState, frontMatter) => {
+							setFrontMatterState(nextState);
+							partsRef.current = { ...partsRef.current, frontMatter };
+							const markdown = combineMarkdownFrontMatter(
+								frontMatter,
+								partsRef.current.body,
+							);
+							latestMarkdownRef.current = markdown;
+							onLocalChange(pathRef.current, markdown);
+							scheduleSave();
+						}}
+					/>
+				)}
 				<EditorContent editor={editor} />
 				<VirtualCursor
 					editor={editor}
@@ -303,22 +313,29 @@ export function EditorView({
 					viewportRef={editorViewportRef}
 					modeOverride={cursorModeOverride}
 				/>
-				<LinkPopover
-					editor={editor}
-					containerRef={editorRootRef}
-					viewportRef={editorViewportRef}
-					wikiTargets={wikiTargets}
-					onOpenExternalLink={onOpenExternalLink}
-					onOpenWikiLink={onOpenWikiLink}
-					onMessage={onMessage}
-					onCursorModeChange={setCursorModeOverride}
-				/>
-				<SlashCommandMenu editor={editor} viewportRef={editorViewportRef} />
-				<SelectionFormattingToolbar
-					editor={editor}
-					viewportRef={editorViewportRef}
-				/>
-				<FormatCommandMenu editor={editor} viewportRef={editorViewportRef} />
+				{editable && (
+					<>
+						<LinkPopover
+							editor={editor}
+							containerRef={editorRootRef}
+							viewportRef={editorViewportRef}
+							wikiTargets={wikiTargets}
+							onOpenExternalLink={onOpenExternalLink}
+							onOpenWikiLink={onOpenWikiLink}
+							onMessage={onMessage}
+							onCursorModeChange={setCursorModeOverride}
+						/>
+						<SlashCommandMenu editor={editor} viewportRef={editorViewportRef} />
+						<SelectionFormattingToolbar
+							editor={editor}
+							viewportRef={editorViewportRef}
+						/>
+						<FormatCommandMenu
+							editor={editor}
+							viewportRef={editorViewportRef}
+						/>
+					</>
+				)}
 			</div>
 			<FindBar editor={editor} />
 			<FormattingStatusBar editor={editor} scrollContainer={editorViewportEl} />

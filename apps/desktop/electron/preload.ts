@@ -30,6 +30,8 @@ const desktopApi = {
 		}),
 	readFileText: (path) =>
 		ipcRenderer.invoke("desktop:read-file-text", { path }),
+	searchFileContents: (input) =>
+		ipcRenderer.invoke("desktop:search-file-contents", input),
 	detectHubbleSkills: (workspacePath) =>
 		ipcRenderer.invoke("desktop:detect-hubble-skills", { workspacePath }),
 	writeFileText: (path, content) => {
@@ -101,10 +103,13 @@ const desktopApi = {
 		subscribe("desktop:menu-open-folder", callback),
 	onMenuOpenSettings: (callback) =>
 		subscribe("desktop:menu-open-settings", callback),
+	onMenuOpenChangelog: (callback) =>
+		subscribe("desktop:menu-open-changelog", callback),
 	onMenuCopyAsMarkdown: (callback) =>
 		subscribe("desktop:menu-copy-as-markdown", callback),
 	onMenuShowWorkspaceSwitcher: (callback) =>
 		subscribe("desktop:menu-show-workspace-switcher", callback),
+	onMenuGoToFile: (callback) => subscribe("desktop:menu-go-to-file", callback),
 	onMenuSyncWorkspace: (callback) =>
 		subscribe("desktop:menu-sync-workspace", callback),
 	onMenuToggleTerminal: (callback) =>

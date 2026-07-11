@@ -3,13 +3,15 @@ import {
 	Button,
 	classifyHref,
 	EditorView,
+	GlobalSearchPalette,
 	Input,
 	MarkdownSourceEditor,
+	type PaletteFile,
 	type WikiTarget,
 } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
 import { keymatch } from "keymatch";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import MingcutePencilLine from "~icons/mingcute/pencil-line";
 import { HtmlAppEmptyState } from "./components/HtmlAppEmptyState";
@@ -17,10 +19,7 @@ import { SettingsDialog, SettingsSection } from "./components/SettingsDialog";
 import { Sidebar } from "./components/Sidebar";
 import { TerminalPanel } from "./components/TerminalPanel";
 import { Toolbar } from "./components/Toolbar";
-import {
-	SidebarUpdateCallout,
-	UpdatesSection,
-} from "./components/UpdatesSection";
+import { SidebarCallout, UpdatesSection } from "./components/UpdatesSection";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { desktopApi } from "./desktopApi";
 import type { DesktopUpdateState } from "./desktopApi/types";
@@ -29,6 +28,7 @@ import { handleImageDrop, handleImagePaste } from "./editor/handleImagePaste";
 import { IframeView, toAssetUrl } from "./editor/IframeView";
 import { createImageExtension } from "./editor/ImageExtension";
 import { createHtmlFile, createMarkdownFile } from "./fileActions";
+import { isChangelogPath } from "./lib/changelogNote";
 import { copyText } from "./lib/clipboard";
 import {
 	hasHtmlExtension,
@@ -46,6 +46,7 @@ import {
 	goForward,
 	handleExternalFileChange,
 	loadPath,
+	openChangelog,
 	openWorkspace,
 	openWorkspaceWithSidebar,
 	refreshFiles,
@@ -54,6 +55,7 @@ import {
 	requestChatAboutNote,
 	savePathContent,
 	setChatCommand,
+	setLastSeenVersion,
 	setSidebarOpen,
 	setViewerMode,
 	setWorkspaceSwitcherOpen,
@@ -64,6 +66,7 @@ import { canGoBack, canGoForward } from "./store/history";
 import { useHistoryNav } from "./store/hooks";
 import {
 	chatCommandStore,
+	lastSeenVersionStore,
 	sidebarOpenStore,
 	terminalPositionStore,
 	uiStore,
@@ -100,6 +103,23 @@ async function revealPath(path: string | null) {
 	}
 }
 
+let nextSearchRequestId = 0;
+
+/**
+ * Content search reads the sidebar snapshot's paths rather than asking main to
+ * re-crawl, so search and the sidebar always agree on what exists (ADR-0008).
+ */
+async function searchFileContents(query: string) {
+	nextSearchRequestId += 1;
+	const { files } = workspaceStore.get();
+	const { results, truncated } = await desktopApi.searchFileContents({
+		requestId: nextSearchRequestId,
+		paths: files.map((file) => file.path),
+		query,
+	});
+	return { results, truncated };
+}
+
 function App() {
 	const state = useStoreValue(viewerStore);
 	const workspacePath = useStoreValue(workspacePathStore);
@@ -119,15 +139,52 @@ function App() {
 		null,
 	);
 	const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
+	const [searchOpen, setSearchOpen] = useState(false);
+	const workspaceFiles = useStoreValue(workspaceStore).files;
+	const paletteFiles: PaletteFile[] = useMemo(
+		() =>
+			workspaceFiles.map((file) => ({
+				path: file.path,
+				relativePath: relativeWorkspacePath(file.path, workspacePath ?? null),
+				modifiedAt: file.modified_at,
+			})),
+		[workspaceFiles, workspacePath],
+	);
+	const lastSeenVersion = useStoreValue(lastSeenVersionStore);
 
 	const readyVersion =
 		updateState?.status === "ready"
 			? (updateState.availableVersion ?? "__unknown__")
 			: null;
-	const showUpdateCallout = readyVersion !== dismissedVersion;
+	const showReadyCallout =
+		readyVersion !== null && readyVersion !== dismissedVersion;
+
+	const currentVersion = updateState?.currentVersion ?? null;
+	// First launch after an update: the persisted version lags behind the
+	// running one until the callout is opened or dismissed.
+	const whatsNewVersion =
+		currentVersion !== null &&
+		lastSeenVersion !== null &&
+		lastSeenVersion !== currentVersion
+			? currentVersion
+			: null;
+	const markWhatsNewSeen = useCallback(() => {
+		if (currentVersion) setLastSeenVersion(currentVersion);
+	}, [currentVersion]);
+
+	useEffect(() => {
+		// First install has no update to announce; just record the version.
+		if (currentVersion && lastSeenVersion === null) {
+			setLastSeenVersion(currentVersion);
+		}
+	}, [currentVersion, lastSeenVersion]);
 
 	const openSettings = useCallback(() => {
 		setSettingsOpen(true);
+	}, []);
+	const openWhatsNew = useCallback(() => {
+		setSettingsOpen(false);
+		void openChangelog();
 	}, []);
 
 	const installUpdate = useCallback(async () => {
@@ -151,7 +208,8 @@ function App() {
 
 	useEffect(() => {
 		const currentPath = state.currentPath;
-		if (!currentPath) return;
+		// The changelog note is virtual; there is no file to watch.
+		if (!currentPath || isChangelogPath(currentPath)) return;
 
 		let disposed = false;
 		let unwatch: null | (() => void) = null;
@@ -190,8 +248,9 @@ function App() {
 	}, [state.currentPath]);
 
 	const openFilePicker = useCallback(async () => {
+		const currentPath = viewerStore.get().currentPath;
 		const defaultPath =
-			viewerStore.get().currentPath ??
+			(isChangelogPath(currentPath) ? null : currentPath) ??
 			workspaceStore.get().workspacePath ??
 			undefined;
 		const selected = await desktopApi.openFilePicker({ defaultPath });
@@ -242,6 +301,11 @@ function App() {
 				if (!workspaceStore.get().workspacePath) return;
 				event.preventDefault();
 				setWorkspaceSwitcherOpen(true);
+			} else if (keymatch(event, "CmdOrCtrl+P")) {
+				if (!workspaceStore.get().workspacePath) return;
+				event.preventDefault();
+				// The File menu accelerator fires too, but opening is idempotent.
+				setSearchOpen(true);
 			} else if (keymatch(event, "CmdOrCtrl+Shift+N")) {
 				event.preventDefault();
 				await openWorkspaceWithSidebar();
@@ -250,12 +314,12 @@ function App() {
 				await openFilePicker();
 			} else if (keymatch(event, "CmdOrCtrl+Shift+C")) {
 				const path = focusedSidebarPath ?? viewerStore.get().currentPath;
-				if (!path) return;
+				if (!path || isChangelogPath(path)) return;
 				event.preventDefault();
 				await copyFilePath(path);
 			} else if (keymatch(event, "CmdOrCtrl+Alt+R")) {
 				const path = focusedSidebarPath ?? viewerStore.get().currentPath;
-				if (!path) return;
+				if (!path || isChangelogPath(path)) return;
 				event.preventDefault();
 				await revealPath(path);
 			} else if (keymatch(event, "CmdOrCtrl+Shift+J")) {
@@ -309,12 +373,14 @@ function App() {
 			desktopApi.onMenuOpenFile(() => void openFilePicker()),
 			desktopApi.onMenuOpenFolder(() => void openWorkspaceWithSidebar()),
 			desktopApi.onMenuOpenSettings(() => openSettings()),
+			desktopApi.onMenuOpenChangelog(openWhatsNew),
 			desktopApi.onMenuCopyAsMarkdown(() =>
 				setCopyAsMarkdownRequest((request) => request + 1),
 			),
 			desktopApi.onMenuShowWorkspaceSwitcher(() =>
 				setWorkspaceSwitcherOpen(true),
 			),
+			desktopApi.onMenuGoToFile(() => setSearchOpen(true)),
 			desktopApi.onMenuSyncWorkspace(() => void refreshFiles()),
 			desktopApi.onMenuToggleTerminal(() => toggleTerminal()),
 			desktopApi.onMenuGoBack(() => void goBack()),
@@ -333,7 +399,7 @@ function App() {
 		return () => {
 			for (const dispose of disposers) dispose();
 		};
-	}, [openFilePicker, openSettings]);
+	}, [openFilePicker, openSettings, openWhatsNew]);
 
 	useEffect(() => {
 		// Window focus can fire in bursts when switching apps, so debounce the
@@ -387,18 +453,46 @@ function App() {
 		<main className="flex h-dvh flex-col bg-background text-foreground">
 			<Toolbar
 				scrollContainer={scrollContainerEl}
-				showSidebarBadge={!sidebarOpen && showUpdateCallout}
+				showSidebarBadge={
+					!sidebarOpen && (showReadyCallout || whatsNewVersion !== null)
+				}
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
 				<Sidebar
 					onFocusedPathChange={setFocusedSidebarPath}
 					footer={
-						updateState?.status === "ready" && showUpdateCallout ? (
-							<SidebarUpdateCallout
-								onInstall={installUpdate}
+						// A pending restart outranks the what's-new nudge.
+						showReadyCallout ? (
+							<SidebarCallout
+								message={
+									<>
+										<span className="font-semibold">A new version</span> is
+										ready to install.
+									</>
+								}
+								primaryLabel="Restart"
+								onPrimary={installUpdate}
 								onDismiss={() =>
 									setDismissedVersion(readyVersion ?? "__unknown__")
 								}
+							/>
+						) : whatsNewVersion !== null ? (
+							<SidebarCallout
+								message={
+									<>
+										<span className="font-semibold">Hubble updated</span> to{" "}
+										{whatsNewVersion}.
+									</>
+								}
+								primaryLabel="See what's new"
+								onPrimary={() => {
+									// Only consume the one-shot callout once the changelog is
+									// actually showing; openChangelog can bail on a conflict.
+									void openChangelog().then((opened) => {
+										if (opened) markWhatsNewSeen();
+									});
+								}}
+								onDismiss={markWhatsNewSeen}
 							/>
 						) : undefined
 					}
@@ -453,12 +547,20 @@ function App() {
 					<TerminalPanel />
 				</section>
 			</div>
+			<GlobalSearchPalette
+				open={searchOpen}
+				onOpenChange={setSearchOpen}
+				files={paletteFiles}
+				onSelectFile={(path) => void loadPath(path)}
+				searchContents={searchFileContents}
+			/>
 			<SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen}>
 				<ChatAboutNoteSettingsSection />
 				{updateState ? (
 					<UpdatesSection
 						state={updateState}
 						onPrimaryAction={() => void triggerPrimaryUpdateAction()}
+						onViewChangelog={openWhatsNew}
 					/>
 				) : null}
 			</SettingsDialog>
@@ -667,6 +769,7 @@ function MarkdownEditor({
 		<EditorView
 			path={path}
 			initialMarkdown={initialMarkdown}
+			editable={!isChangelogPath(path)}
 			wikiTargets={wikiTargets}
 			extensions={[
 				createImageExtension(path),

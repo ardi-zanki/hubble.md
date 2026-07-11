@@ -15,6 +15,7 @@ import MingcuteFolderOpenLine from "~icons/mingcute/folder-open-line";
 import MingcuteMore2Line from "~icons/mingcute/more-2-line";
 import MingcuteTerminalLine from "~icons/mingcute/terminal-line";
 import { desktopApi } from "../desktopApi";
+import { isChangelogPath } from "../lib/changelogNote";
 import { copyText } from "../lib/clipboard";
 import { hasMarkdownExtension } from "../lib/filePath";
 import { revealFileLabel } from "../lib/revealFile";
@@ -60,10 +61,13 @@ export function Toolbar({
 	const sidebarOpen = useStoreValue(sidebarOpenStore);
 	const currentPath = useStoreValue(currentPathStore);
 	const isFullScreen = useIsFullScreen();
+	// The changelog note is virtual: show a friendly title and disable the
+	// file actions (rename, reveal, copy path) that assume a file on disk.
+	const isChangelog = isChangelogPath(currentPath);
 
 	return (
 		<SharedToolbar
-			currentPath={currentPath ?? null}
+			currentPath={isChangelog ? "What's new" : (currentPath ?? null)}
 			sidebarOpen={sidebarOpen}
 			sidebarBadge={showSidebarBadge}
 			scrollContainer={scrollContainer}
@@ -71,8 +75,10 @@ export function Toolbar({
 			rootProps={{ style: dragRegionStyle }}
 			onToggleSidebar={toggleSidebar}
 			leftSlot={<NavigationControls />}
-			onRenameCurrentPath={(nextName) =>
-				void renameCurrentMarkdownFile(nextName)
+			onRenameCurrentPath={
+				isChangelog
+					? undefined
+					: (nextName) => void renameCurrentMarkdownFile(nextName)
 			}
 			rightSlot={
 				<div className="flex items-center gap-1">
@@ -85,7 +91,7 @@ export function Toolbar({
 					>
 						<MingcuteTerminalLine className="size-3.5" />
 					</Button>
-					{currentPath && (
+					{currentPath && !isChangelog && (
 						<NoteActionsMenu
 							path={currentPath}
 							canChatAboutNote={workspacePath !== null}

@@ -553,6 +553,13 @@
 	cursor: pointer;
 }
 
+/* Read-only notes open links on a plain click, so hint it everywhere. */
+[data-hubble-editor]
+	.ProseMirror[contenteditable="false"]
+	span[data-link="true"] {
+	cursor: pointer;
+}
+
 [data-hubble-editor] .pm-ghost-text {
 	opacity: 0.35;
 	user-select: none;
