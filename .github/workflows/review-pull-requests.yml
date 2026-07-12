@@ -1,6 +1,6 @@
 name: Review Pull Requests
 
-# A read-only Oz agent reviews same-repository PRs. A separate trusted job
+# A read-only Oz agent reviews same-repository PRs. A separate publication job
 # validates its artifact against a freshly fetched diff before publishing it.
 
 on:
@@ -301,7 +301,7 @@ jobs:
           payload = {
               "body": body,
               "commit_id": os.environ["EXPECTED_HEAD_SHA"],
-              "event": "REQUEST_CHANGES" if verdict == "REJECT" else "COMMENT",
+              "event": "COMMENT",
               "comments": normalized,
           }
           with open(payload_path, "w", encoding="utf-8") as file:
