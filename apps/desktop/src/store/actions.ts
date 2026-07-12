@@ -1180,6 +1180,9 @@ export async function openChangelog(): Promise<boolean> {
 }
 
 async function navigateHistory(delta: -1 | 1) {
+	// Keep the toolbar's stack-derived availability stable while preventing a
+	// second navigation from racing the in-flight save and load.
+	if (historyStore.get().isNavigating) return;
 	if (!(delta < 0 ? canGoBack() : canGoForward())) return;
 
 	const current = viewerStore.get();

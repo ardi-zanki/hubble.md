@@ -5,7 +5,7 @@ name: Review Pull Requests
 
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review]
+    types: [opened, reopened, ready_for_review, synchronize]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -28,6 +28,10 @@ jobs:
       head_sha: ${{ steps.pr.outputs.head_sha }}
       pr_number: ${{ steps.pr.outputs.pr_number }}
     steps:
+      - name: Wait for pushes to settle
+        if: github.event_name == 'pull_request'
+        run: sleep 60
+
       - name: Resolve PR metadata
         id: pr
         env:
@@ -294,8 +298,8 @@ jobs:
                       raise SystemExit(f"Comment {index} has invalid range")
                   if start_line not in locations.get(path, {}).get(side, set()):
                       raise SystemExit(f"Comment {index} range starts outside the diff")
-                  if start_line > line or line - start_line >= 10:
-                      raise SystemExit(f"Comment {index} range exceeds 10 lines")
+                  if start_line > line:
+                      raise SystemExit(f"Comment {index} has an inverted range")
               normalized.append(item)
 
           payload = {

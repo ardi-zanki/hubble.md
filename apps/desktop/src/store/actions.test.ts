@@ -1022,6 +1022,43 @@ describe("desktop loadPath", () => {
 		expect(canGoForward()).toBe(false);
 	});
 
+	it("keeps history availability stable while blocking concurrent navigation", async () => {
+		const api = createDesktopApi();
+		api.readFileText.mockImplementation(
+			async (path: string) => `content:${path}`,
+		);
+		let resolvePathExists: ((exists: boolean) => void) | undefined;
+		api.pathExists.mockImplementation(
+			() =>
+				new Promise<boolean>((resolve) => {
+					resolvePathExists = resolve;
+				}),
+		);
+		const {
+			canGoBack,
+			canGoForward,
+			goBack,
+			historyStore,
+			loadPath,
+			viewerStore,
+		} = await loadStoreActions(api);
+
+		await loadPath("/workspace/a.md");
+		await loadPath("/workspace/b.md");
+		await loadPath("/workspace/c.md");
+
+		const firstNavigation = goBack();
+		await vi.waitFor(() => expect(historyStore.get().isNavigating).toBe(true));
+		expect(canGoBack()).toBe(true);
+		expect(canGoForward()).toBe(false);
+		await goBack();
+		expect(api.pathExists).toHaveBeenCalledTimes(1);
+
+		resolvePathExists?.(true);
+		await firstNavigation;
+		expect(viewerStore.get().currentPath).toBe("/workspace/b.md");
+	});
+
 	it("stays on the current file when opening a missing file fails", async () => {
 		const api = createDesktopApi();
 		api.pathExists.mockResolvedValue(true);

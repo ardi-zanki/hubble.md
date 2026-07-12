@@ -1,6 +1,6 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { Command } from "cmdk";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import MingcuteCornerDownLeftLine from "~icons/mingcute/corner-down-left-line";
 import MingcuteFileLine from "~icons/mingcute/file-line";
 import MingcuteSearch2Line from "~icons/mingcute/search-2-line";
@@ -72,22 +72,18 @@ function folderPath(relativePath: string) {
 	return slash === -1 ? "" : relativePath.slice(0, slash);
 }
 
-function useNameResults(files: PaletteFile[], query: string) {
-	return useMemo(() => {
-		if (query.trim() === "") {
-			return [...files]
-				.sort((a, b) => b.modifiedAt - a.modifiedAt)
-				.slice(0, MAX_RECENT_FILES);
-		}
-		return files
-			.map((file) => ({ file, score: scorePath(query, file.relativePath) }))
-			.filter((entry) => entry.score > 0)
-			.sort(
-				(a, b) => b.score - a.score || b.file.modifiedAt - a.file.modifiedAt,
-			)
-			.slice(0, MAX_NAME_RESULTS)
-			.map((entry) => entry.file);
-	}, [files, query]);
+function getNameResults(files: PaletteFile[], query: string) {
+	if (query.trim() === "") {
+		return [...files]
+			.sort((a, b) => b.modifiedAt - a.modifiedAt)
+			.slice(0, MAX_RECENT_FILES);
+	}
+	return files
+		.map((file) => ({ file, score: scorePath(query, file.relativePath) }))
+		.filter((entry) => entry.score > 0)
+		.sort((a, b) => b.score - a.score || b.file.modifiedAt - a.file.modifiedAt)
+		.slice(0, MAX_NAME_RESULTS)
+		.map((entry) => entry.file);
 }
 
 /**
@@ -103,7 +99,10 @@ function useContentResults(
 	const [result, setResult] = useState<PaletteContentResult | null>(null);
 	const [searching, setSearching] = useState(false);
 	const searchRef = useRef(searchContents);
-	searchRef.current = searchContents;
+
+	useLayoutEffect(() => {
+		searchRef.current = searchContents;
+	}, [searchContents]);
 
 	useEffect(() => {
 		if (!open || query.trim().length < MIN_CONTENT_QUERY_LENGTH) {
@@ -147,21 +146,17 @@ function GlobalSearchPalette({
 }: GlobalSearchPaletteProps) {
 	const [query, setQuery] = useState("");
 	const inputRef = useRef<HTMLInputElement | null>(null);
-	const nameResults = useNameResults(files, query);
+	const nameResults = getNameResults(files, query);
 	const { result, searching } = useContentResults(query, open, searchContents);
 
 	useEffect(() => {
 		if (!open) setQuery("");
 	}, [open]);
 
-	const relativeByPath = useMemo(
-		() => new Map(files.map((file) => [file.path, file.relativePath])),
-		[files],
+	const relativeByPath = new Map(
+		files.map((file) => [file.path, file.relativePath]),
 	);
-	const namePaths = useMemo(
-		() => new Set(nameResults.map((file) => file.path)),
-		[nameResults],
-	);
+	const namePaths = new Set(nameResults.map((file) => file.path));
 	// A file that already matched by name appears once, in the name group.
 	const contentResults = (result?.results ?? []).filter(
 		(entry) => !namePaths.has(entry.path),

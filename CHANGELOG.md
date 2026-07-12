@@ -17,6 +17,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Fixed
 
+- Switching between notes now keeps navigation controls stable and saves pending edits to the correct file. [#167](https://github.com/bholmesdev/hubble.md/pull/167)
 - macOS text context menus now include Writing Tools, text services, and spelling suggestions. Thanks [@noahpatterson](https://github.com/noahpatterson) for the suggestion! [#164](https://github.com/bholmesdev/hubble.md/pull/164)
 - Update-check failures now show a concise, unobtrusive message instead of a raw error trace.
 

@@ -26,12 +26,17 @@ import {
 	useEditor,
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CODE_BLOCK_COPY_EVENT, HubbleCodeBlock } from "./CodeBlockExtension";
 import { copySelectionAsMarkdown } from "./copyAsMarkdown";
 import { LinkClickExtension } from "./LinkClickExtension";
 import { LinkCreationGhostExtension } from "./LinkCreationGhostExtension";
 import { LinkPopover, type WikiTarget } from "./LinkPopover";
+import {
+	flushPendingSave,
+	type PendingSave,
+	schedulePendingSave,
+} from "./pendingSave";
 import { SlashCommandMenu } from "./SlashCommandMenu";
 import { SmartLinkExtension } from "./SmartLinkExtension";
 import { TableCellSelectionExtension } from "./TableCellSelectionExtension";
@@ -93,22 +98,17 @@ export function EditorView({
 	onOpenWikiLink,
 	onMessage,
 }: EditorViewProps) {
-	const initialFrontMatter = useMemo(
-		() => parseMarkdownFrontMatter(initialMarkdown),
-		[initialMarkdown],
-	);
+	const initialFrontMatter = parseMarkdownFrontMatter(initialMarkdown);
+	const initialFrontMatterRaw =
+		initialFrontMatter.type === "none" ? "" : initialFrontMatter.raw;
 	const partsRef = useRef({
 		body: initialFrontMatter.body,
-		frontMatter:
-			initialFrontMatter.type === "none" ? "" : initialFrontMatter.raw,
+		frontMatter: initialFrontMatterRaw,
 	});
 	const latestMarkdownRef = useRef(
-		combineMarkdownFrontMatter(
-			partsRef.current.frontMatter,
-			partsRef.current.body,
-		),
+		combineMarkdownFrontMatter(initialFrontMatterRaw, initialFrontMatter.body),
 	);
-	const saveTimerRef = useRef<number | null>(null);
+	const pendingSaveRef = useRef<PendingSave | null>(null);
 	const editorRootRef = useRef<HTMLDivElement | null>(null);
 	const editorViewportRef = useRef<HTMLDivElement | null>(null);
 	const lastCopyAsMarkdownRequestRef = useRef(copyAsMarkdownRequest);
@@ -121,34 +121,30 @@ export function EditorView({
 	);
 	const pathRef = useRef(path);
 	const editorRef = useRef<Editor | null>(null);
-	pathRef.current = path;
+	useLayoutEffect(() => {
+		pathRef.current = path;
+	}, [path]);
 
-	const setEditorViewport = useCallback(
-		(node: HTMLDivElement | null) => {
-			editorViewportRef.current = node;
-			setEditorViewportEl(node);
-			onScrollContainerChange?.(node);
-		},
-		[onScrollContainerChange],
-	);
+	const setEditorViewport = (node: HTMLDivElement | null) => {
+		editorViewportRef.current = node;
+		setEditorViewportEl(node);
+		onScrollContainerChange?.(node);
+	};
 
 	// Only used at editor creation. Later file loads sync through setContent.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: editor instance persists across file switches.
-	const initialDoc = useMemo(
-		() => markdownToTiptapDoc(initialFrontMatter.body),
-		[],
+	const [initialDoc] = useState(() =>
+		markdownToTiptapDoc(initialFrontMatter.body),
 	);
 
-	const scheduleSave = useCallback(() => {
-		const savePath = pathRef.current;
-		if (saveTimerRef.current !== null) {
-			window.clearTimeout(saveTimerRef.current);
-		}
-		saveTimerRef.current = window.setTimeout(() => {
-			saveTimerRef.current = null;
-			void onSave(savePath, latestMarkdownRef.current);
-		}, saveDebounceMs);
-	}, [onSave, saveDebounceMs]);
+	const scheduleSave = () => {
+		schedulePendingSave({
+			delay: saveDebounceMs,
+			markdown: latestMarkdownRef.current,
+			path: pathRef.current,
+			ref: pendingSaveRef,
+			save: onSave,
+		});
+	};
 
 	const editor = useEditor({
 		editable,
@@ -213,7 +209,9 @@ export function EditorView({
 			},
 		},
 	});
-	editorRef.current = editor;
+	useLayoutEffect(() => {
+		editorRef.current = editor;
+	}, [editor]);
 
 	useEffect(() => {
 		if (!editor || !editorViewportEl) return;
@@ -248,14 +246,12 @@ export function EditorView({
 	}, [editor, initialMarkdown]);
 
 	useEffect(() => {
+		// Path changes flush the pending edit before the next document takes over.
+		void path;
 		return () => {
-			if (saveTimerRef.current !== null) {
-				window.clearTimeout(saveTimerRef.current);
-				saveTimerRef.current = null;
-				void onSave(path, latestMarkdownRef.current);
-			}
+			flushPendingSave(pendingSaveRef);
 		};
-	}, [path, onSave]);
+	}, [path]);
 
 	useEffect(() => {
 		if (!onMessage) return;
