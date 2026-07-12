@@ -132,7 +132,6 @@ export function canGoBack(
 	workspacePath = workspaceStore.get().workspacePath,
 	onChangelog = isChangelogPath(currentPathStore.get()),
 ) {
-	if (history.isNavigating) return false;
 	const stack = stackFor(history, workspacePath);
 	// The changelog note is never pushed, so back means "return to the current
 	// entry" and stays enabled whenever one exists.
@@ -145,7 +144,6 @@ export function canGoForward(
 	workspacePath = workspaceStore.get().workspacePath,
 	onChangelog = isChangelogPath(currentPathStore.get()),
 ) {
-	if (history.isNavigating) return false;
 	if (onChangelog) return false;
 	const { index, entries } = stackFor(history, workspacePath);
 	return index >= 0 && index < entries.length - 1;

@@ -11,7 +11,7 @@ import {
 } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
 import { keymatch } from "keymatch";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import MingcutePencilLine from "~icons/mingcute/pencil-line";
 import { HtmlAppEmptyState } from "./components/HtmlAppEmptyState";
@@ -103,6 +103,18 @@ async function revealPath(path: string | null) {
 	}
 }
 
+async function openFilePicker() {
+	const currentPath = viewerStore.get().currentPath;
+	const defaultPath =
+		(isChangelogPath(currentPath) ? null : currentPath) ??
+		workspaceStore.get().workspacePath ??
+		undefined;
+	const selected = await desktopApi.openFilePicker({ defaultPath });
+	if (typeof selected === "string") {
+		await loadPath(selected);
+	}
+}
+
 let nextSearchRequestId = 0;
 
 /**
@@ -141,15 +153,11 @@ function App() {
 	const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const workspaceFiles = useStoreValue(workspaceStore).files;
-	const paletteFiles: PaletteFile[] = useMemo(
-		() =>
-			workspaceFiles.map((file) => ({
-				path: file.path,
-				relativePath: relativeWorkspacePath(file.path, workspacePath ?? null),
-				modifiedAt: file.modified_at,
-			})),
-		[workspaceFiles, workspacePath],
-	);
+	const paletteFiles: PaletteFile[] = workspaceFiles.map((file) => ({
+		path: file.path,
+		relativePath: relativeWorkspacePath(file.path, workspacePath ?? null),
+		modifiedAt: file.modified_at,
+	}));
 	const lastSeenVersion = useStoreValue(lastSeenVersionStore);
 
 	const readyVersion =
@@ -168,9 +176,9 @@ function App() {
 		lastSeenVersion !== currentVersion
 			? currentVersion
 			: null;
-	const markWhatsNewSeen = useCallback(() => {
+	const markWhatsNewSeen = () => {
 		if (currentVersion) setLastSeenVersion(currentVersion);
-	}, [currentVersion]);
+	};
 
 	useEffect(() => {
 		// First install has no update to announce; just record the version.
@@ -179,15 +187,12 @@ function App() {
 		}
 	}, [currentVersion, lastSeenVersion]);
 
-	const openSettings = useCallback(() => {
-		setSettingsOpen(true);
-	}, []);
-	const openWhatsNew = useCallback(() => {
+	const openWhatsNew = () => {
 		setSettingsOpen(false);
 		void openChangelog();
-	}, []);
+	};
 
-	const installUpdate = useCallback(async () => {
+	const installUpdate = async () => {
 		try {
 			await desktopApi.installUpdate();
 		} catch (error) {
@@ -195,16 +200,16 @@ function App() {
 				description: error instanceof Error ? error.message : String(error),
 			});
 		}
-	}, []);
+	};
 
-	const triggerPrimaryUpdateAction = useCallback(async () => {
+	const triggerPrimaryUpdateAction = async () => {
 		if (!updateState?.isSupported) return;
 		if (updateState.status === "ready") {
 			await installUpdate();
 			return;
 		}
 		await desktopApi.checkForUpdates();
-	}, [installUpdate, updateState]);
+	};
 
 	useEffect(() => {
 		const currentPath = state.currentPath;
@@ -247,18 +252,6 @@ function App() {
 		};
 	}, [state.currentPath]);
 
-	const openFilePicker = useCallback(async () => {
-		const currentPath = viewerStore.get().currentPath;
-		const defaultPath =
-			(isChangelogPath(currentPath) ? null : currentPath) ??
-			workspaceStore.get().workspacePath ??
-			undefined;
-		const selected = await desktopApi.openFilePicker({ defaultPath });
-		if (typeof selected === "string") {
-			await loadPath(selected);
-		}
-	}, []);
-
 	useEffect(() => {
 		const currentPath = state.currentPath;
 		void desktopApi.setMenuState({
@@ -296,7 +289,7 @@ function App() {
 				await createMarkdownFile();
 			} else if (keymatch(event, "CmdOrCtrl+,")) {
 				event.preventDefault();
-				openSettings();
+				setSettingsOpen(true);
 			} else if (keymatch(event, "CmdOrCtrl+Shift+O")) {
 				if (!workspaceStore.get().workspacePath) return;
 				event.preventDefault();
@@ -341,7 +334,7 @@ function App() {
 		};
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
-	}, [focusedSidebarPath, openFilePicker, openSettings]);
+	}, [focusedSidebarPath]);
 
 	useEffect(() => {
 		let active = true;
@@ -372,8 +365,11 @@ function App() {
 			desktopApi.onMenuCreateHtmlFile(() => void createHtmlFile()),
 			desktopApi.onMenuOpenFile(() => void openFilePicker()),
 			desktopApi.onMenuOpenFolder(() => void openWorkspaceWithSidebar()),
-			desktopApi.onMenuOpenSettings(() => openSettings()),
-			desktopApi.onMenuOpenChangelog(openWhatsNew),
+			desktopApi.onMenuOpenSettings(() => setSettingsOpen(true)),
+			desktopApi.onMenuOpenChangelog(() => {
+				setSettingsOpen(false);
+				void openChangelog();
+			}),
 			desktopApi.onMenuCopyAsMarkdown(() =>
 				setCopyAsMarkdownRequest((request) => request + 1),
 			),
@@ -399,7 +395,7 @@ function App() {
 		return () => {
 			for (const dispose of disposers) dispose();
 		};
-	}, [openFilePicker, openSettings, openWhatsNew]);
+	}, []);
 
 	useEffect(() => {
 		// Window focus can fire in bursts when switching apps, so debounce the
@@ -731,40 +727,34 @@ function MarkdownEditor({
 			title: wikiDisplayNameForTarget(target),
 		};
 	});
-	const openExternalLink = useCallback(
-		async (href: string) => {
-			if (classifyHref(href) === "external") {
-				await desktopApi.openExternalUrl(href);
+	const openExternalLink = async (href: string) => {
+		if (classifyHref(href) === "external") {
+			await desktopApi.openExternalUrl(href);
+			return;
+		}
+		const resolved = resolveRelativeLinkPath({
+			href,
+			currentFilePath: path,
+			workspacePath: workspace.workspacePath,
+		});
+		try {
+			const result = await desktopApi.openPathFromLink(resolved);
+			if (result.kind === "markdown") await loadPath(result.path);
+		} catch (error) {
+			if (error instanceof Error && error.message.includes("Open cancelled")) {
 				return;
 			}
-			const resolved = resolveRelativeLinkPath({
-				href,
-				currentFilePath: path,
-				workspacePath: workspace.workspacePath,
-			});
-			try {
-				const result = await desktopApi.openPathFromLink(resolved);
-				if (result.kind === "markdown") await loadPath(result.path);
-			} catch (error) {
-				if (
-					error instanceof Error &&
-					error.message.includes("Open cancelled")
-				) {
-					return;
-				}
-				if (
-					hasMarkdownExtension(resolved) &&
-					error instanceof Error &&
-					error.message.includes("FILE_NOT_FOUND")
-				) {
-					toast.error(`File not found: ${href.split("#", 1)[0] ?? href}`);
-					return;
-				}
-				throw error;
+			if (
+				hasMarkdownExtension(resolved) &&
+				error instanceof Error &&
+				error.message.includes("FILE_NOT_FOUND")
+			) {
+				toast.error(`File not found: ${href.split("#", 1)[0] ?? href}`);
+				return;
 			}
-		},
-		[path, workspace.workspacePath],
-	);
+			throw error;
+		}
+	};
 	return (
 		<EditorView
 			path={path}

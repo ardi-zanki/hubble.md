@@ -1,5 +1,6 @@
 import { isAbsolute } from "node:path";
 import { fileURLToPath, URL } from "node:url";
+import react from "@vitejs/plugin-react";
 import icons from "unplugin-icons/vite";
 import { defineConfig } from "vite";
 
@@ -12,6 +13,11 @@ const isExternal = (id: string) =>
 
 export default defineConfig({
 	plugins: [
+		react({
+			babel: {
+				plugins: ["babel-plugin-react-compiler"],
+			},
+		}),
 		icons({
 			compiler: "jsx",
 			jsx: "react",

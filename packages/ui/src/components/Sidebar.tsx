@@ -21,7 +21,6 @@ import {
 	forwardRef,
 	type KeyboardEvent as ReactKeyboardEvent,
 	type ReactNode,
-	useCallback,
 	useEffect,
 	useRef,
 	useState,
@@ -351,6 +350,10 @@ const segmentFirstCollision: CollisionDetection = (args) => {
 	return segmentCollisions.length > 0 ? segmentCollisions : pointerCollisions;
 };
 
+function defaultGetDisplayPath(path: string) {
+	return path;
+}
+
 export function Sidebar({
 	files,
 	folders = [],
@@ -361,7 +364,7 @@ export function Sidebar({
 	header,
 	footer,
 	emptyState,
-	getDisplayPath = (path) => path,
+	getDisplayPath = defaultGetDisplayPath,
 	onCollapse,
 	onSortModeChange,
 	onSelectFile,
@@ -451,169 +454,139 @@ export function Sidebar({
 	const sensors = useSensors(
 		useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
 	);
-	const beginRename = useCallback(
-		(
-			item: RenameItem,
-			label: string,
-			options?: { deleteOnUnchangedCancel?: boolean },
-		) => {
-			const name = splitFileName(label).name;
-			setOpenActionsPath(null);
-			setRenamingItem(item);
-			setRenameDraft(name);
-			setDeleteOnCancel(
-				options?.deleteOnUnchangedCancel
-					? { kind: item.kind, path: item.path, draft: name }
-					: null,
-			);
-			setRenameError(null);
-		},
-		[],
-	);
-	const createFile = useCallback(
-		async (folderId: string | null) => {
-			if (!onCreateFile) return;
-			setOpenActionsPath(null);
-			if (folderId) expandFolder(folderId);
-			const path = await onCreateFile(folderId);
-			if (!path) return;
-			beginRename(
-				{ kind: "file", path },
-				fileNameFromPath(getDisplayPath(path)),
-				{
-					deleteOnUnchangedCancel: true,
-				},
-			);
-		},
-		[beginRename, expandFolder, getDisplayPath, onCreateFile],
-	);
-	const createHtmlFile = useCallback(
-		async (folderId: string | null) => {
-			if (!onCreateHtmlFile) return;
-			setOpenActionsPath(null);
-			if (folderId) expandFolder(folderId);
-			const path = await onCreateHtmlFile(folderId);
-			if (!path) return;
-			beginRename(
-				{ kind: "file", path },
-				fileNameFromPath(getDisplayPath(path)),
-				{
-					deleteOnUnchangedCancel: true,
-				},
-			);
-		},
-		[beginRename, expandFolder, getDisplayPath, onCreateHtmlFile],
-	);
-	const createFolder = useCallback(
-		async (folderId: string | null) => {
-			if (!onCreateFolder) return;
-			setOpenActionsPath(null);
-			if (folderId) expandFolder(folderId);
-			const path = await onCreateFolder(folderId);
-			if (!path) return;
-			const displayPath = normalizeDisplayPath(getDisplayPath(path));
-			const id = displayPath.endsWith("/") ? displayPath : `${displayPath}/`;
+	const beginRename = (
+		item: RenameItem,
+		label: string,
+		options?: { deleteOnUnchangedCancel?: boolean },
+	) => {
+		const name = splitFileName(label).name;
+		setOpenActionsPath(null);
+		setRenamingItem(item);
+		setRenameDraft(name);
+		setDeleteOnCancel(
+			options?.deleteOnUnchangedCancel
+				? { kind: item.kind, path: item.path, draft: name }
+				: null,
+		);
+		setRenameError(null);
+	};
+	const createFile = async (folderId: string | null) => {
+		if (!onCreateFile) return;
+		setOpenActionsPath(null);
+		if (folderId) expandFolder(folderId);
+		const path = await onCreateFile(folderId);
+		if (!path) return;
+		beginRename(
+			{ kind: "file", path },
+			fileNameFromPath(getDisplayPath(path)),
+			{
+				deleteOnUnchangedCancel: true,
+			},
+		);
+	};
+	const createHtmlFile = async (folderId: string | null) => {
+		if (!onCreateHtmlFile) return;
+		setOpenActionsPath(null);
+		if (folderId) expandFolder(folderId);
+		const path = await onCreateHtmlFile(folderId);
+		if (!path) return;
+		beginRename(
+			{ kind: "file", path },
+			fileNameFromPath(getDisplayPath(path)),
+			{
+				deleteOnUnchangedCancel: true,
+			},
+		);
+	};
+	const createFolder = async (folderId: string | null) => {
+		if (!onCreateFolder) return;
+		setOpenActionsPath(null);
+		if (folderId) expandFolder(folderId);
+		const path = await onCreateFolder(folderId);
+		if (!path) return;
+		const displayPath = normalizeDisplayPath(getDisplayPath(path));
+		const id = displayPath.endsWith("/") ? displayPath : `${displayPath}/`;
+		beginRename(
+			{
+				kind: "folder",
+				path: id,
+				displayPath,
+				parentDisplayPath: dirname(displayPath),
+			},
+			fileNameFromPath(displayPath),
+			{
+				deleteOnUnchangedCancel: true,
+			},
+		);
+	};
+	const activateRow = (row: SidebarRow) => {
+		if (row.kind === "file") onSelectFile(row.file.path);
+		else if (row.kind === "folder") toggleFolder(row.id);
+	};
+	const updateSelection = (row: SidebarRow, mode: SidebarSelectionMode) => {
+		const targetKey = sidebarRowKey(row);
+		setSelection((current) =>
+			applySidebarSelection({
+				anchorKey: current.anchorKey,
+				mode,
+				rows,
+				selectedKeys: current.selectedKeys,
+				targetKey,
+			}),
+		);
+	};
+	const replaceSelection = (row: SidebarRow) => {
+		const targetKey = sidebarRowKey(row);
+		setSelection((current) =>
+			applySidebarSelection({
+				anchorKey: current.anchorKey,
+				mode: "replace",
+				rows,
+				selectedKeys: current.selectedKeys,
+				targetKey,
+			}),
+		);
+	};
+	const handleRowClick = (
+		row: SidebarSelectableRow,
+		event: React.MouseEvent<HTMLButtonElement>,
+	) => {
+		const mode: SidebarSelectionMode = event.shiftKey
+			? "range"
+			: event.metaKey || event.ctrlKey
+				? "toggle"
+				: "replace";
+		updateSelection(row, mode);
+		if (mode !== "replace") {
+			event.preventDefault();
+			return;
+		}
+		if (row.kind === "file" && event.detail > 1) return;
+		activateRow(row);
+		requestAnimationFrame(() => navRef.current?.focus());
+	};
+	const enterRowEdit = (row: SidebarRow) => {
+		if (row.kind === "file" && onRenameFile)
+			beginRename({ kind: "file", path: row.file.path }, row.label);
+		else if (row.kind === "folder" && onRenameFolder)
 			beginRename(
 				{
 					kind: "folder",
-					path: id,
-					displayPath,
-					parentDisplayPath: dirname(displayPath),
+					path: row.id,
+					displayPath: folderDisplayPath(row),
+					parentDisplayPath: folderRenameParentDisplayPath(row),
 				},
-				fileNameFromPath(displayPath),
-				{
-					deleteOnUnchangedCancel: true,
-				},
+				row.label,
 			);
-		},
-		[beginRename, expandFolder, getDisplayPath, onCreateFolder],
-	);
-	const activateRow = useCallback(
-		(row: SidebarRow) => {
-			if (row.kind === "file") onSelectFile(row.file.path);
-			else if (row.kind === "folder") toggleFolder(row.id);
-		},
-		[onSelectFile, toggleFolder],
-	);
-	const updateSelection = useCallback(
-		(row: SidebarRow, mode: SidebarSelectionMode) => {
-			const targetKey = sidebarRowKey(row);
-			setSelection((current) =>
-				applySidebarSelection({
-					anchorKey: current.anchorKey,
-					mode,
-					rows,
-					selectedKeys: current.selectedKeys,
-					targetKey,
-				}),
-			);
-		},
-		[rows],
-	);
-	const replaceSelection = useCallback(
-		(row: SidebarRow) => {
-			const targetKey = sidebarRowKey(row);
-			setSelection((current) =>
-				applySidebarSelection({
-					anchorKey: current.anchorKey,
-					mode: "replace",
-					rows,
-					selectedKeys: current.selectedKeys,
-					targetKey,
-				}),
-			);
-		},
-		[rows],
-	);
-	const handleRowClick = useCallback(
-		(row: SidebarSelectableRow, event: React.MouseEvent<HTMLButtonElement>) => {
-			const mode: SidebarSelectionMode = event.shiftKey
-				? "range"
-				: event.metaKey || event.ctrlKey
-					? "toggle"
-					: "replace";
-			updateSelection(row, mode);
-			if (mode !== "replace") {
-				event.preventDefault();
-				return;
-			}
-			if (row.kind === "file" && event.detail > 1) return;
-			activateRow(row);
-			requestAnimationFrame(() => navRef.current?.focus());
-		},
-		[activateRow, updateSelection],
-	);
-	const enterRowEdit = useCallback(
-		(row: SidebarRow) => {
-			if (row.kind === "file" && onRenameFile)
-				beginRename({ kind: "file", path: row.file.path }, row.label);
-			else if (row.kind === "folder" && onRenameFolder)
-				beginRename(
-					{
-						kind: "folder",
-						path: row.id,
-						displayPath: folderDisplayPath(row),
-						parentDisplayPath: folderRenameParentDisplayPath(row),
-					},
-					row.label,
-				);
-			else if (row.kind === "section") return;
-			else activateRow(row);
-		},
-		[activateRow, beginRename, onRenameFile, onRenameFolder],
-	);
-	const expandRow = useCallback(
-		(row: SidebarRow) => {
-			if (row.kind === "folder") expandFolder(row.id);
-		},
-		[expandFolder],
-	);
-	const collapseRow = useCallback(
-		(row: SidebarRow) => {
-			if (row.kind === "folder") collapseFolder(row.id);
-		},
-		[collapseFolder],
-	);
+		else if (row.kind === "section") return;
+		else activateRow(row);
+	};
+	const expandRow = (row: SidebarRow) => {
+		if (row.kind === "folder") expandFolder(row.id);
+	};
+	const collapseRow = (row: SidebarRow) => {
+		if (row.kind === "folder") collapseFolder(row.id);
+	};
 	const activeIndex = rows.findIndex(
 		(row) => row.kind === "file" && row.file.path === highlightPath,
 	);
@@ -626,61 +599,48 @@ export function Sidebar({
 		navRef,
 		activeIndex,
 	});
-	const handleDeleteSelection = useCallback(
-		(targetSelection: SidebarActionSelection) => {
-			const actionable = sidebarDeleteSelection(
-				targetSelection,
-				getDisplayPath,
-				Boolean(onDeleteFile),
-				Boolean(onDeleteFolder),
-			);
-			if (actionable.count === 0) return;
-			if (
-				!window.confirm(
-					`Delete ${actionable.count} ${actionable.count === 1 ? "item" : "items"}?`,
-				)
+	const handleDeleteSelection = (targetSelection: SidebarActionSelection) => {
+		const actionable = sidebarDeleteSelection(
+			targetSelection,
+			getDisplayPath,
+			Boolean(onDeleteFile),
+			Boolean(onDeleteFolder),
+		);
+		if (actionable.count === 0) return;
+		if (
+			!window.confirm(
+				`Delete ${actionable.count} ${actionable.count === 1 ? "item" : "items"}?`,
 			)
+		)
+			return;
+		for (const file of actionable.files) onDeleteFile?.(file.path);
+		for (const folderId of actionable.folders) onDeleteFolder?.(folderId);
+	};
+	const handleTreeKeyDown = (event: React.KeyboardEvent) => {
+		if (
+			!isEditableEventTarget(event.target) &&
+			keymatch(event.nativeEvent, "CmdOrCtrl+Backspace")
+		) {
+			const focusedRow = focusedIndex === null ? null : rows[focusedIndex];
+			const focusedKey = focusedRow ? sidebarRowKey(focusedRow) : null;
+			const activeKey = sidebarRowKey(rows[activeIndex]);
+			const keys = focusedKey
+				? selectedKeys.has(focusedKey)
+					? selectedKeys
+					: new Set([focusedKey])
+				: selectedKeys.size > 0
+					? selectedKeys
+					: activeKey
+						? new Set([activeKey])
+						: selectedKeys;
+			if (keys.size > 0) {
+				event.preventDefault();
+				handleDeleteSelection(sidebarActionSelection(rows, keys));
 				return;
-			for (const file of actionable.files) onDeleteFile?.(file.path);
-			for (const folderId of actionable.folders) onDeleteFolder?.(folderId);
-		},
-		[getDisplayPath, onDeleteFile, onDeleteFolder],
-	);
-	const handleTreeKeyDown = useCallback(
-		(event: React.KeyboardEvent) => {
-			if (
-				!isEditableEventTarget(event.target) &&
-				keymatch(event.nativeEvent, "CmdOrCtrl+Backspace")
-			) {
-				const focusedRow = focusedIndex === null ? null : rows[focusedIndex];
-				const focusedKey = focusedRow ? sidebarRowKey(focusedRow) : null;
-				const activeKey = sidebarRowKey(rows[activeIndex]);
-				const keys = focusedKey
-					? selectedKeys.has(focusedKey)
-						? selectedKeys
-						: new Set([focusedKey])
-					: selectedKeys.size > 0
-						? selectedKeys
-						: activeKey
-							? new Set([activeKey])
-							: selectedKeys;
-				if (keys.size > 0) {
-					event.preventDefault();
-					handleDeleteSelection(sidebarActionSelection(rows, keys));
-					return;
-				}
 			}
-			onKeyDown(event);
-		},
-		[
-			activeIndex,
-			focusedIndex,
-			handleDeleteSelection,
-			onKeyDown,
-			rows,
-			selectedKeys,
-		],
-	);
+		}
+		onKeyDown(event);
+	};
 	useEffect(() => {
 		const row = focusedIndex === null ? null : rows[focusedIndex];
 		if (!row || row.kind === "section") {
@@ -715,52 +675,46 @@ export function Sidebar({
 		setSelection((current) => snapSidebarSelection(current, highlightPath));
 	}, [highlightPath]);
 
-	const handleDragStart = useCallback(
-		(event: DragStartEvent) => {
-			const data = event.active.data.current as DragItemData | undefined;
-			setActiveDragLabel(data?.label ?? null);
-			setActiveDragKeys(
-				data
-					? new Set(selectedKeys.has(data.key) ? selectedKeys : [data.key])
-					: new Set(),
-			);
-		},
-		[selectedKeys],
-	);
-	const handleDragEnd = useCallback(
-		(event: DragEndEvent) => {
-			setActiveDragLabel(null);
-			setActiveDragKeys(new Set());
-			setDropTarget(null);
-			if (!onMoveItem || !event.over) return;
-			const item = event.active.data.current as DragItemData | undefined;
-			const target = event.over.data.current as DropTargetData | undefined;
-			if (!item || !target) return;
-			const targetFolderId = target.folderId;
-			const items = sidebarMoveItemsForDrag({
-				draggedItem: item,
-				getDisplayPath,
-				rows,
-				selectedKeys,
-				targetFolderId,
-			});
-			if (items.length === 0) return;
-			void onMoveItem({
-				items,
-				targetFolderId,
-			});
-			setSelection({ selectedKeys: new Set(), anchorKey: null });
-		},
-		[getDisplayPath, onMoveItem, rows, selectedKeys],
-	);
-	const handleDragOver = useCallback((event: DragOverEvent) => {
+	const handleDragStart = (event: DragStartEvent) => {
+		const data = event.active.data.current as DragItemData | undefined;
+		setActiveDragLabel(data?.label ?? null);
+		setActiveDragKeys(
+			data
+				? new Set(selectedKeys.has(data.key) ? selectedKeys : [data.key])
+				: new Set(),
+		);
+	};
+	const handleDragEnd = (event: DragEndEvent) => {
+		setActiveDragLabel(null);
+		setActiveDragKeys(new Set());
+		setDropTarget(null);
+		if (!onMoveItem || !event.over) return;
+		const item = event.active.data.current as DragItemData | undefined;
+		const target = event.over.data.current as DropTargetData | undefined;
+		if (!item || !target) return;
+		const targetFolderId = target.folderId;
+		const items = sidebarMoveItemsForDrag({
+			draggedItem: item,
+			getDisplayPath,
+			rows,
+			selectedKeys,
+			targetFolderId,
+		});
+		if (items.length === 0) return;
+		void onMoveItem({
+			items,
+			targetFolderId,
+		});
+		setSelection({ selectedKeys: new Set(), anchorKey: null });
+	};
+	const handleDragOver = (event: DragOverEvent) => {
 		const target = event.over?.data.current as DropTargetData | undefined;
 		setDropTarget(
 			event.over
 				? { id: String(event.over.id), folderId: target?.folderId ?? null }
 				: null,
 		);
-	}, []);
+	};
 
 	useEffect(() => {
 		if (!activeDragLabel || !dropTarget?.folderId) return;
@@ -809,14 +763,14 @@ export function Sidebar({
 		};
 	}, []);
 
-	const resetRename = useCallback(() => {
+	const resetRename = () => {
 		setRenamingItem(null);
 		setRenameDraft("");
 		setDeleteOnCancel(null);
 		setRenameError(null);
-	}, []);
+	};
 
-	const cancelRename = useCallback(() => {
+	const cancelRename = () => {
 		const shouldDelete =
 			deleteOnCancel &&
 			renamingItem &&
@@ -830,69 +784,48 @@ export function Sidebar({
 				onDeleteFolder(deleteOnCancel.path);
 		}
 		resetRename();
-	}, [
-		deleteOnCancel,
-		onDeleteFile,
-		onDeleteFolder,
-		renameDraft,
-		renamingItem,
-		resetRename,
-	]);
+	};
 
-	const getRenameError = useCallback(
-		(item: RenameItem, draft: string) => {
-			const nextName = draft.trim();
-			if (!nextName) return null;
-			const targetName = renameTargetName(item, nextName, getDisplayPath);
-			if (!renameTargetExists(item, nextName, files, folders, getDisplayPath)) {
-				return null;
-			}
-			return `A ${item.kind} ${targetName} already exists at this location.`;
-		},
-		[files, folders, getDisplayPath],
-	);
+	const getRenameError = (item: RenameItem, draft: string) => {
+		const nextName = draft.trim();
+		if (!nextName) return null;
+		const targetName = renameTargetName(item, nextName, getDisplayPath);
+		if (!renameTargetExists(item, nextName, files, folders, getDisplayPath)) {
+			return null;
+		}
+		return `A ${item.kind} ${targetName} already exists at this location.`;
+	};
 
-	const commitRename = useCallback(
-		(focusTree = false) => {
-			const item = renamingItem;
-			if (!item) return;
-			const nextName = renameDraft.trim();
-			if (!nextName) {
-				resetRename();
-				if (focusTree) requestAnimationFrame(() => navRef.current?.focus());
-				return;
-			}
-			const error = getRenameError(item, nextName);
-			if (error) {
-				setRenameError(error);
-				requestAnimationFrame(() => renameInputRef.current?.focus());
-				return;
-			}
-			if (focusTree) {
-				setPendingFocusDisplayPath(
-					renameTargetDisplayPath(item, nextName, getDisplayPath),
-				);
-				requestAnimationFrame(() => navRef.current?.focus());
-			}
+	const commitRename = (focusTree = false) => {
+		const item = renamingItem;
+		if (!item) return;
+		const nextName = renameDraft.trim();
+		if (!nextName) {
 			resetRename();
-			if (item.kind === "file") onRenameFile?.(item.path, nextName);
-			else
-				onRenameFolder?.(
-					item.path,
-					nextName,
-					renameTargetDisplayPath(item, nextName, getDisplayPath),
-				);
-		},
-		[
-			getRenameError,
-			onRenameFile,
-			onRenameFolder,
-			renameDraft,
-			renamingItem,
-			resetRename,
-			getDisplayPath,
-		],
-	);
+			if (focusTree) requestAnimationFrame(() => navRef.current?.focus());
+			return;
+		}
+		const error = getRenameError(item, nextName);
+		if (error) {
+			setRenameError(error);
+			requestAnimationFrame(() => renameInputRef.current?.focus());
+			return;
+		}
+		if (focusTree) {
+			setPendingFocusDisplayPath(
+				renameTargetDisplayPath(item, nextName, getDisplayPath),
+			);
+			requestAnimationFrame(() => navRef.current?.focus());
+		}
+		resetRename();
+		if (item.kind === "file") onRenameFile?.(item.path, nextName);
+		else
+			onRenameFolder?.(
+				item.path,
+				nextName,
+				renameTargetDisplayPath(item, nextName, getDisplayPath),
+			);
+	};
 
 	const tree = (
 		<DndContext
@@ -1390,14 +1323,11 @@ const DroppableSidebarNav = forwardRef<
 		data: { folderId: null } satisfies DropTargetData,
 		disabled: !enabled,
 	});
-	const setRefs = useCallback(
-		(node: HTMLDivElement | null) => {
-			setNodeRef(node);
-			if (typeof ref === "function") ref(node);
-			else if (ref) ref.current = node;
-		},
-		[ref, setNodeRef],
-	);
+	const setRefs = (node: HTMLDivElement | null) => {
+		setNodeRef(node);
+		if (typeof ref === "function") ref(node);
+		else if (ref) ref.current = node;
+	};
 	return (
 		<div
 			ref={setRefs}
@@ -1515,13 +1445,10 @@ function FolderSegment({
 		data: { folderId: segment.id } satisfies DropTargetData,
 		disabled: !enabled,
 	});
-	const setRefs = useCallback(
-		(node: HTMLSpanElement | null) => {
-			setDragRef(node);
-			setNodeRef(node);
-		},
-		[setDragRef, setNodeRef],
-	);
+	const setRefs = (node: HTMLSpanElement | null) => {
+		setDragRef(node);
+		setNodeRef(node);
+	};
 	return (
 		<>
 			{separator ? <span className="text-muted-foreground">/</span> : null}

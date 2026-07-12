@@ -198,7 +198,16 @@ export function SelectionFormattingToolbar({
 						width: right - left,
 						height: bottom - top,
 						toJSON() {
-							return this;
+							return {
+								x: left,
+								y: top,
+								left,
+								top,
+								right,
+								bottom,
+								width: right - left,
+								height: bottom - top,
+							};
 						},
 					};
 				},

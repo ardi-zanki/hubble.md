@@ -9,7 +9,11 @@ const devPort = Number(process.env.PORT ?? 1420);
 // https://vite.dev/config/
 export default defineConfig(async () => ({
 	plugins: [
-		react(),
+		react({
+			babel: {
+				plugins: ["babel-plugin-react-compiler"],
+			},
+		}),
 		icons({
 			compiler: "jsx",
 			jsx: "react",

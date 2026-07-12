@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { z } from "zod/v4";
 import { fileNameFromPath, normalizeDisplayPath } from "../lib/filePath";
 
@@ -99,29 +99,18 @@ export function useSidebarTree({
 		writeExpandedFolders(storageKey, expandedState.folders);
 	}, [storageKey, expandedState]);
 
-	const tree = useMemo(
-		() => buildFileTree(files, folders, getDisplayPath),
-		[files, folders, getDisplayPath],
-	);
-	const activeAncestorIds = useMemo(
-		() =>
-			highlightPath
-				? getFolderAncestorIds(getDisplayPath(highlightPath))
-				: new Set<string>(),
-		[highlightPath, getDisplayPath],
-	);
-	const rows = useMemo(
-		() =>
-			flattenRows({
-				files,
-				getDisplayPath,
-				tree,
-				sortMode,
-				expandedFolders,
-				uncompactFolderId,
-			}),
-		[expandedFolders, files, getDisplayPath, sortMode, tree, uncompactFolderId],
-	);
+	const tree = buildFileTree(files, folders, getDisplayPath);
+	const activeAncestorIds = highlightPath
+		? getFolderAncestorIds(getDisplayPath(highlightPath))
+		: new Set<string>();
+	const rows = flattenRows({
+		files,
+		getDisplayPath,
+		tree,
+		sortMode,
+		expandedFolders,
+		uncompactFolderId,
+	});
 
 	useEffect(() => {
 		if (!highlightPath || revealedPathRef.current === highlightPath) return;
@@ -144,33 +133,22 @@ export function useSidebarTree({
 		});
 	}, [activeAncestorIds, highlightPath, storageKey]);
 
-	const setExpanded = useCallback(
-		(id: string, expanded: boolean) => {
-			setExpandedState((current) => {
-				const next = new Set(
-					current.key === storageKey
-						? current.folders
-						: readExpandedFolders(storageKey),
-				);
-				if (expanded) next.add(id);
-				else next.delete(id);
-				return { key: storageKey, folders: next };
-			});
-		},
-		[storageKey],
-	);
-	const expandFolder = useCallback(
-		(id: string) => setExpanded(id, true),
-		[setExpanded],
-	);
-	const collapseFolder = useCallback(
-		(id: string) => setExpanded(id, false),
-		[setExpanded],
-	);
-	const toggleFolder = useCallback(
-		(id: string) => setExpanded(id, !expandedFolders.has(id)),
-		[expandedFolders, setExpanded],
-	);
+	const setExpanded = (id: string, expanded: boolean) => {
+		setExpandedState((current) => {
+			const next = new Set(
+				current.key === storageKey
+					? current.folders
+					: readExpandedFolders(storageKey),
+			);
+			if (expanded) next.add(id);
+			else next.delete(id);
+			return { key: storageKey, folders: next };
+		});
+	};
+	const expandFolder = (id: string) => setExpanded(id, true);
+	const collapseFolder = (id: string) => setExpanded(id, false);
+	const toggleFolder = (id: string) =>
+		setExpanded(id, !expandedFolders.has(id));
 
 	return { collapseFolder, expandFolder, rows, toggleFolder };
 }

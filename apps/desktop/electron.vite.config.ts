@@ -30,7 +30,11 @@ export default defineConfig({
 	renderer: {
 		root: ".",
 		plugins: [
-			react(),
+			react({
+				babel: {
+					plugins: ["babel-plugin-react-compiler"],
+				},
+			}),
 			icons({
 				compiler: "jsx",
 				jsx: "react",

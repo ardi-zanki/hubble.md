@@ -26,7 +26,7 @@ import {
 	useEditor,
 } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CODE_BLOCK_COPY_EVENT, HubbleCodeBlock } from "./CodeBlockExtension";
 import { copySelectionAsMarkdown } from "./copyAsMarkdown";
 import { LinkClickExtension } from "./LinkClickExtension";
@@ -93,20 +93,15 @@ export function EditorView({
 	onOpenWikiLink,
 	onMessage,
 }: EditorViewProps) {
-	const initialFrontMatter = useMemo(
-		() => parseMarkdownFrontMatter(initialMarkdown),
-		[initialMarkdown],
-	);
+	const initialFrontMatter = parseMarkdownFrontMatter(initialMarkdown);
+	const initialFrontMatterRaw =
+		initialFrontMatter.type === "none" ? "" : initialFrontMatter.raw;
 	const partsRef = useRef({
 		body: initialFrontMatter.body,
-		frontMatter:
-			initialFrontMatter.type === "none" ? "" : initialFrontMatter.raw,
+		frontMatter: initialFrontMatterRaw,
 	});
 	const latestMarkdownRef = useRef(
-		combineMarkdownFrontMatter(
-			partsRef.current.frontMatter,
-			partsRef.current.body,
-		),
+		combineMarkdownFrontMatter(initialFrontMatterRaw, initialFrontMatter.body),
 	);
 	const saveTimerRef = useRef<number | null>(null);
 	const editorRootRef = useRef<HTMLDivElement | null>(null);
@@ -121,25 +116,22 @@ export function EditorView({
 	);
 	const pathRef = useRef(path);
 	const editorRef = useRef<Editor | null>(null);
-	pathRef.current = path;
+	useLayoutEffect(() => {
+		pathRef.current = path;
+	}, [path]);
 
-	const setEditorViewport = useCallback(
-		(node: HTMLDivElement | null) => {
-			editorViewportRef.current = node;
-			setEditorViewportEl(node);
-			onScrollContainerChange?.(node);
-		},
-		[onScrollContainerChange],
-	);
+	const setEditorViewport = (node: HTMLDivElement | null) => {
+		editorViewportRef.current = node;
+		setEditorViewportEl(node);
+		onScrollContainerChange?.(node);
+	};
 
 	// Only used at editor creation. Later file loads sync through setContent.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: editor instance persists across file switches.
-	const initialDoc = useMemo(
-		() => markdownToTiptapDoc(initialFrontMatter.body),
-		[],
+	const [initialDoc] = useState(() =>
+		markdownToTiptapDoc(initialFrontMatter.body),
 	);
 
-	const scheduleSave = useCallback(() => {
+	const scheduleSave = () => {
 		const savePath = pathRef.current;
 		if (saveTimerRef.current !== null) {
 			window.clearTimeout(saveTimerRef.current);
@@ -148,7 +140,7 @@ export function EditorView({
 			saveTimerRef.current = null;
 			void onSave(savePath, latestMarkdownRef.current);
 		}, saveDebounceMs);
-	}, [onSave, saveDebounceMs]);
+	};
 
 	const editor = useEditor({
 		editable,
@@ -213,7 +205,9 @@ export function EditorView({
 			},
 		},
 	});
-	editorRef.current = editor;
+	useLayoutEffect(() => {
+		editorRef.current = editor;
+	}, [editor]);
 
 	useEffect(() => {
 		if (!editor || !editorViewportEl) return;

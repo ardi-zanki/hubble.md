@@ -2,7 +2,7 @@ import type { Editor } from "@tiptap/core";
 import Document from "@tiptap/extension-document";
 import { EditorContent, type JSONContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { HubbleCodeBlock } from "./CodeBlockExtension";
 import "./EditorView.css";
 
@@ -29,16 +29,15 @@ export function MarkdownSourceEditor({
 	const pathRef = useRef(path);
 	const latestMarkdownRef = useRef(initialMarkdown);
 	const saveTimerRef = useRef<number | null>(null);
-	pathRef.current = path;
+	useLayoutEffect(() => {
+		pathRef.current = path;
+	}, [path]);
 
-	const setEditorViewport = useCallback(
-		(node: HTMLDivElement | null) => {
-			onScrollContainerChange?.(node);
-		},
-		[onScrollContainerChange],
-	);
+	const setEditorViewport = (node: HTMLDivElement | null) => {
+		onScrollContainerChange?.(node);
+	};
 
-	const scheduleSave = useCallback(() => {
+	const scheduleSave = () => {
 		const savePath = pathRef.current;
 		if (saveTimerRef.current !== null) {
 			window.clearTimeout(saveTimerRef.current);
@@ -47,7 +46,7 @@ export function MarkdownSourceEditor({
 			saveTimerRef.current = null;
 			void onSave(savePath, latestMarkdownRef.current);
 		}, saveDebounceMs);
-	}, [onSave, saveDebounceMs]);
+	};
 
 	const editor = useEditor({
 		extensions: [
