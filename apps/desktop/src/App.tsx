@@ -31,6 +31,7 @@ import { createHtmlFile, createMarkdownFile } from "./fileActions";
 import { isChangelogPath } from "./lib/changelogNote";
 import { copyText } from "./lib/clipboard";
 import {
+	hasDocumentExtension,
 	hasHtmlExtension,
 	hasMarkdownExtension,
 	relativeWorkspacePath,
@@ -256,8 +257,8 @@ function App() {
 		const currentPath = state.currentPath;
 		void desktopApi.setMenuState({
 			hasWorkspace,
-			hasMarkdownNoteOpen:
-				typeof currentPath === "string" && hasMarkdownExtension(currentPath),
+			hasSourceViewOpen:
+				typeof currentPath === "string" && hasDocumentExtension(currentPath),
 			isSourceMode: state.viewMode === "source",
 			canGoBack: menuCanGoBack,
 			canGoForward: menuCanGoForward,
@@ -385,7 +386,7 @@ function App() {
 				const current = viewerStore.get();
 				if (
 					!current.currentPath ||
-					!hasMarkdownExtension(current.currentPath)
+					!hasDocumentExtension(current.currentPath)
 				) {
 					return;
 				}
@@ -601,6 +602,21 @@ function DocumentViewer({
 	viewMode: ViewMode;
 	onScrollContainerChange?: (el: HTMLDivElement | null) => void;
 }) {
+	if (viewMode === "source" && hasDocumentExtension(path)) {
+		const isHtml = hasHtmlExtension(path);
+		return (
+			<MarkdownSourceEditor
+				key={`${path}:source:${HMR_REV}`}
+				path={path}
+				initialMarkdown={content}
+				sourceLanguage={isHtml ? "html" : "md"}
+				onLocalChange={updateEditorContent}
+				onSave={savePathContent}
+				onScrollContainerChange={onScrollContainerChange}
+			/>
+		);
+	}
+
 	if (hasHtmlExtension(path)) {
 		return (
 			<HtmlDocumentViewer
@@ -615,26 +631,13 @@ function DocumentViewer({
 	}
 
 	return (
-		<>
-			{viewMode === "source" ? (
-				<MarkdownSourceEditor
-					key={`${path}:source:${HMR_REV}`}
-					path={path}
-					initialMarkdown={content}
-					onLocalChange={updateEditorContent}
-					onSave={savePathContent}
-					onScrollContainerChange={onScrollContainerChange}
-				/>
-			) : (
-				<MarkdownEditor
-					key={`${path}:rich:${HMR_REV}`}
-					path={path}
-					initialMarkdown={content}
-					copyAsMarkdownRequest={copyAsMarkdownRequest}
-					onScrollContainerChange={onScrollContainerChange}
-				/>
-			)}
-		</>
+		<MarkdownEditor
+			key={`${path}:rich:${HMR_REV}`}
+			path={path}
+			initialMarkdown={content}
+			copyAsMarkdownRequest={copyAsMarkdownRequest}
+			onScrollContainerChange={onScrollContainerChange}
+		/>
 	);
 }
 

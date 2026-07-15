@@ -69,7 +69,7 @@ export type Unsubscribe = () => void;
 
 export type MenuState = {
 	hasWorkspace: boolean;
-	hasMarkdownNoteOpen: boolean;
+	hasSourceViewOpen: boolean;
 	isSourceMode: boolean;
 	canGoBack: boolean;
 	canGoForward: boolean;

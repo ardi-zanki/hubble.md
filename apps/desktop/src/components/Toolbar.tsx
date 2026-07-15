@@ -17,7 +17,7 @@ import MingcuteTerminalLine from "~icons/mingcute/terminal-line";
 import { desktopApi } from "../desktopApi";
 import { isChangelogPath } from "../lib/changelogNote";
 import { copyText } from "../lib/clipboard";
-import { hasMarkdownExtension } from "../lib/filePath";
+import { hasDocumentExtension, hasHtmlExtension } from "../lib/filePath";
 import { revealFileLabel } from "../lib/revealFile";
 import {
 	goBack,
@@ -142,6 +142,12 @@ function NoteActionsMenu({
 }) {
 	const { viewMode } = useStoreValue(viewerStore);
 	const isSourceMode = viewMode === "source";
+	const isHtml = hasHtmlExtension(path);
+	const sourceModeLabel = isSourceMode
+		? isHtml
+			? "View app"
+			: "Edit rich text"
+		: "Edit source";
 
 	async function revealFile() {
 		try {
@@ -187,15 +193,13 @@ function NoteActionsMenu({
 								<ShortcutHint spec="CmdOrCtrl+Shift+J" />
 							</Menu.Item>
 						)}
-						{hasMarkdownExtension(path) && (
+						{hasDocumentExtension(path) && (
 							<Menu.Item
 								className="flex w-full cursor-pointer items-center gap-2 rounded-sm [padding-block:0.375rem] [padding-inline:0.5rem] text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent"
 								onClick={() => setViewerMode(isSourceMode ? "rich" : "source")}
 							>
 								<MingcuteCodeLine className="size-3 shrink-0" />
-								<span className="min-w-0 flex-1">
-									{isSourceMode ? "Edit rich text" : "Edit source"}
-								</span>
+								<span className="min-w-0 flex-1">{sourceModeLabel}</span>
 								<ShortcutHint spec="Alt+CmdOrCtrl+U" />
 							</Menu.Item>
 						)}

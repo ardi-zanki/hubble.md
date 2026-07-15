@@ -142,7 +142,7 @@ const launchWorkspacePath =
 		: null;
 let menuState: MenuState = {
 	hasWorkspace: false,
-	hasMarkdownNoteOpen: false,
+	hasSourceViewOpen: false,
 	isSourceMode: false,
 	canGoBack: false,
 	canGoForward: false,
@@ -898,7 +898,7 @@ function buildMenu() {
 					id: "toggle-source-mode",
 					label: "Toggle Source Mode",
 					accelerator: "Alt+CmdOrCtrl+U",
-					enabled: menuState.hasMarkdownNoteOpen,
+					enabled: menuState.hasSourceViewOpen,
 					click: () => sendToRenderer("desktop:menu-toggle-source-mode"),
 				},
 				...(isDev
@@ -1713,7 +1713,7 @@ function registerIpc() {
 	ipcMain.handle("desktop:set-menu-state", (_event, state: MenuState) => {
 		menuState = {
 			hasWorkspace: state.hasWorkspace === true,
-			hasMarkdownNoteOpen: state.hasMarkdownNoteOpen === true,
+			hasSourceViewOpen: state.hasSourceViewOpen === true,
 			isSourceMode: state.isSourceMode === true,
 			canGoBack: state.canGoBack === true,
 			canGoForward: state.canGoForward === true,
