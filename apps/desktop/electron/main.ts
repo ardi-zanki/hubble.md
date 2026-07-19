@@ -30,9 +30,11 @@ import type {
 	WorkspaceConfig,
 } from "../src/desktopApi/types";
 import {
-	hasDocumentExtension,
+	fileKindForPath,
 	hasMarkdownExtension,
+	isEditableFile,
 	isHiddenSidebarFolderName,
+	isVisibleSidebarFileName,
 	markdownAssetFolderPath,
 	withMarkdownExtension,
 } from "../src/lib/filePath";
@@ -473,10 +475,6 @@ function isIgnoredByRules(candidatePath: string, rules: IgnoreRule[]) {
 	return ignored;
 }
 
-function isDocumentPath(candidatePath: string): boolean {
-	return hasDocumentExtension(candidatePath);
-}
-
 function isMissingPathError(error: unknown): boolean {
 	return (
 		typeof error === "object" &&
@@ -638,6 +636,8 @@ function assetContentType(filePath: string): string {
 			return "image/png";
 		case ".webp":
 			return "image/webp";
+		case ".pdf":
+			return "application/pdf";
 		default:
 			return "application/octet-stream";
 	}
@@ -1101,7 +1101,7 @@ function fileAssetsDir(filePath: string): string {
 	return assetsDir;
 }
 
-async function collectDocumentFiles(
+async function collectSidebarFiles(
 	dir: string,
 	out: DirectoryListing,
 	inheritedRules: IgnoreRule[] = [],
@@ -1118,12 +1118,13 @@ async function collectDocumentFiles(
 				path: toRendererPath(entryPath),
 				modified_at: Math.floor(stat.mtimeMs / 1000),
 			});
-			await collectDocumentFiles(entryPath, out, rules);
-		} else if (isDocumentPath(entry.name)) {
+			await collectSidebarFiles(entryPath, out, rules);
+		} else if (entry.isFile() && isVisibleSidebarFileName(entry.name)) {
 			const stat = await fs.stat(entryPath);
 			out.files.push({
 				path: toRendererPath(entryPath),
 				modified_at: Math.floor(stat.mtimeMs / 1000),
+				kind: fileKindForPath(entry.name),
 			});
 		}
 	}
@@ -1203,6 +1204,7 @@ async function createWindow() {
 		webPreferences: {
 			contextIsolation: true,
 			nodeIntegration: false,
+			plugins: true,
 			preload: path.join(__dirname, "../preload/preload.mjs"),
 			sandbox: false,
 		},
@@ -1271,7 +1273,7 @@ function registerIpc() {
 			const stat = await fs.stat(root);
 			if (!stat.isDirectory()) throw new Error(`Not a directory: ${dirPath}`);
 			const listing: DirectoryListing = { files: [], folders: [] };
-			await collectDocumentFiles(root, listing);
+			await collectSidebarFiles(root, listing);
 			return listing;
 		},
 	);
@@ -1537,10 +1539,12 @@ function registerIpc() {
 				typeof options.defaultPath === "string"
 					? options.defaultPath
 					: undefined,
-			title: "Open Markdown file",
+			title: "Open file",
 			filters: [
 				{ name: "Documents", extensions: ["md", "markdown", "mdown", "html"] },
 				{ name: "Text", extensions: ["txt", "text"] },
+				{ name: "PDF", extensions: ["pdf"] },
+				{ name: "All Files", extensions: ["*"] },
 			],
 		});
 		const selected = result.filePaths[0] ?? null;
@@ -1624,7 +1628,7 @@ function registerIpc() {
 					depth: 0,
 				});
 				const emitFile = (changedPath: string) => {
-					if (isDocumentPath(changedPath)) {
+					if (isEditableFile(changedPath)) {
 						emit(changedPath);
 					}
 				};
@@ -1660,11 +1664,11 @@ function registerIpc() {
 
 	ipcMain.handle("desktop:open-path-from-link", async (_event, { path }) => {
 		const resolved = await assertGrantedOrConfirmFile(path);
-		if (hasMarkdownExtension(resolved)) {
+		if (fileKindForPath(resolved) !== "external") {
 			if (!(await pathExistsAsFile(resolved))) {
 				throw new Error("FILE_NOT_FOUND");
 			}
-			return { kind: "markdown", path: toRendererPath(resolved) };
+			return { kind: "file", path: toRendererPath(resolved) };
 		}
 		await shell.openPath(resolved);
 		return { kind: "opened" };

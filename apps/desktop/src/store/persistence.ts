@@ -1,13 +1,18 @@
 import { DEFAULT_CHAT_COMMAND } from "./settings";
-import { emptyDoc, type SortMode } from "./state";
+import {
+	emptyDoc,
+	type FileEntry,
+	type FolderEntry,
+	type SortMode,
+} from "./state";
 
 type WorkspaceState = {
 	workspacePath: string | null;
 	recentWorkspaces: string[];
 	lastOpenedPaths: Record<string, string>;
 	sortMode: SortMode;
-	files: { path: string; modified_at: number }[];
-	folders: { path: string; modified_at: number }[];
+	files: FileEntry[];
+	folders: FolderEntry[];
 	pinnedNotes: string[];
 };
 

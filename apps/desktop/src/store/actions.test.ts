@@ -10,6 +10,7 @@ type MockDesktopApi = {
 	renameFile: ReturnType<typeof vi.fn>;
 	deleteFile: ReturnType<typeof vi.fn>;
 	pathExists: ReturnType<typeof vi.fn>;
+	openPathFromLink: ReturnType<typeof vi.fn>;
 };
 
 function createDesktopApi(): MockDesktopApi {
@@ -23,6 +24,7 @@ function createDesktopApi(): MockDesktopApi {
 		renameFile: vi.fn(async () => {}),
 		deleteFile: vi.fn(async () => {}),
 		pathExists: vi.fn(async () => false),
+		openPathFromLink: vi.fn(async () => ({ kind: "opened" })),
 	};
 }
 
@@ -311,6 +313,30 @@ describe("desktop renameMarkdownFile", () => {
 		expect(viewerStore.get().content).toBe("embed content");
 		expect(workspaceStore.get().lastOpenedPaths["/workspace"]).toBe(
 			"/workspace/renamed.md",
+		);
+	});
+
+	it("preserves the existing extension and dotted stem suffixes", async () => {
+		const api = createDesktopApi();
+		const { renameMarkdownFile } = await loadStoreActions(api);
+
+		await renameMarkdownFile("/workspace/manual.pdf", "guide.v2");
+
+		expect(api.renameFile).toHaveBeenCalledWith(
+			"/workspace/manual.pdf",
+			"/workspace/guide.v2.pdf",
+		);
+	});
+
+	it("renames extensionless files without erasing the filename", async () => {
+		const api = createDesktopApi();
+		const { renameMarkdownFile } = await loadStoreActions(api);
+
+		await renameMarkdownFile("/workspace/LICENSE", "README");
+
+		expect(api.renameFile).toHaveBeenCalledWith(
+			"/workspace/LICENSE",
+			"/workspace/README",
 		);
 	});
 
@@ -1020,6 +1046,68 @@ describe("desktop loadPath", () => {
 
 		expect(viewerStore.get().currentPath).toBe("/workspace/c.md");
 		expect(canGoForward()).toBe(false);
+	});
+
+	it("opens PDFs without decoding or writing their bytes as text", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const { loadPath, savePathContent, viewerStore } =
+			await loadStoreActions(api);
+
+		await loadPath("/workspace/manual.pdf");
+		await savePathContent("/workspace/manual.pdf", "", { force: true });
+
+		expect(viewerStore.get().currentPath).toBe("/workspace/manual.pdf");
+		expect(api.readFileText).not.toHaveBeenCalled();
+		expect(api.writeFileText).not.toHaveBeenCalled();
+	});
+
+	it("opens external-only files without replacing the current document", async () => {
+		const api = createDesktopApi();
+		const { loadPath, viewerStore } = await loadStoreActions(api);
+		await loadPath("/workspace/note.md");
+
+		await loadPath("/workspace/image.png");
+
+		expect(api.openPathFromLink).toHaveBeenCalledWith("/workspace/image.png");
+		expect(viewerStore.get().currentPath).toBe("/workspace/note.md");
+	});
+
+	it("does not cancel an in-flight document when opening an external file", async () => {
+		const api = createDesktopApi();
+		let resolveRead: ((content: string) => void) | undefined;
+		api.readFileText.mockImplementation(
+			() =>
+				new Promise<string>((resolve) => {
+					resolveRead = resolve;
+				}),
+		);
+		const { loadPath, viewerStore } = await loadStoreActions(api);
+
+		const documentLoad = loadPath("/workspace/note.md");
+		await loadPath("/workspace/image.png");
+		resolveRead?.("loaded note");
+		await documentLoad;
+
+		expect(viewerStore.get()).toMatchObject({
+			currentPath: "/workspace/note.md",
+			content: "loaded note",
+			status: "ready",
+		});
+	});
+
+	it("opens text files in source mode", async () => {
+		const api = createDesktopApi();
+		api.readFileText.mockResolvedValue("plain text");
+		const { loadPath, viewerStore } = await loadStoreActions(api);
+
+		await loadPath("/workspace/readme.txt");
+
+		expect(viewerStore.get()).toMatchObject({
+			currentPath: "/workspace/readme.txt",
+			content: "plain text",
+			viewMode: "source",
+		});
 	});
 
 	it("keeps history availability stable while blocking concurrent navigation", async () => {

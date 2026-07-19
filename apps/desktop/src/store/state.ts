@@ -1,5 +1,6 @@
 import { store } from "@simplestack/store";
 import type { FileAction } from "../externalFileChange";
+import type { FileKind } from "../lib/filePath";
 import { localStoragePersist } from "../lib/localStoragePersist";
 import {
 	type DesktopState,
@@ -13,9 +14,13 @@ export type SortMode = "alpha" | "recent";
 export type FileEntry = {
 	path: string;
 	modified_at: number;
+	kind?: FileKind;
 };
 
-export type FolderEntry = FileEntry;
+export type FolderEntry = {
+	path: string;
+	modified_at: number;
+};
 
 type ViewerStatus = "idle" | "loading" | "ready" | "error";
 export type ViewMode = "rich" | "source";
@@ -122,6 +127,7 @@ export function withOpenedDoc(
 	state: DesktopState,
 	path: string,
 	content: string,
+	viewMode: ViewMode = "rich",
 ): DesktopState {
 	const workspacePath = state.workspace.workspacePath;
 	const workspace =
@@ -143,7 +149,7 @@ export function withOpenedDoc(
 			currentPath: path,
 			lastOpenedPath: path,
 			...cleanFileState(content),
-			viewMode: "rich",
+			viewMode,
 		},
 	};
 }

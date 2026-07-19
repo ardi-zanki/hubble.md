@@ -31,9 +31,13 @@ import { createHtmlFile, createMarkdownFile } from "./fileActions";
 import { isChangelogPath } from "./lib/changelogNote";
 import { copyText } from "./lib/clipboard";
 import {
+	fileKindForPath,
 	hasDocumentExtension,
 	hasHtmlExtension,
 	hasMarkdownExtension,
+	hasPdfExtension,
+	hasTextExtension,
+	isEditableFile,
 	relativeWorkspacePath,
 } from "./lib/filePath";
 import { resolveRelativeLinkPath } from "./lib/relativeLinkPath";
@@ -127,7 +131,11 @@ async function searchFileContents(query: string) {
 	const { files } = workspaceStore.get();
 	const { results, truncated } = await desktopApi.searchFileContents({
 		requestId: nextSearchRequestId,
-		paths: files.map((file) => file.path),
+		paths: files
+			.filter(
+				(file) => (file.kind ?? fileKindForPath(file.path)) === "document",
+			)
+			.map((file) => file.path),
 		query,
 	});
 	return { results, truncated };
@@ -154,11 +162,13 @@ function App() {
 	const [dismissedVersion, setDismissedVersion] = useState<string | null>(null);
 	const [searchOpen, setSearchOpen] = useState(false);
 	const workspaceFiles = useStoreValue(workspaceStore).files;
-	const paletteFiles: PaletteFile[] = workspaceFiles.map((file) => ({
-		path: file.path,
-		relativePath: relativeWorkspacePath(file.path, workspacePath ?? null),
-		modifiedAt: file.modified_at,
-	}));
+	const paletteFiles: PaletteFile[] = workspaceFiles
+		.filter((file) => (file.kind ?? fileKindForPath(file.path)) === "document")
+		.map((file) => ({
+			path: file.path,
+			relativePath: relativeWorkspacePath(file.path, workspacePath ?? null),
+			modifiedAt: file.modified_at,
+		}));
 	const lastSeenVersion = useStoreValue(lastSeenVersionStore);
 
 	const readyVersion =
@@ -214,8 +224,13 @@ function App() {
 
 	useEffect(() => {
 		const currentPath = state.currentPath;
-		// The changelog note is virtual; there is no file to watch.
-		if (!currentPath || isChangelogPath(currentPath)) return;
+		// Only editable text files participate in external-change conflict handling.
+		if (
+			!currentPath ||
+			isChangelogPath(currentPath) ||
+			!isEditableFile(currentPath)
+		)
+			return;
 
 		let disposed = false;
 		let unwatch: null | (() => void) = null;
@@ -602,14 +617,19 @@ function DocumentViewer({
 	viewMode: ViewMode;
 	onScrollContainerChange?: (el: HTMLDivElement | null) => void;
 }) {
-	if (viewMode === "source" && hasDocumentExtension(path)) {
+	if (
+		(viewMode === "source" && hasDocumentExtension(path)) ||
+		hasTextExtension(path)
+	) {
 		const isHtml = hasHtmlExtension(path);
 		return (
 			<MarkdownSourceEditor
 				key={`${path}:source:${HMR_REV}`}
 				path={path}
 				initialMarkdown={content}
-				sourceLanguage={isHtml ? "html" : "md"}
+				sourceLanguage={
+					isHtml ? "html" : hasTextExtension(path) ? "text" : "md"
+				}
 				onLocalChange={updateEditorContent}
 				onSave={savePathContent}
 				onScrollContainerChange={onScrollContainerChange}
@@ -626,6 +646,17 @@ function DocumentViewer({
 				path={path}
 				content={content}
 				onScrollContainerChange={onScrollContainerChange}
+			/>
+		);
+	}
+
+	if (hasPdfExtension(path)) {
+		return (
+			<iframe
+				className="block min-h-0 flex-1 border-0 bg-card"
+				src={toAssetUrl(path)}
+				style={{ blockSize: "100%", inlineSize: "100%" }}
+				title={relativeWorkspacePath(path, workspaceStore.get().workspacePath)}
 			/>
 		);
 	}
@@ -743,7 +774,7 @@ function MarkdownEditor({
 		});
 		try {
 			const result = await desktopApi.openPathFromLink(resolved);
-			if (result.kind === "markdown") await loadPath(result.path);
+			if (result.kind === "file") await loadPath(result.path);
 		} catch (error) {
 			if (error instanceof Error && error.message.includes("Open cancelled")) {
 				return;

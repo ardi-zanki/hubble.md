@@ -17,7 +17,7 @@ const SourceDocument = Document.extend({ content: "codeBlock" });
 export type MarkdownSourceEditorProps = {
 	path: string;
 	initialMarkdown: string;
-	sourceLanguage?: "html" | "md";
+	sourceLanguage?: "html" | "md" | "text";
 	saveDebounceMs?: number;
 	onLocalChange: (path: string, markdown: string) => void;
 	onSave: (path: string, markdown: string) => void | Promise<void>;
@@ -71,7 +71,11 @@ export function MarkdownSourceEditor({
 			attributes: {
 				"data-editor-input": "",
 				"aria-label":
-					sourceLanguage === "html" ? "HTML source" : "Markdown source",
+					sourceLanguage === "html"
+						? "HTML source"
+						: sourceLanguage === "text"
+							? "Text editor"
+							: "Markdown source",
 			},
 		},
 	});
@@ -119,7 +123,7 @@ export function MarkdownSourceEditor({
 
 export function sourceDocFromMarkdown(
 	markdown: string,
-	language: "html" | "md" = "md",
+	language: "html" | "md" | "text" = "md",
 ): JSONContent {
 	return {
 		type: "doc",

@@ -1,5 +1,9 @@
 const MARKDOWN_EXTENSION_RE = /\.(md|markdown|mdown)$/i;
 const HTML_EXTENSION_RE = /\.html?$/i;
+const TEXT_EXTENSION_RE = /\.(txt|text)$/i;
+const PDF_EXTENSION_RE = /\.pdf$/i;
+
+export type FileKind = "document" | "viewer" | "external";
 
 export function dirname(filePath: string): string | null {
 	const forwardSlash = filePath.lastIndexOf("/");
@@ -32,12 +36,34 @@ export function hasHtmlExtension(path: string): boolean {
 	return HTML_EXTENSION_RE.test(path);
 }
 
+export function hasTextExtension(path: string): boolean {
+	return TEXT_EXTENSION_RE.test(path);
+}
+
+export function hasPdfExtension(path: string): boolean {
+	return PDF_EXTENSION_RE.test(path);
+}
+
 export function hasDocumentExtension(path: string): boolean {
 	return hasMarkdownExtension(path) || hasHtmlExtension(path);
 }
 
+export function isEditableFile(path: string): boolean {
+	return hasDocumentExtension(path) || hasTextExtension(path);
+}
+
+export function fileKindForPath(path: string): FileKind {
+	if (isEditableFile(path)) return "document";
+	if (hasPdfExtension(path)) return "viewer";
+	return "external";
+}
+
 export function isHiddenSidebarFolderName(name: string): boolean {
 	return name === ".hubble" || name.endsWith(".assets");
+}
+
+export function isVisibleSidebarFileName(name: string): boolean {
+	return !name.startsWith(".");
 }
 
 export function withMarkdownExtension(path: string): string {

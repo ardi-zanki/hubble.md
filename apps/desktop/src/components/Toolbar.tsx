@@ -17,7 +17,11 @@ import MingcuteTerminalLine from "~icons/mingcute/terminal-line";
 import { desktopApi } from "../desktopApi";
 import { isChangelogPath } from "../lib/changelogNote";
 import { copyText } from "../lib/clipboard";
-import { hasDocumentExtension, hasHtmlExtension } from "../lib/filePath";
+import {
+	hasDocumentExtension,
+	hasHtmlExtension,
+	isEditableFile,
+} from "../lib/filePath";
 import { revealFileLabel } from "../lib/revealFile";
 import {
 	goBack,
@@ -94,7 +98,9 @@ export function Toolbar({
 					{currentPath && !isChangelog && (
 						<NoteActionsMenu
 							path={currentPath}
-							canChatAboutNote={workspacePath !== null}
+							canChatAboutNote={
+								workspacePath !== null && isEditableFile(currentPath)
+							}
 						/>
 					)}
 				</div>
