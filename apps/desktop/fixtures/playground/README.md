@@ -4,8 +4,8 @@ This workspace is copied into `.dev-electron/playground` for local Electron dev 
 
 Open `file-index.html` or `todo-demo.html` in Hubble to test full-screen HTML Apps.
 
-File-kind examples: `code-viewer-test.ts` (source editor), `plain.txt` and
-`plain-text-test.txt` (plain text editor), `hubble-diagram.svg` and `image.png`
-(image viewer), `hubble.md_README.md at main · bholmesdev_hubble.md.pdf`
-(multi-page PDF viewer, spaces in name) and `.references/nested.pdf` (dot
+File-kind examples: `word-count.ts` (source editor), `reading-list.txt` and
+`meeting-notes.txt` (plain text editor, literal markdown characters),
+`file-viewers.svg` and `hubble-icon.png` (image viewer), `Hubble README.pdf`
+(multi-page PDF viewer, spaces in name) and `.references/attachment.pdf` (dot
 directory stays visible), `.hidden.txt` (hidden from the sidebar).

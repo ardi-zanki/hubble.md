@@ -1,1 +1,1 @@
-Hidden fixture
+Dotfiles stay hidden from the sidebar.
