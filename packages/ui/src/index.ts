@@ -31,6 +31,10 @@ export {
 	MarkdownSourceEditor,
 	type MarkdownSourceEditorProps,
 } from "./editor/MarkdownSourceEditor";
+export {
+	PlainTextEditor,
+	type PlainTextEditorProps,
+} from "./editor/PlainTextEditor";
 export { SmartLinkExtension } from "./editor/SmartLinkExtension";
 export { VirtualCursor } from "./editor/VirtualCursor";
 export type { VirtualCursorMode } from "./editor/virtualCursorMode";

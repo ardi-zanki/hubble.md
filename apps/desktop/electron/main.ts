@@ -31,9 +31,11 @@ import type {
 	WorkspaceConfig,
 } from "../src/desktopApi/types";
 import {
-	hasDocumentExtension,
+	fileKindForPath,
 	hasMarkdownExtension,
+	isEditableFile,
 	isHiddenSidebarFolderName,
+	isVisibleSidebarFileName,
 	markdownAssetFolderPath,
 	withMarkdownExtension,
 } from "../src/lib/filePath";
@@ -484,10 +486,6 @@ function isIgnoredByRules(candidatePath: string, rules: IgnoreRule[]) {
 	return ignored;
 }
 
-function isDocumentPath(candidatePath: string): boolean {
-	return hasDocumentExtension(candidatePath);
-}
-
 function isMissingPathError(error: unknown): boolean {
 	return (
 		typeof error === "object" &&
@@ -633,6 +631,7 @@ function assetContentType(filePath: string): string {
 	switch (path.extname(filePath).toLowerCase()) {
 		case ".css":
 			return "text/css; charset=utf-8";
+		case ".htm":
 		case ".html":
 			return "text/html; charset=utf-8";
 		case ".js":
@@ -645,10 +644,20 @@ function assetContentType(filePath: string): string {
 		case ".jpg":
 		case ".jpeg":
 			return "image/jpeg";
+		case ".avif":
+			return "image/avif";
+		case ".bmp":
+			return "image/bmp";
+		case ".gif":
+			return "image/gif";
+		case ".ico":
+			return "image/x-icon";
 		case ".png":
 			return "image/png";
 		case ".webp":
 			return "image/webp";
+		case ".pdf":
+			return "application/pdf";
 		default:
 			return "application/octet-stream";
 	}
@@ -683,14 +692,24 @@ function injectHtmlAppRuntime(html: string): string {
 
 function responseForAsset(filePath: string) {
 	const contentType = assetContentType(filePath);
-	const body = contentType.startsWith("text/html")
+	const isHtml = contentType.startsWith("text/html");
+	const body = isHtml
 		? injectHtmlAppRuntime(fsSync.readFileSync(filePath, "utf8"))
 		: fsSync.readFileSync(filePath);
+
+	// Keep scriptable documents sandboxed even when a frame (e.g. the PDF
+	// viewer) navigates to them directly. <img> SVG rendering is unaffected.
+	const cspSandbox = isHtml
+		? "sandbox allow-scripts allow-forms"
+		: contentType === "image/svg+xml"
+			? "sandbox"
+			: null;
 
 	return new Response(body, {
 		headers: {
 			"cache-control": "no-store",
 			"content-type": contentType,
+			...(cspSandbox ? { "content-security-policy": cspSandbox } : {}),
 		},
 	});
 }
@@ -1112,7 +1131,7 @@ function fileAssetsDir(filePath: string): string {
 	return assetsDir;
 }
 
-async function collectDocumentFiles(
+async function collectSidebarFiles(
 	dir: string,
 	out: DirectoryListing,
 	inheritedRules: IgnoreRule[] = [],
@@ -1129,12 +1148,13 @@ async function collectDocumentFiles(
 				path: toRendererPath(entryPath),
 				modified_at: Math.floor(stat.mtimeMs / 1000),
 			});
-			await collectDocumentFiles(entryPath, out, rules);
-		} else if (isDocumentPath(entry.name)) {
+			await collectSidebarFiles(entryPath, out, rules);
+		} else if (entry.isFile() && isVisibleSidebarFileName(entry.name)) {
 			const stat = await fs.stat(entryPath);
 			out.files.push({
 				path: toRendererPath(entryPath),
 				modified_at: Math.floor(stat.mtimeMs / 1000),
+				kind: fileKindForPath(entry.name),
 			});
 		}
 	}
@@ -1214,11 +1234,31 @@ async function createWindow() {
 		webPreferences: {
 			contextIsolation: true,
 			nodeIntegration: false,
+			plugins: true,
 			preload: path.join(__dirname, "../preload/preload.mjs"),
 			sandbox: false,
 		},
 	});
 	mainWindow = window;
+	// Viewer content must never navigate the window or open new ones; external
+	// links go through shell IPC. Unlike will-navigate, this covers subframes.
+	window.webContents.on("will-frame-navigate", (details) => {
+		if (details.isMainFrame) {
+			// Same-URL navigations are dev HMR reloads.
+			if (details.url !== window.webContents.getURL()) details.preventDefault();
+			return;
+		}
+		// Subframes load app assets only; chrome-extension is Chromium's
+		// internal PDF viewer taking over the frame.
+		if (
+			!details.url.startsWith("hubble-asset://") &&
+			!details.url.startsWith("chrome-extension://") &&
+			details.url !== "about:blank"
+		) {
+			details.preventDefault();
+		}
+	});
+	window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
 	registerTextContextMenu(window);
 	if (windowState.isFullScreen) {
 		window.setFullScreen(true);
@@ -1282,7 +1322,7 @@ function registerIpc() {
 			const stat = await fs.stat(root);
 			if (!stat.isDirectory()) throw new Error(`Not a directory: ${dirPath}`);
 			const listing: DirectoryListing = { files: [], folders: [] };
-			await collectDocumentFiles(root, listing);
+			await collectSidebarFiles(root, listing);
 			return listing;
 		},
 	);
@@ -1548,10 +1588,12 @@ function registerIpc() {
 				typeof options.defaultPath === "string"
 					? options.defaultPath
 					: undefined,
-			title: "Open Markdown file",
+			title: "Open file",
 			filters: [
 				{ name: "Documents", extensions: ["md", "markdown", "mdown", "html"] },
 				{ name: "Text", extensions: ["txt", "text"] },
+				{ name: "PDF", extensions: ["pdf"] },
+				{ name: "All Files", extensions: ["*"] },
 			],
 		});
 		const selected = result.filePaths[0] ?? null;
@@ -1635,7 +1677,7 @@ function registerIpc() {
 					depth: 0,
 				});
 				const emitFile = (changedPath: string) => {
-					if (isDocumentPath(changedPath)) {
+					if (isEditableFile(changedPath)) {
 						emit(changedPath);
 					}
 				};
@@ -1671,15 +1713,25 @@ function registerIpc() {
 
 	ipcMain.handle("desktop:open-path-from-link", async (_event, { path }) => {
 		const resolved = await assertGrantedOrConfirmFile(path);
-		if (hasMarkdownExtension(resolved)) {
+		if (fileKindForPath(resolved) !== "external") {
 			if (!(await pathExistsAsFile(resolved))) {
 				throw new Error("FILE_NOT_FOUND");
 			}
-			return { kind: "markdown", path: toRendererPath(resolved) };
+			return { kind: "file", path: toRendererPath(resolved) };
 		}
-		await shell.openPath(resolved);
+		const openError = await shell.openPath(resolved);
+		if (openError) throw new Error(openError);
 		return { kind: "opened" };
 	});
+
+	ipcMain.handle(
+		"desktop:open-path-in-default-app",
+		async (_event, { path }) => {
+			const resolved = assertGranted(path);
+			const error = await shell.openPath(resolved);
+			if (error) throw new Error(error);
+		},
+	);
 
 	ipcMain.handle("desktop:reveal-file", (_event, { path: filePath }) => {
 		shell.showItemInFolder(assertGranted(filePath));
