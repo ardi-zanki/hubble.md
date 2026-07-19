@@ -111,6 +111,8 @@ export function isEditableFile(path: string): boolean {
 }
 
 export function supportsSourceToggle(path: string): boolean {
+	// Code files (including CMakeLists.txt) already live in the source editor.
+	if (isCodeFile(path)) return false;
 	return hasDocumentExtension(path) || hasTextExtension(path);
 }
 

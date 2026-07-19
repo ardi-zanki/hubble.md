@@ -43,6 +43,7 @@ describe("supported workspace files", () => {
 		expect(supportsSourceToggle("note.md")).toBe(true);
 		expect(supportsSourceToggle("notes.txt")).toBe(true);
 		expect(supportsSourceToggle("app.ts")).toBe(false);
+		expect(supportsSourceToggle("CMakeLists.txt")).toBe(false);
 	});
 });
 

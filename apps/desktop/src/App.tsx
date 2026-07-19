@@ -249,7 +249,7 @@ function App() {
 				handleExternalFileChange(currentPath, nextContent);
 			} catch {
 				if (viewerStore.get().currentPath !== currentPath) return;
-				await loadPath(currentPath);
+				await loadPath(currentPath, { launchExternal: false });
 			}
 		};
 
@@ -337,8 +337,10 @@ function App() {
 				event.preventDefault();
 				await revealPath(path);
 			} else if (keymatch(event, "CmdOrCtrl+Shift+J")) {
+				const chatPath = viewerStore.get().currentPath;
 				if (
-					!viewerStore.get().currentPath ||
+					!chatPath ||
+					!isEditableFile(chatPath) ||
 					!workspaceStore.get().workspacePath
 				)
 					return;
@@ -829,14 +831,17 @@ function MarkdownEditor({
 	onScrollContainerChange?: (el: HTMLDivElement | null) => void;
 }) {
 	const workspace = useStoreValue(workspaceStore);
-	const wikiTargets: WikiTarget[] = workspace.files.map((file) => {
-		const target = relativeWorkspacePath(file.path, workspace.workspacePath);
-		return {
-			path: file.path,
-			target,
-			title: wikiDisplayNameForTarget(target),
-		};
-	});
+	// External-only files stay out of autocomplete; explicit links still work.
+	const wikiTargets: WikiTarget[] = workspace.files
+		.filter((file) => (file.kind ?? fileKindForPath(file.path)) !== "external")
+		.map((file) => {
+			const target = relativeWorkspacePath(file.path, workspace.workspacePath);
+			return {
+				path: file.path,
+				target,
+				title: wikiDisplayNameForTarget(target),
+			};
+		});
 	const openExternalLink = async (href: string) => {
 		if (classifyHref(href) === "external") {
 			await desktopApi.openExternalUrl(href);

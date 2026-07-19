@@ -1218,6 +1218,13 @@ async function createWindow() {
 		},
 	});
 	mainWindow = window;
+	// Viewer content (e.g. PDF link annotations) must never navigate the app
+	// window or spawn windows; external links go through the shell IPC instead.
+	window.webContents.on("will-navigate", (event, url) => {
+		// Same-URL navigations are reloads (dev HMR); everything else is blocked.
+		if (url !== window.webContents.getURL()) event.preventDefault();
+	});
+	window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
 	registerTextContextMenu(window);
 	if (windowState.isFullScreen) {
 		window.setFullScreen(true);
