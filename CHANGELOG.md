@@ -13,6 +13,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Changed
 
+- Workspaces with the same folder name now show their parent paths in the workspace switcher, making them easier to distinguish. [#181](https://github.com/bholmesdev/hubble.md/pull/181)
 - HTML Apps can now be edited in source mode from the file menu or keyboard shortcut. [#178](https://github.com/bholmesdev/hubble.md/pull/178)
 - Editor blocks now use a consistent reading rhythm, with tighter list grouping and clearer heading separation. [f6c44a2](https://github.com/bholmesdev/hubble.md/commit/f6c44a2)
 
