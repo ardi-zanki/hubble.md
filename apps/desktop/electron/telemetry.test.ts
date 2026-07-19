@@ -130,6 +130,41 @@ describe("TelemetryManager", () => {
 		expect(requestSignal?.aborted).toBe(true);
 	});
 
+	it("does not create state or an installation id before any activity", async () => {
+		const { statePath } = await setup();
+		await expect(fs.readFile(statePath, "utf8")).rejects.toThrow();
+	});
+
+	it("prunes delivered days once the day has passed", async () => {
+		let current = new Date(2026, 6, 19, 23, 30);
+		const { manager, statePath } = await setup({ now: () => current });
+		await manager.setConsent("enabled");
+		await manager.recordActivity(false);
+
+		current = new Date(2026, 6, 20, 8, 0);
+		await manager.recordActivity(false);
+
+		const persisted = JSON.parse(await fs.readFile(statePath, "utf8"));
+		expect(Object.keys(persisted.days)).toEqual(["2026-07-20"]);
+	});
+
+	it("drops undelivered days past the retention window", async () => {
+		let current = new Date(2026, 6, 19, 23, 30);
+		const { manager, send, statePath } = await setup({
+			canSend: false,
+			now: () => current,
+		});
+		await manager.setConsent("enabled");
+		await manager.recordActivity(false);
+
+		current = new Date(2026, 8, 1, 8, 0);
+		await manager.recordActivity(false);
+
+		expect(send).not.toHaveBeenCalled();
+		const persisted = JSON.parse(await fs.readFile(statePath, "utf8"));
+		expect(Object.keys(persisted.days)).toEqual(["2026-09-01"]);
+	});
+
 	it("documents every event in TELEMETRY.md", async () => {
 		const doc = await fs.readFile(
 			fileURLToPath(new URL("../../../TELEMETRY.md", import.meta.url)),

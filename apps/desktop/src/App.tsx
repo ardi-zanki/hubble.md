@@ -196,6 +196,14 @@ function App() {
 	}, []);
 
 	useEffect(() => {
+		// "Desktop Active" means the app was opened that day (TELEMETRY.md), so
+		// record at launch rather than waiting for a file to open.
+		void desktopApi.recordTelemetryActivity({ usedHtmlApp: false });
+	}, []);
+
+	useEffect(() => {
+		// Covers sessions left open across midnight: opening a file the next day
+		// records that day too.
 		if (
 			state.status === "ready" &&
 			state.currentPath &&
@@ -207,6 +215,16 @@ function App() {
 
 	const chooseTelemetry = async (choice: TelemetryChoice) => {
 		setTelemetryConsent(await desktopApi.setTelemetryConsent(choice));
+		if (choice !== "enabled") return;
+		// Declining wiped today's record, so re-enabling must record the current
+		// session again; an open HTML file counts as HTML App use.
+		const viewer = viewerStore.get();
+		void desktopApi.recordTelemetryActivity({
+			usedHtmlApp:
+				viewer.status === "ready" &&
+				!!viewer.currentPath &&
+				hasHtmlExtension(viewer.currentPath),
+		});
 	};
 
 	useEffect(() => {

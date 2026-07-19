@@ -42,6 +42,10 @@ const persistedSchema = z
 
 const emptyState = (): PersistedTelemetry => ({ consent: "unset", days: {} });
 
+// Undelivered days older than this are dropped instead of retried, so
+// telemetry.json stays bounded even when sending never succeeds.
+const retentionDays = 30;
+
 export type TelemetryManagerOptions = {
 	statePath: string;
 	endpoint: string;
@@ -112,6 +116,9 @@ export class TelemetryManager {
 		day.htmlAppUsed ||= usedHtmlApp;
 		this.state.days[localDate] = day;
 		await this.persist();
+		// A decline during the persist wins: it already cleared days and queued
+		// the final write, so don't flush what it wiped.
+		if (this.getConsent() === "declined") return;
 		await this.flush();
 	}
 
@@ -127,7 +134,21 @@ export class TelemetryManager {
 	}
 
 	private async flushPending() {
-		if (this.state.consent === "declined" || !this.options.canSend) return;
+		const pruned = this.pruneDays();
+		const hasPending = Object.values(this.state.days).some(
+			(day) =>
+				!day.activityDelivered || (day.htmlAppUsed && !day.htmlAppDelivered),
+		);
+		if (
+			this.state.consent === "declined" ||
+			!this.options.canSend ||
+			!hasPending
+		) {
+			if (pruned) await this.persist();
+			return;
+		}
+		// Minting only when something is deliverable keeps an untouched install
+		// from ever persisting an id.
 		this.state.installationId ??= this.newInstallationId();
 		await this.persist();
 
@@ -151,6 +172,25 @@ export class TelemetryManager {
 				await this.persist();
 			}
 		}
+	}
+
+	private pruneDays() {
+		const now = this.now();
+		const today = formatLocalDate(now);
+		const cutoff = new Date(now);
+		cutoff.setDate(cutoff.getDate() - retentionDays);
+		const cutoffDate = formatLocalDate(cutoff);
+		let pruned = false;
+		for (const [localDate, day] of Object.entries(this.state.days)) {
+			const delivered =
+				day.activityDelivered && (!day.htmlAppUsed || day.htmlAppDelivered);
+			// Today's delivered day must stay so it is not re-sent this session.
+			if (localDate >= today) continue;
+			if (!delivered && localDate >= cutoffDate) continue;
+			delete this.state.days[localDate];
+			pruned = true;
+		}
+		return pruned;
 	}
 
 	private async send(name: string, localDate: string) {
