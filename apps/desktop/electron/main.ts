@@ -1704,7 +1704,7 @@ function registerIpc() {
 	);
 
 	ipcMain.handle("desktop:get-update-state", () => updateState);
-	ipcMain.handle("desktop:get-telemetry-state", () => telemetry.getState());
+	ipcMain.handle("desktop:get-telemetry-consent", () => telemetry.getConsent());
 	ipcMain.handle("desktop:set-telemetry-consent", (_event, { consent }) => {
 		if (consent !== "enabled" && consent !== "declined") {
 			throw new Error("Invalid telemetry consent");

@@ -157,7 +157,7 @@ describe("TelemetryManager", () => {
 			fetch: send,
 		});
 		await manager.load();
-		expect(manager.getState()).toEqual({ consent: "unset" });
+		expect(manager.getConsent()).toBe("unset");
 		await manager.flush();
 		expect(send).not.toHaveBeenCalled();
 	});

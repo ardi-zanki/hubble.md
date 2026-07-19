@@ -87,7 +87,8 @@ const desktopApi = {
 		ipcRenderer.invoke("desktop:get-launch-workspace-path"),
 	setMenuState: (state) => ipcRenderer.invoke("desktop:set-menu-state", state),
 	getUpdateState: () => ipcRenderer.invoke("desktop:get-update-state"),
-	getTelemetryState: () => ipcRenderer.invoke("desktop:get-telemetry-state"),
+	getTelemetryConsent: () =>
+		ipcRenderer.invoke("desktop:get-telemetry-consent"),
 	setTelemetryConsent: (consent) =>
 		ipcRenderer.invoke("desktop:set-telemetry-consent", { consent }),
 	recordTelemetryActivity: (input) =>

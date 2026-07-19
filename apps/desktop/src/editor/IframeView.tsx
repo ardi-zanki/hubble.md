@@ -102,7 +102,7 @@ export function IframeView({
 	onHeightChange,
 }: IframeViewProps) {
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
-	const didRecordLoadRef = useRef(false);
+	const recordedUseRef = useRef(false);
 	const [token] = useState(() => crypto.randomUUID());
 	const [error, setError] = useState<string | null>(null);
 
@@ -123,8 +123,8 @@ export function IframeView({
 			if (!data || data.type !== "hubble:html-app-height") return;
 			// This runtime message proves the injected HTML App booted. iframe load
 			// events alone also fire for browser error documents.
-			if (!didRecordLoadRef.current) {
-				didRecordLoadRef.current = true;
+			if (!recordedUseRef.current) {
+				recordedUseRef.current = true;
 				void desktopApi.recordTelemetryActivity({ usedHtmlApp: true });
 			}
 			if (!onHeightChange) return;

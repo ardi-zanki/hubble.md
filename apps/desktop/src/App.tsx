@@ -28,8 +28,8 @@ import { WelcomeScreen } from "./components/WelcomeScreen";
 import { desktopApi } from "./desktopApi";
 import type {
 	DesktopUpdateState,
+	TelemetryChoice,
 	TelemetryConsent,
-	TelemetryState,
 } from "./desktopApi/types";
 import { createEmbedExtension } from "./editor/EmbedExtension";
 import { handleImageDrop, handleImagePaste } from "./editor/handleImagePaste";
@@ -156,9 +156,8 @@ function App() {
 	const [updateState, setUpdateState] = useState<DesktopUpdateState | null>(
 		null,
 	);
-	const [telemetryState, setTelemetryState] = useState<TelemetryState | null>(
-		null,
-	);
+	const [telemetryConsent, setTelemetryConsent] =
+		useState<TelemetryConsent | null>(null);
 	const [focusedSidebarPath, setFocusedSidebarPath] = useState<string | null>(
 		null,
 	);
@@ -193,7 +192,7 @@ function App() {
 	};
 
 	useEffect(() => {
-		void desktopApi.getTelemetryState().then(setTelemetryState);
+		void desktopApi.getTelemetryConsent().then(setTelemetryConsent);
 	}, []);
 
 	useEffect(() => {
@@ -206,10 +205,8 @@ function App() {
 		}
 	}, [state.currentPath, state.status]);
 
-	const chooseTelemetry = async (
-		consent: Exclude<TelemetryConsent, "unset">,
-	) => {
-		setTelemetryState(await desktopApi.setTelemetryConsent(consent));
+	const chooseTelemetry = async (choice: TelemetryChoice) => {
+		setTelemetryConsent(await desktopApi.setTelemetryConsent(choice));
 	};
 
 	useEffect(() => {
@@ -485,7 +482,7 @@ function App() {
 					!sidebarOpen &&
 					(showReadyCallout ||
 						whatsNewVersion !== null ||
-						telemetryState?.consent === "unset")
+						telemetryConsent === "unset")
 				}
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
@@ -525,9 +522,9 @@ function App() {
 								}}
 								onDismiss={markWhatsNewSeen}
 							/>
-						) : telemetryState?.consent === "unset" ? (
+						) : telemetryConsent === "unset" ? (
 							<TelemetryConsentCallout
-								onChoose={(consent) => void chooseTelemetry(consent)}
+								onChoose={(choice) => void chooseTelemetry(choice)}
 							/>
 						) : undefined
 					}
@@ -591,10 +588,10 @@ function App() {
 			/>
 			<SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen}>
 				<ChatAboutNoteSettingsSection />
-				{telemetryState ? (
+				{telemetryConsent ? (
 					<TelemetrySettingsSection
-						state={telemetryState}
-						onChoose={(consent) => void chooseTelemetry(consent)}
+						consent={telemetryConsent}
+						onChoose={(choice) => void chooseTelemetry(choice)}
 					/>
 				) : null}
 				{updateState ? (

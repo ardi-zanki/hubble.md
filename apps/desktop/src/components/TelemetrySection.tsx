@@ -1,6 +1,6 @@
 import { Button, Switch } from "@hubble.md/ui";
 import { desktopApi } from "../desktopApi";
-import type { TelemetryConsent, TelemetryState } from "../desktopApi/types";
+import type { TelemetryChoice, TelemetryConsent } from "../desktopApi/types";
 import { SettingsSection } from "./SettingsDialog";
 
 const telemetryDocUrl =
@@ -21,7 +21,7 @@ function WhatsCollectedLink() {
 export function TelemetryConsentCallout({
 	onChoose,
 }: {
-	onChoose: (consent: Exclude<TelemetryConsent, "unset">) => void;
+	onChoose: (choice: TelemetryChoice) => void;
 }) {
 	return (
 		<div className="rounded-md border border-primary/20 bg-primary/8 p-3">
@@ -31,8 +31,8 @@ export function TelemetryConsentCallout({
 						Anonymous usage data
 					</p>
 					<p className="text-[11px] text-foreground">
-						Hubble collects anonymous data about general usage. This
-						information helps us improve the app. <WhatsCollectedLink />
+						Hubble collects anonymous data about general usage. This information
+						helps us improve the app. <WhatsCollectedLink />
 					</p>
 				</div>
 				<div className="flex flex-wrap gap-2">
@@ -53,25 +53,25 @@ export function TelemetryConsentCallout({
 }
 
 export function TelemetrySettingsSection({
-	state,
+	consent,
 	onChoose,
 }: {
-	state: TelemetryState;
-	onChoose: (consent: Exclude<TelemetryConsent, "unset">) => void;
+	consent: TelemetryConsent;
+	onChoose: (choice: TelemetryChoice) => void;
 }) {
 	return (
 		<SettingsSection
 			title="Usage statistics"
 			description={
 				<>
-					Share anonymous data about general usage that helps us improve the app.{" "}
-					<WhatsCollectedLink />
+					Share anonymous data about general usage that helps us improve the
+					app. <WhatsCollectedLink />
 				</>
 			}
 			action={
 				<Switch
 					aria-label="Share usage data"
-					checked={state.consent !== "declined"}
+					checked={consent !== "declined"}
 					onCheckedChange={(checked) =>
 						onChoose(checked ? "enabled" : "declined")
 					}

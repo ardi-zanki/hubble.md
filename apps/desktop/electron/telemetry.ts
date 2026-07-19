@@ -3,14 +3,15 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { z } from "zod/v4";
+import type {
+	TelemetryChoice,
+	TelemetryConsent,
+} from "../src/desktopApi/types";
 
 export const telemetryEventNames = {
 	desktopActive: "Desktop Active",
 	htmlAppUsed: "HTML App Used",
 } as const;
-
-export type TelemetryConsent = "enabled" | "declined" | "unset";
-export type TelemetryState = { consent: TelemetryConsent };
 
 type DailyActivity = {
 	activityDelivered: boolean;
@@ -82,11 +83,11 @@ export class TelemetryManager {
 		void this.flush();
 	}
 
-	getState(): TelemetryState {
-		return { consent: this.state.consent };
+	getConsent(): TelemetryConsent {
+		return this.state.consent;
 	}
 
-	async setConsent(consent: Exclude<TelemetryConsent, "unset">) {
+	async setConsent(consent: TelemetryChoice) {
 		this.state.consent = consent;
 		if (consent === "declined") {
 			this.activeRequest?.abort();
@@ -95,7 +96,7 @@ export class TelemetryManager {
 		}
 		await this.persist();
 		if (consent === "enabled") void this.flush();
-		return this.getState();
+		return this.getConsent();
 	}
 
 	async recordActivity(usedHtmlApp: boolean) {
@@ -103,12 +104,13 @@ export class TelemetryManager {
 		// collects; only an explicit decline stops it.
 		if (this.state.consent === "declined") return;
 		const localDate = formatLocalDate(this.now());
-		const current = this.state.days[localDate];
-		this.state.days[localDate] = {
-			activityDelivered: current?.activityDelivered ?? false,
-			htmlAppUsed: current?.htmlAppUsed === true || usedHtmlApp,
-			htmlAppDelivered: current?.htmlAppDelivered ?? false,
+		const day = this.state.days[localDate] ?? {
+			activityDelivered: false,
+			htmlAppUsed: false,
+			htmlAppDelivered: false,
 		};
+		day.htmlAppUsed ||= usedHtmlApp;
+		this.state.days[localDate] = day;
 		await this.persist();
 		await this.flush();
 	}
@@ -132,7 +134,8 @@ export class TelemetryManager {
 		for (const [localDate, activity] of Object.entries(
 			this.state.days,
 		).sort()) {
-			if (this.state.consent === "declined") return;
+			// Consent can flip to "declined" while a send is in flight.
+			if (this.getConsent() === "declined") return;
 			if (!activity.activityDelivered) {
 				activity.activityDelivered = await this.send(
 					telemetryEventNames.desktopActive,
