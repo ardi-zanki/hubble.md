@@ -7,7 +7,7 @@ import {
 	isChangelogPath,
 	prepareChangelogMarkdown,
 } from "../lib/changelogNote";
-import { latest } from "../lib/concurrency";
+import { takeLatest } from "../lib/concurrency";
 import {
 	absoluteWorkspacePath,
 	basename,
@@ -1127,7 +1127,7 @@ export async function forceKeepLocalEdits() {
 	await savePathContent(current.currentPath, current.content, { force: true });
 }
 
-const { run: loadInternalPath, invalidate: invalidateLoadPath } = latest(
+const { run: loadInternalPath, invalidate: invalidateLoadPath } = takeLatest(
 	async ({ isStale }, path: string, options?: LoadPathOptions) => {
 		const historyMode = options?.history ?? "push";
 		const missingMode = options?.missing ?? "toast";

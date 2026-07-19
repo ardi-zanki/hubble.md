@@ -3,9 +3,9 @@
  * answers the same question differently: what happens when a call arrives
  * while another is still running?
  *
- * - `latest`: everything runs; only the newest call may apply its result.
- * - `coalesced`: one run at a time; overlapping calls share one follow-up.
- * - `queued`: every call runs, one at a time, in call order.
+ * - `takeLatest`: everything runs; only the newest call may apply its result.
+ * - `dedupeRuns`: one run at a time; overlapping calls share one follow-up.
+ * - `sequential`: every call runs, one at a time, in call order.
  */
 
 /**
@@ -13,7 +13,7 @@
  * result. Earlier in-flight calls become "stale" and silently no-op.
  *
  * ```ts
- * const { run: load } = latest(async ({ isStale }, path: string) => {
+ * const { run: load } = takeLatest(async ({ isStale }, path: string) => {
  *   const content = await readFile(path);
  *   if (isStale()) return;
  *   applyContent(content);
@@ -22,7 +22,7 @@
  * load("/b.md"); // …makes the first call stale
  * ```
  */
-export function latest<Args extends unknown[]>(
+export function takeLatest<Args extends unknown[]>(
 	fn: (signal: { isStale: () => boolean }, ...args: Args) => Promise<void>,
 ) {
 	let token = 0;
@@ -46,13 +46,13 @@ export function latest<Args extends unknown[]>(
  * when it called.
  *
  * ```ts
- * const flush = coalesced(() => sendPending());
+ * const flush = dedupeRuns(() => sendPending());
  * void flush(); // starts a run
  * void flush(); // queues one follow-up run
  * void flush(); // shares that same follow-up run
  * ```
  */
-export function coalesced(run: () => Promise<void>): () => Promise<void> {
+export function dedupeRuns(run: () => Promise<void>): () => Promise<void> {
 	let current: Promise<void> | null = null;
 	let next: Promise<void> | null = null;
 
@@ -80,12 +80,12 @@ export function coalesced(run: () => Promise<void>): () => Promise<void> {
  * when a call is made, so the last call's payload is the last one applied.
  *
  * ```ts
- * const write = queued((content: string) => writeFile(statePath, content));
+ * const write = sequential((content: string) => writeFile(statePath, content));
  * void write("a"); // starts
  * void write("b"); // waits for "a", then lands last
  * ```
  */
-export function queued<Args extends unknown[]>(
+export function sequential<Args extends unknown[]>(
 	fn: (...args: Args) => Promise<void>,
 ): (...args: Args) => Promise<void> {
 	let tail: Promise<void> = Promise.resolve();

@@ -1830,8 +1830,13 @@ if (!singleInstanceLock) {
 		sendToRenderer("desktop:open-file", toRendererPath(resolved));
 	});
 
+	// "Desktop Active" means the app was used that day (TELEMETRY.md): launch
+	// covers the first day, focus covers sessions left open across midnight.
+	app.on("browser-window-focus", () => void telemetry.recordActivity(false));
+
 	app.whenReady().then(async () => {
 		await telemetry.load();
+		void telemetry.recordActivity(false);
 		await loadGrants();
 		if (launchWorkspacePath) grantRoot(launchWorkspacePath);
 		await saveGrants();
