@@ -9,6 +9,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 
+- Browse every file in your workspace, edit plain-text files, view PDFs in Hubble, and open other file types in their default apps. [#183](https://github.com/bholmesdev/hubble.md/pull/183)
+
 ### Changed
 
 ### Fixed
