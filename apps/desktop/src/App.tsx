@@ -597,7 +597,7 @@ function CodeFilesSettingsSection() {
 	return (
 		<SettingsSection
 			title="Code files"
-			description="Choose what happens when you open a code file."
+			description="Choose where code files (JavaScript, Python, etc) are opened."
 		>
 			<div className="flex items-center gap-2">
 				<Button
@@ -682,6 +682,7 @@ function DocumentViewer({
 				path={path}
 				initialMarkdown={content}
 				sourceLanguage={sourceLanguageForPath(path)}
+				autoFocus={false}
 				onLocalChange={updateEditorContent}
 				onSave={savePathContent}
 				onScrollContainerChange={onScrollContainerChange}
