@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { coalesced, latest, queued } from "./concurrency";
+import { dedupeRuns, sequential, takeLatest } from "./concurrency";
 
-describe("latest", () => {
+describe("takeLatest", () => {
 	it("marks earlier in-flight calls stale", async () => {
 		const applied: string[] = [];
 		const gates: Array<() => void> = [];
-		const { run } = latest(async ({ isStale }, value: string) => {
+		const { run } = takeLatest(async ({ isStale }, value: string) => {
 			await new Promise<void>((resolve) => {
 				gates.push(resolve);
 			});
@@ -22,10 +22,10 @@ describe("latest", () => {
 	});
 });
 
-describe("coalesced", () => {
+describe("dedupeRuns", () => {
 	it("coalesces calls made during a run into one follow-up run", async () => {
 		const resolvers: Array<() => void> = [];
-		const flush = coalesced(
+		const flush = dedupeRuns(
 			() =>
 				new Promise<void>((resolve) => {
 					resolvers.push(resolve);
@@ -48,7 +48,7 @@ describe("coalesced", () => {
 
 	it("starts a fresh run after the previous one settles", async () => {
 		let runs = 0;
-		const flush = coalesced(async () => {
+		const flush = dedupeRuns(async () => {
 			runs += 1;
 		});
 		await flush();
@@ -57,10 +57,10 @@ describe("coalesced", () => {
 	});
 });
 
-describe("queued", () => {
+describe("sequential", () => {
 	it("runs calls in order and keeps going after a failure", async () => {
 		const order: string[] = [];
-		const write = queued(async (value: string) => {
+		const write = sequential(async (value: string) => {
 			order.push(value);
 			if (value === "first") throw new Error("disk full");
 		});

@@ -7,7 +7,7 @@ import type {
 	TelemetryChoice,
 	TelemetryConsent,
 } from "../src/desktopApi/types";
-import { coalesced, queued } from "../src/lib/concurrency";
+import { dedupeRuns, sequential } from "../src/lib/concurrency";
 
 export const telemetryEventNames = {
 	desktopActive: "Desktop Active",
@@ -68,9 +68,9 @@ export class TelemetryManager {
 	private readonly newInstallationId: () => string;
 	private activeRequest: AbortController | null = null;
 
-	readonly flush = coalesced(() => this.flushPending());
+	readonly flush = dedupeRuns(() => this.flushPending());
 
-	private readonly write = queued(async (content: string) => {
+	private readonly write = sequential(async (content: string) => {
 		await fs.mkdir(path.dirname(this.options.statePath), { recursive: true });
 		await fs.writeFile(this.options.statePath, content, { mode: 0o600 });
 	});
@@ -119,12 +119,18 @@ export class TelemetryManager {
 			htmlAppUsed: false,
 			htmlAppDelivered: false,
 		};
+		// Window focus calls this often; only touch disk when the day gains
+		// something new. Still flush so undelivered days retry.
+		const changed =
+			!this.state.days[localDate] || (usedHtmlApp && !day.htmlAppUsed);
 		day.htmlAppUsed ||= usedHtmlApp;
 		this.state.days[localDate] = day;
-		await this.persist();
-		// A decline during the persist wins: it already cleared days and queued
-		// the final write, so don't flush what it wiped.
-		if (this.getConsent() === "declined") return;
+		if (changed) {
+			await this.persist();
+			// A decline during the persist wins: it already cleared days and queued
+			// the final write, so don't flush what it wiped.
+			if (this.getConsent() === "declined") return;
+		}
 		await this.flush();
 	}
 

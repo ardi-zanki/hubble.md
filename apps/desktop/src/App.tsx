@@ -195,24 +195,6 @@ function App() {
 		void desktopApi.getTelemetryConsent().then(setTelemetryConsent);
 	}, []);
 
-	useEffect(() => {
-		// "Desktop Active" means the app was opened that day (TELEMETRY.md), so
-		// record at launch rather than waiting for a file to open.
-		void desktopApi.recordTelemetryActivity({ usedHtmlApp: false });
-	}, []);
-
-	useEffect(() => {
-		// Covers sessions left open across midnight: opening a file the next day
-		// records that day too.
-		if (
-			state.status === "ready" &&
-			state.currentPath &&
-			!isChangelogPath(state.currentPath)
-		) {
-			void desktopApi.recordTelemetryActivity({ usedHtmlApp: false });
-		}
-	}, [state.currentPath, state.status]);
-
 	const chooseTelemetry = async (choice: TelemetryChoice) => {
 		setTelemetryConsent(await desktopApi.setTelemetryConsent(choice));
 		if (choice !== "enabled") return;
