@@ -2,6 +2,51 @@ const MARKDOWN_EXTENSION_RE = /\.(md|markdown|mdown)$/i;
 const HTML_EXTENSION_RE = /\.html?$/i;
 const TEXT_EXTENSION_RE = /\.(txt|text)$/i;
 const PDF_EXTENSION_RE = /\.pdf$/i;
+const IMAGE_EXTENSION_RE = /\.(avif|bmp|gif|ico|jpe?g|png|svg|webp)$/i;
+const CODE_EXTENSION_RE =
+	/\.(astro|bash|c|cc|clj|cljs|cmake|coffee|cpp|cs|css|dart|diff|env|fish|go|graphql|h|hpp|ini|java|js|jsx|json|kt|kts|less|lua|m|mdx|mjs|mts|php|pl|prisma|properties|py|r|rb|rs|sass|scala|scss|sh|sql|svelte|swift|toml|ts|tsx|vue|wasm|xml|yaml|yml|zsh)$/i;
+const CODE_FILE_NAMES = new Set([
+	"cmakelists.txt",
+	"dockerfile",
+	"gemfile",
+	"justfile",
+	"makefile",
+	"procfile",
+	"rakefile",
+	".editorconfig",
+	".env",
+	".eslintrc",
+	".gitattributes",
+	".gitignore",
+	".npmrc",
+	".nvmrc",
+	".prettierrc",
+]);
+const SOURCE_LANGUAGE_ALIASES: Record<string, string> = {
+	bash: "bash",
+	cc: "cpp",
+	clj: "clojure",
+	cljs: "clojure",
+	env: "bash",
+	h: "c",
+	hpp: "cpp",
+	ini: "ini",
+	jsx: "jsx",
+	kt: "kotlin",
+	kts: "kotlin",
+	m: "objectivec",
+	mdx: "md",
+	mjs: "js",
+	mts: "ts",
+	properties: "ini",
+	py: "python",
+	rs: "rust",
+	sh: "bash",
+	toml: "ini",
+	tsx: "tsx",
+	yml: "yaml",
+	zsh: "bash",
+};
 
 export type FileKind = "document" | "viewer" | "external";
 
@@ -44,18 +89,44 @@ export function hasPdfExtension(path: string): boolean {
 	return PDF_EXTENSION_RE.test(path);
 }
 
+export function hasImageExtension(path: string): boolean {
+	return IMAGE_EXTENSION_RE.test(path);
+}
+
+export function isCodeFile(path: string): boolean {
+	return (
+		CODE_EXTENSION_RE.test(path) ||
+		CODE_FILE_NAMES.has(basename(path).toLowerCase())
+	);
+}
+
 export function hasDocumentExtension(path: string): boolean {
 	return hasMarkdownExtension(path) || hasHtmlExtension(path);
 }
 
 export function isEditableFile(path: string): boolean {
+	return (
+		hasDocumentExtension(path) || hasTextExtension(path) || isCodeFile(path)
+	);
+}
+
+export function supportsSourceToggle(path: string): boolean {
 	return hasDocumentExtension(path) || hasTextExtension(path);
 }
 
 export function fileKindForPath(path: string): FileKind {
 	if (isEditableFile(path)) return "document";
-	if (hasPdfExtension(path)) return "viewer";
+	if (hasPdfExtension(path) || hasImageExtension(path)) return "viewer";
 	return "external";
+}
+
+export function sourceLanguageForPath(path: string): string {
+	const name = basename(path).toLowerCase();
+	if (name === "dockerfile" || name === ".env") return "bash";
+	if (name === "makefile" || name === "justfile") return "makefile";
+	if (name === "cmakelists.txt") return "cmake";
+	const extension = extname(path).slice(1).toLowerCase();
+	return SOURCE_LANGUAGE_ALIASES[extension] ?? (extension || "text");
 }
 
 export function isHiddenSidebarFolderName(name: string): boolean {

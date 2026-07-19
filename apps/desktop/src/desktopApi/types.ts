@@ -152,6 +152,7 @@ export type DesktopApi = {
 	): Promise<Unsubscribe>;
 	openExternalUrl(url: string): Promise<void>;
 	openPathFromLink(path: string): Promise<OpenPathFromLinkResult>;
+	openPathInDefaultApp(path: string): Promise<void>;
 	revealFile(path: string): Promise<void>;
 	resolvePath(path: string): Promise<string>;
 	realPath(path: string): Promise<string>;

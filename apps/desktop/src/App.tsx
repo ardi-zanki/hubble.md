@@ -7,6 +7,7 @@ import {
 	Input,
 	MarkdownSourceEditor,
 	type PaletteFile,
+	PlainTextEditor,
 	type WikiTarget,
 } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
@@ -32,13 +33,16 @@ import { isChangelogPath } from "./lib/changelogNote";
 import { copyText } from "./lib/clipboard";
 import {
 	fileKindForPath,
-	hasDocumentExtension,
 	hasHtmlExtension,
+	hasImageExtension,
 	hasMarkdownExtension,
 	hasPdfExtension,
 	hasTextExtension,
+	isCodeFile,
 	isEditableFile,
 	relativeWorkspacePath,
+	sourceLanguageForPath,
+	supportsSourceToggle,
 } from "./lib/filePath";
 import { resolveRelativeLinkPath } from "./lib/relativeLinkPath";
 import { resolveWikiPath } from "./lib/wikiPath";
@@ -60,6 +64,7 @@ import {
 	requestChatAboutNote,
 	savePathContent,
 	setChatCommand,
+	setCodeFileOpenMode,
 	setLastSeenVersion,
 	setSidebarOpen,
 	setViewerMode,
@@ -71,6 +76,7 @@ import { canGoBack, canGoForward } from "./store/history";
 import { useHistoryNav } from "./store/hooks";
 import {
 	chatCommandStore,
+	codeFileOpenModeStore,
 	lastSeenVersionStore,
 	sidebarOpenStore,
 	terminalPositionStore,
@@ -273,7 +279,7 @@ function App() {
 		void desktopApi.setMenuState({
 			hasWorkspace,
 			hasSourceViewOpen:
-				typeof currentPath === "string" && hasDocumentExtension(currentPath),
+				typeof currentPath === "string" && supportsSourceToggle(currentPath),
 			isSourceMode: state.viewMode === "source",
 			canGoBack: menuCanGoBack,
 			canGoForward: menuCanGoForward,
@@ -401,7 +407,7 @@ function App() {
 				const current = viewerStore.get();
 				if (
 					!current.currentPath ||
-					!hasDocumentExtension(current.currentPath)
+					!supportsSourceToggle(current.currentPath)
 				) {
 					return;
 				}
@@ -451,8 +457,12 @@ function App() {
 					? workspace.lastOpenedPaths[workspace.workspacePath]
 					: undefined);
 			if (lastPath) {
-				// Restore must stay quiet when the remembered file was deleted on disk.
-				await loadPath(lastPath, { missing: "silent" });
+				// Restore must stay in Hubble: missing files stay quiet, and a code-file
+				// preference must not launch another app during startup.
+				await loadPath(lastPath, {
+					missing: "silent",
+					launchExternal: false,
+				});
 			}
 		};
 		void init();
@@ -567,6 +577,7 @@ function App() {
 				searchContents={searchFileContents}
 			/>
 			<SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+				<CodeFilesSettingsSection />
 				<ChatAboutNoteSettingsSection />
 				{updateState ? (
 					<UpdatesSection
@@ -577,6 +588,35 @@ function App() {
 				) : null}
 			</SettingsDialog>
 		</main>
+	);
+}
+
+function CodeFilesSettingsSection() {
+	const mode = useStoreValue(codeFileOpenModeStore);
+	return (
+		<SettingsSection
+			title="Code files"
+			description="Choose what happens when you open a code file."
+		>
+			<div className="flex items-center gap-2">
+				<Button
+					size="sm"
+					variant={mode === "hubble" ? "secondary" : "outline"}
+					aria-pressed={mode === "hubble"}
+					onClick={() => setCodeFileOpenMode("hubble")}
+				>
+					Hubble
+				</Button>
+				<Button
+					size="sm"
+					variant={mode === "default-app" ? "secondary" : "outline"}
+					aria-pressed={mode === "default-app"}
+					onClick={() => setCodeFileOpenMode("default-app")}
+				>
+					Default app
+				</Button>
+			</div>
+		</SettingsSection>
 	);
 }
 
@@ -617,10 +657,7 @@ function DocumentViewer({
 	viewMode: ViewMode;
 	onScrollContainerChange?: (el: HTMLDivElement | null) => void;
 }) {
-	if (
-		(viewMode === "source" && hasDocumentExtension(path)) ||
-		hasTextExtension(path)
-	) {
+	if (viewMode === "source" && supportsSourceToggle(path)) {
 		const isHtml = hasHtmlExtension(path);
 		return (
 			<MarkdownSourceEditor
@@ -630,6 +667,33 @@ function DocumentViewer({
 				sourceLanguage={
 					isHtml ? "html" : hasTextExtension(path) ? "text" : "md"
 				}
+				onLocalChange={updateEditorContent}
+				onSave={savePathContent}
+				onScrollContainerChange={onScrollContainerChange}
+			/>
+		);
+	}
+
+	if (isCodeFile(path)) {
+		return (
+			<MarkdownSourceEditor
+				key={`${path}:code:${HMR_REV}`}
+				path={path}
+				initialMarkdown={content}
+				sourceLanguage={sourceLanguageForPath(path)}
+				onLocalChange={updateEditorContent}
+				onSave={savePathContent}
+				onScrollContainerChange={onScrollContainerChange}
+			/>
+		);
+	}
+
+	if (hasTextExtension(path)) {
+		return (
+			<PlainTextEditor
+				key={`${path}:rich:${HMR_REV}`}
+				path={path}
+				initialText={content}
 				onLocalChange={updateEditorContent}
 				onSave={savePathContent}
 				onScrollContainerChange={onScrollContainerChange}
@@ -647,6 +711,18 @@ function DocumentViewer({
 				content={content}
 				onScrollContainerChange={onScrollContainerChange}
 			/>
+		);
+	}
+
+	if (hasImageExtension(path)) {
+		return (
+			<div className="flex min-h-0 flex-1 items-center justify-center overflow-auto bg-card p-6">
+				<img
+					className="block max-h-full max-w-full object-contain"
+					src={toAssetUrl(path)}
+					alt={relativeWorkspacePath(path, workspaceStore.get().workspacePath)}
+				/>
+			</div>
 		);
 	}
 

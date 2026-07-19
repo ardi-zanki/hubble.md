@@ -3,15 +3,46 @@ import {
 	dirname,
 	fileKindForPath,
 	hasDocumentExtension,
+	hasImageExtension,
+	isCodeFile,
 	isHiddenSidebarFolderName,
 	isVisibleSidebarFileName,
 	relativeWorkspacePath,
+	sourceLanguageForPath,
+	supportsSourceToggle,
 } from "./filePath";
 
 describe("dirname", () => {
 	it("preserves Windows drive roots", () => {
 		expect(dirname("C:/index.html")).toBe("C:/");
 		expect(dirname("C:\\index.html")).toBe("C:\\");
+	});
+});
+
+describe("supported workspace files", () => {
+	it("recognizes browser-viewable images", () => {
+		expect(hasImageExtension("photo.JPEG")).toBe(true);
+		expect(hasImageExtension("diagram.svg")).toBe(true);
+		expect(hasImageExtension("photo.heic")).toBe(false);
+	});
+
+	it("recognizes code extensions and conventional filenames", () => {
+		expect(isCodeFile("app.tsx")).toBe(true);
+		expect(isCodeFile("types.d.ts")).toBe(true);
+		expect(isCodeFile("Dockerfile")).toBe(true);
+		expect(isCodeFile("LICENSE")).toBe(false);
+	});
+
+	it("maps code paths to syntax languages", () => {
+		expect(sourceLanguageForPath("app.tsx")).toBe("tsx");
+		expect(sourceLanguageForPath("script.py")).toBe("python");
+		expect(sourceLanguageForPath("Dockerfile")).toBe("bash");
+	});
+
+	it("keeps source toggles limited to rich-view files", () => {
+		expect(supportsSourceToggle("note.md")).toBe(true);
+		expect(supportsSourceToggle("notes.txt")).toBe(true);
+		expect(supportsSourceToggle("app.ts")).toBe(false);
 	});
 });
 
@@ -29,8 +60,9 @@ describe("fileKindForPath", () => {
 		expect(fileKindForPath("note.md")).toBe("document");
 		expect(fileKindForPath("notes.TXT")).toBe("document");
 		expect(fileKindForPath("notes.text")).toBe("document");
+		expect(fileKindForPath("app.ts")).toBe("document");
 		expect(fileKindForPath("manual.PDF")).toBe("viewer");
-		expect(fileKindForPath("image.png")).toBe("external");
+		expect(fileKindForPath("image.png")).toBe("viewer");
 		expect(fileKindForPath("LICENSE")).toBe("external");
 	});
 });

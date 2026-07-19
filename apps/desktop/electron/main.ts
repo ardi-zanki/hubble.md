@@ -632,6 +632,14 @@ function assetContentType(filePath: string): string {
 		case ".jpg":
 		case ".jpeg":
 			return "image/jpeg";
+		case ".avif":
+			return "image/avif";
+		case ".bmp":
+			return "image/bmp";
+		case ".gif":
+			return "image/gif";
+		case ".ico":
+			return "image/x-icon";
 		case ".png":
 			return "image/png";
 		case ".webp":
@@ -1673,6 +1681,15 @@ function registerIpc() {
 		await shell.openPath(resolved);
 		return { kind: "opened" };
 	});
+
+	ipcMain.handle(
+		"desktop:open-path-in-default-app",
+		async (_event, { path }) => {
+			const resolved = assertGranted(path);
+			const error = await shell.openPath(resolved);
+			if (error) throw new Error(error);
+		},
+	);
 
 	ipcMain.handle("desktop:reveal-file", (_event, { path: filePath }) => {
 		shell.showItemInFolder(assertGranted(filePath));

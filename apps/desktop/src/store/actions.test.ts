@@ -11,6 +11,7 @@ type MockDesktopApi = {
 	deleteFile: ReturnType<typeof vi.fn>;
 	pathExists: ReturnType<typeof vi.fn>;
 	openPathFromLink: ReturnType<typeof vi.fn>;
+	openPathInDefaultApp: ReturnType<typeof vi.fn>;
 };
 
 function createDesktopApi(): MockDesktopApi {
@@ -25,6 +26,7 @@ function createDesktopApi(): MockDesktopApi {
 		deleteFile: vi.fn(async () => {}),
 		pathExists: vi.fn(async () => false),
 		openPathFromLink: vi.fn(async () => ({ kind: "opened" })),
+		openPathInDefaultApp: vi.fn(async () => {}),
 	};
 }
 
@@ -32,10 +34,13 @@ function createDesktopApi(): MockDesktopApi {
  * Actions capture window.desktopApi at import time, so each test stubs globals
  * before importing the store modules.
  */
-async function loadStoreActions(api: MockDesktopApi) {
+async function loadStoreActions(
+	api: MockDesktopApi,
+	persisted: string | null = null,
+) {
 	vi.resetModules();
 	vi.stubGlobal("localStorage", {
-		getItem: vi.fn(() => null),
+		getItem: vi.fn(() => persisted),
 		setItem: vi.fn(),
 	});
 	vi.stubGlobal("window", {
@@ -70,6 +75,32 @@ describe("desktop savePathContent", () => {
 			STORAGE_KEY,
 			expect.stringContaining('"chatCommand":"codex exec"'),
 		);
+	});
+
+	it("defaults code files to Hubble and persists the external-app preference", async () => {
+		const api = createDesktopApi();
+		const { codeFileOpenModeStore, setCodeFileOpenMode } =
+			await loadStoreActions(api);
+		const { STORAGE_KEY } = await import("./persistence");
+
+		expect(codeFileOpenModeStore.get()).toBe("hubble");
+		setCodeFileOpenMode("default-app");
+
+		expect(codeFileOpenModeStore.get()).toBe("default-app");
+		expect(localStorage.setItem).toHaveBeenLastCalledWith(
+			STORAGE_KEY,
+			expect.stringContaining('"codeFileOpenMode":"default-app"'),
+		);
+	});
+
+	it("hydrates the code-file preference", async () => {
+		const api = createDesktopApi();
+		const { codeFileOpenModeStore } = await loadStoreActions(
+			api,
+			JSON.stringify({ settings: { codeFileOpenMode: "default-app" } }),
+		);
+
+		expect(codeFileOpenModeStore.get()).toBe("default-app");
 	});
 
 	it("requests chat with the default command when the setting is blank", async () => {
@@ -1067,9 +1098,9 @@ describe("desktop loadPath", () => {
 		const { loadPath, viewerStore } = await loadStoreActions(api);
 		await loadPath("/workspace/note.md");
 
-		await loadPath("/workspace/image.png");
+		await loadPath("/workspace/archive.zip");
 
-		expect(api.openPathFromLink).toHaveBeenCalledWith("/workspace/image.png");
+		expect(api.openPathFromLink).toHaveBeenCalledWith("/workspace/archive.zip");
 		expect(viewerStore.get().currentPath).toBe("/workspace/note.md");
 	});
 
@@ -1085,7 +1116,7 @@ describe("desktop loadPath", () => {
 		const { loadPath, viewerStore } = await loadStoreActions(api);
 
 		const documentLoad = loadPath("/workspace/note.md");
-		await loadPath("/workspace/image.png");
+		await loadPath("/workspace/archive.zip");
 		resolveRead?.("loaded note");
 		await documentLoad;
 
@@ -1096,7 +1127,57 @@ describe("desktop loadPath", () => {
 		});
 	});
 
-	it("opens text files in source mode", async () => {
+	it("opens images in Hubble without decoding them as text", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const { loadPath, viewerStore } = await loadStoreActions(api);
+
+		await loadPath("/workspace/image.png");
+
+		expect(viewerStore.get().currentPath).toBe("/workspace/image.png");
+		expect(api.readFileText).not.toHaveBeenCalled();
+		expect(api.openPathFromLink).not.toHaveBeenCalled();
+	});
+
+	it("opens code in Hubble by default", async () => {
+		const api = createDesktopApi();
+		api.readFileText.mockResolvedValue("export const value = 1;");
+		const { loadPath, viewerStore } = await loadStoreActions(api);
+
+		await loadPath("/workspace/app.ts");
+
+		expect(viewerStore.get()).toMatchObject({
+			currentPath: "/workspace/app.ts",
+			content: "export const value = 1;",
+		});
+	});
+
+	it("opens code in the default app when preferred", async () => {
+		const api = createDesktopApi();
+		const { loadPath, setCodeFileOpenMode, viewerStore } =
+			await loadStoreActions(api);
+		await loadPath("/workspace/note.md");
+		setCodeFileOpenMode("default-app");
+
+		await loadPath("/workspace/app.ts");
+
+		expect(api.openPathInDefaultApp).toHaveBeenCalledWith("/workspace/app.ts");
+		expect(viewerStore.get().currentPath).toBe("/workspace/note.md");
+	});
+
+	it("does not launch the default app while restoring code", async () => {
+		const api = createDesktopApi();
+		const { loadPath, setCodeFileOpenMode, viewerStore } =
+			await loadStoreActions(api);
+		setCodeFileOpenMode("default-app");
+
+		await loadPath("/workspace/app.ts", { launchExternal: false });
+
+		expect(api.openPathInDefaultApp).not.toHaveBeenCalled();
+		expect(viewerStore.get().currentPath).toBeNull();
+	});
+
+	it("opens text files in rich mode", async () => {
 		const api = createDesktopApi();
 		api.readFileText.mockResolvedValue("plain text");
 		const { loadPath, viewerStore } = await loadStoreActions(api);
@@ -1106,7 +1187,7 @@ describe("desktop loadPath", () => {
 		expect(viewerStore.get()).toMatchObject({
 			currentPath: "/workspace/readme.txt",
 			content: "plain text",
-			viewMode: "source",
+			viewMode: "rich",
 		});
 	});
 

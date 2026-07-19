@@ -17,7 +17,7 @@ const SourceDocument = Document.extend({ content: "codeBlock" });
 export type MarkdownSourceEditorProps = {
 	path: string;
 	initialMarkdown: string;
-	sourceLanguage?: "html" | "md" | "text";
+	sourceLanguage?: string;
 	saveDebounceMs?: number;
 	onLocalChange: (path: string, markdown: string) => void;
 	onSave: (path: string, markdown: string) => void | Promise<void>;
@@ -75,7 +75,9 @@ export function MarkdownSourceEditor({
 						? "HTML source"
 						: sourceLanguage === "text"
 							? "Text editor"
-							: "Markdown source",
+							: sourceLanguage === "md"
+								? "Markdown source"
+								: "Code editor",
 			},
 		},
 	});
@@ -123,7 +125,7 @@ export function MarkdownSourceEditor({
 
 export function sourceDocFromMarkdown(
 	markdown: string,
-	language: "html" | "md" | "text" = "md",
+	language = "md",
 ): JSONContent {
 	return {
 		type: "doc",

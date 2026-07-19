@@ -14,7 +14,7 @@ import {
 	extname,
 	fileKindForPath,
 	hasMarkdownExtension,
-	hasTextExtension,
+	isCodeFile,
 	isEditableFile,
 	joinPath,
 	markdownAssetFolderPath,
@@ -43,13 +43,14 @@ import {
 	rewriteHistory,
 	setHistory,
 } from "./history";
-import type { TerminalPosition } from "./persistence";
+import type { CodeFileOpenMode, TerminalPosition } from "./persistence";
 import { DEFAULT_CHAT_COMMAND } from "./settings";
 import {
 	applyFileAction,
 	appStore,
 	chatCommandStore,
 	cleanFileState,
+	codeFileOpenModeStore,
 	emptyDoc,
 	type FileEntry,
 	type FolderEntry,
@@ -370,6 +371,7 @@ const pendingRenames = new Map<string, string>();
 type LoadPathOptions = {
 	history?: "push" | "none";
 	missing?: "toast" | "silent";
+	launchExternal?: boolean;
 };
 
 export function getPendingRenameTarget(path: string) {
@@ -410,6 +412,20 @@ export function setTerminalPosition(position: TerminalPosition) {
 
 export function setChatCommand(command: string) {
 	chatCommandStore.set(command);
+}
+
+export function setCodeFileOpenMode(mode: CodeFileOpenMode) {
+	codeFileOpenModeStore.set(mode);
+}
+
+export async function openPathInDefaultApp(path: string) {
+	try {
+		await desktopApi.openPathInDefaultApp(path);
+	} catch (err) {
+		toast.error("Failed to open file", {
+			description: handleFileError(err),
+		});
+	}
 }
 
 export function setLastSeenVersion(version: string) {
@@ -475,7 +491,7 @@ export async function openWorkspace(path?: string) {
 
 	const lastFile = workspaceStore.get().lastOpenedPaths[nextPath];
 	if (lastFile) {
-		await loadPath(lastFile, { missing: "silent" });
+		await loadPath(lastFile, { missing: "silent", launchExternal: false });
 		return;
 	}
 
@@ -1132,14 +1148,7 @@ const { run: loadInternalPath, invalidate: invalidateLoadPath } = latest(
 				content = await desktopApi.readFileText(path);
 			}
 			if (isStale()) return;
-			appStore.set((state) =>
-				withOpenedDoc(
-					state,
-					path,
-					content,
-					hasTextExtension(path) ? "source" : "rich",
-				),
-			);
+			appStore.set((state) => withOpenedDoc(state, path, content));
 			if (historyMode === "push") pushHistory(path);
 		} catch (err) {
 			if (isStale()) return;
@@ -1178,6 +1187,14 @@ const { run: loadInternalPath, invalidate: invalidateLoadPath } = latest(
 );
 
 export async function loadPath(path: string, options?: LoadPathOptions) {
+	if (isCodeFile(path) && codeFileOpenModeStore.get() === "default-app") {
+		if (options?.launchExternal === false) {
+			clearViewer();
+			return;
+		}
+		await openPathInDefaultApp(path);
+		return;
+	}
 	if (fileKindForPath(path) !== "external") {
 		await loadInternalPath(path, options);
 		return;
