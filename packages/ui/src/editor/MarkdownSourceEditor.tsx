@@ -17,7 +17,9 @@ const SourceDocument = Document.extend({ content: "codeBlock" });
 export type MarkdownSourceEditorProps = {
 	path: string;
 	initialMarkdown: string;
-	sourceLanguage?: "html" | "md";
+	sourceLanguage?: string;
+	/** Focus on mount; wanted for the source-mode toggle, not for navigation. */
+	autoFocus?: boolean;
 	saveDebounceMs?: number;
 	onLocalChange: (path: string, markdown: string) => void;
 	onSave: (path: string, markdown: string) => void | Promise<void>;
@@ -28,6 +30,7 @@ export function MarkdownSourceEditor({
 	path,
 	initialMarkdown,
 	sourceLanguage = "md",
+	autoFocus = true,
 	saveDebounceMs = DEFAULT_SAVE_DEBOUNCE_MS,
 	onLocalChange,
 	onSave,
@@ -71,15 +74,21 @@ export function MarkdownSourceEditor({
 			attributes: {
 				"data-editor-input": "",
 				"aria-label":
-					sourceLanguage === "html" ? "HTML source" : "Markdown source",
+					sourceLanguage === "html"
+						? "HTML source"
+						: sourceLanguage === "text"
+							? "Text editor"
+							: sourceLanguage === "md"
+								? "Markdown source"
+								: "Code editor",
 			},
 		},
 	});
 
 	useEffect(() => {
-		if (!editor) return;
+		if (!editor || !autoFocus) return;
 		editor.commands.focus("end");
-	}, [editor]);
+	}, [editor, autoFocus]);
 
 	useEffect(() => {
 		if (!editor) return;
@@ -119,7 +128,7 @@ export function MarkdownSourceEditor({
 
 export function sourceDocFromMarkdown(
 	markdown: string,
-	language: "html" | "md" = "md",
+	language = "md",
 ): JSONContent {
 	return {
 		type: "doc",

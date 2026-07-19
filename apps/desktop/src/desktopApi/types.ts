@@ -1,9 +1,15 @@
+import type { FileKind } from "../lib/filePath";
+
 export type FileEntry = {
 	path: string;
 	modified_at: number;
+	kind: FileKind;
 };
 
-export type FolderEntry = FileEntry;
+export type FolderEntry = {
+	path: string;
+	modified_at: number;
+};
 
 export type DirectoryListing = {
 	files: FileEntry[];
@@ -58,7 +64,7 @@ export type PersistPastedImageOutput = {
 };
 
 export type OpenPathFromLinkResult =
-	| { kind: "markdown"; path: string }
+	| { kind: "file"; path: string }
 	| { kind: "opened" };
 
 export type WatchOptions = {
@@ -149,6 +155,7 @@ export type DesktopApi = {
 	): Promise<Unsubscribe>;
 	openExternalUrl(url: string): Promise<void>;
 	openPathFromLink(path: string): Promise<OpenPathFromLinkResult>;
+	openPathInDefaultApp(path: string): Promise<void>;
 	revealFile(path: string): Promise<void>;
 	resolvePath(path: string): Promise<string>;
 	realPath(path: string): Promise<string>;
