@@ -17,6 +17,7 @@ import {
 	nativeTheme,
 	protocol,
 	screen,
+	session,
 	shell,
 } from "electron";
 import electronUpdater from "electron-updater";
@@ -43,6 +44,7 @@ import {
 	SEARCH_MAX_RESULT_FILES,
 	SEARCH_MIN_QUERY_LENGTH,
 } from "../src/lib/searchContent";
+import { TelemetryManager } from "./telemetry";
 import { setupTerminalIpc } from "./terminal";
 import {
 	loadZoomFactor,
@@ -115,6 +117,15 @@ app.setName(appName);
 if (devAppName) {
 	app.setPath("userData", path.join(app.getPath("appData"), devAppName));
 }
+const telemetry = new TelemetryManager({
+	statePath: path.join(app.getPath("userData"), "telemetry.json"),
+	endpoint:
+		process.env.HUBBLE_PLAUSIBLE_ENDPOINT ?? "https://plausible.io/api/event",
+	domain: process.env.HUBBLE_PLAUSIBLE_DOMAIN ?? "hubble.md",
+	canSend: app.isPackaged && process.env.HUBBLE_TELEMETRY_DISABLED !== "1",
+	version: app.getVersion(),
+	userAgent: () => session.defaultSession.getUserAgent(),
+});
 
 if (isDev && process.env.HUBBLE_DESKTOP_ENABLE_CDP === "1") {
 	app.commandLine.appendSwitch("remote-debugging-address", "127.0.0.1");
@@ -1693,6 +1704,16 @@ function registerIpc() {
 	);
 
 	ipcMain.handle("desktop:get-update-state", () => updateState);
+	ipcMain.handle("desktop:get-telemetry-state", () => telemetry.getState());
+	ipcMain.handle("desktop:set-telemetry-consent", (_event, { consent }) => {
+		if (consent !== "enabled" && consent !== "declined") {
+			throw new Error("Invalid telemetry consent");
+		}
+		return telemetry.setConsent(consent);
+	});
+	ipcMain.handle("desktop:record-telemetry-activity", (_event, input) =>
+		telemetry.recordActivity(input?.usedHtmlApp === true),
+	);
 
 	ipcMain.handle(
 		"desktop:get-fullscreen",
@@ -1758,6 +1779,7 @@ if (!singleInstanceLock) {
 	});
 
 	app.whenReady().then(async () => {
+		await telemetry.load();
 		await loadGrants();
 		if (launchWorkspacePath) grantRoot(launchWorkspacePath);
 		await saveGrants();

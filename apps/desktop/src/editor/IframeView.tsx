@@ -102,6 +102,7 @@ export function IframeView({
 	onHeightChange,
 }: IframeViewProps) {
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
+	const didRecordLoadRef = useRef(false);
 	const [token] = useState(() => crypto.randomUUID());
 	const [error, setError] = useState<string | null>(null);
 
@@ -110,10 +111,8 @@ export function IframeView({
 	}, [error, onError]);
 
 	useEffect(() => {
-		// Inline embeds need resize messages because their content sets a dynamic
-		// height in the Markdown document. Full-page HTML fills the panel and
-		// scrolls inside the iframe, so there is no host height to update.
-		if (!onHeightChange) return;
+		// Runtime height messages resize inline embeds. Full-page apps ignore the
+		// height but still use the message as proof that their runtime booted.
 		const onMessage = (event: MessageEvent) => {
 			const data = event.data as {
 				type?: unknown;
@@ -122,6 +121,13 @@ export function IframeView({
 			} | null;
 			if (!isMessageForHtmlApp(data, iframeRef.current)) return;
 			if (!data || data.type !== "hubble:html-app-height") return;
+			// This runtime message proves the injected HTML App booted. iframe load
+			// events alone also fire for browser error documents.
+			if (!didRecordLoadRef.current) {
+				didRecordLoadRef.current = true;
+				void desktopApi.recordTelemetryActivity({ usedHtmlApp: true });
+			}
+			if (!onHeightChange) return;
 			const height = Number(data.height);
 			if (!Number.isFinite(height)) return;
 			const clamped = Math.max(

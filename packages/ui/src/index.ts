@@ -44,3 +44,4 @@ export { Button, buttonVariants } from "./primitives/button";
 export { Input } from "./primitives/input";
 export { Modal } from "./primitives/modal";
 export { Separator } from "./primitives/separator";
+export { Switch } from "./primitives/switch";

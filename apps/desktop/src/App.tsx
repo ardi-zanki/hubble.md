@@ -17,12 +17,20 @@ import MingcutePencilLine from "~icons/mingcute/pencil-line";
 import { HtmlAppEmptyState } from "./components/HtmlAppEmptyState";
 import { SettingsDialog, SettingsSection } from "./components/SettingsDialog";
 import { Sidebar } from "./components/Sidebar";
+import {
+	TelemetryConsentCallout,
+	TelemetrySettingsSection,
+} from "./components/TelemetrySection";
 import { TerminalPanel } from "./components/TerminalPanel";
 import { Toolbar } from "./components/Toolbar";
 import { SidebarCallout, UpdatesSection } from "./components/UpdatesSection";
 import { WelcomeScreen } from "./components/WelcomeScreen";
 import { desktopApi } from "./desktopApi";
-import type { DesktopUpdateState } from "./desktopApi/types";
+import type {
+	DesktopUpdateState,
+	TelemetryConsent,
+	TelemetryState,
+} from "./desktopApi/types";
 import { createEmbedExtension } from "./editor/EmbedExtension";
 import { handleImageDrop, handleImagePaste } from "./editor/handleImagePaste";
 import { IframeView, toAssetUrl } from "./editor/IframeView";
@@ -148,6 +156,9 @@ function App() {
 	const [updateState, setUpdateState] = useState<DesktopUpdateState | null>(
 		null,
 	);
+	const [telemetryState, setTelemetryState] = useState<TelemetryState | null>(
+		null,
+	);
 	const [focusedSidebarPath, setFocusedSidebarPath] = useState<string | null>(
 		null,
 	);
@@ -179,6 +190,26 @@ function App() {
 			: null;
 	const markWhatsNewSeen = () => {
 		if (currentVersion) setLastSeenVersion(currentVersion);
+	};
+
+	useEffect(() => {
+		void desktopApi.getTelemetryState().then(setTelemetryState);
+	}, []);
+
+	useEffect(() => {
+		if (
+			state.status === "ready" &&
+			state.currentPath &&
+			!isChangelogPath(state.currentPath)
+		) {
+			void desktopApi.recordTelemetryActivity({ usedHtmlApp: false });
+		}
+	}, [state.currentPath, state.status]);
+
+	const chooseTelemetry = async (
+		consent: Exclude<TelemetryConsent, "unset">,
+	) => {
+		setTelemetryState(await desktopApi.setTelemetryConsent(consent));
 	};
 
 	useEffect(() => {
@@ -451,7 +482,10 @@ function App() {
 			<Toolbar
 				scrollContainer={scrollContainerEl}
 				showSidebarBadge={
-					!sidebarOpen && (showReadyCallout || whatsNewVersion !== null)
+					!sidebarOpen &&
+					(showReadyCallout ||
+						whatsNewVersion !== null ||
+						telemetryState?.consent === "unset")
 				}
 			/>
 			<div className="flex min-h-0 flex-1 overflow-hidden">
@@ -490,6 +524,10 @@ function App() {
 									});
 								}}
 								onDismiss={markWhatsNewSeen}
+							/>
+						) : telemetryState?.consent === "unset" ? (
+							<TelemetryConsentCallout
+								onChoose={(consent) => void chooseTelemetry(consent)}
 							/>
 						) : undefined
 					}
@@ -553,6 +591,12 @@ function App() {
 			/>
 			<SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen}>
 				<ChatAboutNoteSettingsSection />
+				{telemetryState ? (
+					<TelemetrySettingsSection
+						state={telemetryState}
+						onChoose={(consent) => void chooseTelemetry(consent)}
+					/>
+				) : null}
 				{updateState ? (
 					<UpdatesSection
 						state={updateState}

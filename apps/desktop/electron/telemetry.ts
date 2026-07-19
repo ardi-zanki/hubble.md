@@ -1,0 +1,212 @@
+import { randomUUID } from "node:crypto";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { z } from "zod/v4";
+
+export const telemetryEventNames = {
+	desktopActive: "Desktop Active",
+	htmlAppUsed: "HTML App Used",
+} as const;
+
+export type TelemetryConsent = "enabled" | "declined" | "unset";
+export type TelemetryState = { consent: TelemetryConsent };
+
+type DailyActivity = {
+	activityDelivered: boolean;
+	htmlAppUsed: boolean;
+	htmlAppDelivered: boolean;
+};
+
+type PersistedTelemetry = {
+	consent: TelemetryConsent;
+	installationId?: string;
+	days: Record<string, DailyActivity>;
+};
+
+const persistedSchema = z
+	.object({
+		consent: z.enum(["enabled", "declined", "unset"]),
+		installationId: z.uuid().optional(),
+		days: z.record(
+			z.string(),
+			z.object({
+				activityDelivered: z.boolean(),
+				htmlAppUsed: z.boolean(),
+				htmlAppDelivered: z.boolean(),
+			}),
+		),
+	})
+	.strict();
+
+const emptyState = (): PersistedTelemetry => ({ consent: "unset", days: {} });
+
+export type TelemetryManagerOptions = {
+	statePath: string;
+	endpoint: string;
+	domain: string;
+	canSend: boolean;
+	version: string;
+	userAgent: () => string | undefined;
+	fetch?: typeof globalThis.fetch;
+	now?: () => Date;
+	installationId?: () => string;
+	platform?: NodeJS.Platform;
+	arch?: string;
+};
+
+export class TelemetryManager {
+	private state: PersistedTelemetry = emptyState();
+	private readonly fetch: typeof globalThis.fetch;
+	private readonly now: () => Date;
+	private readonly newInstallationId: () => string;
+	private sendPromise: Promise<void> | null = null;
+	private persistPromise: Promise<void> = Promise.resolve();
+	private activeRequest: AbortController | null = null;
+
+	constructor(private readonly options: TelemetryManagerOptions) {
+		this.fetch = options.fetch ?? globalThis.fetch;
+		this.now = options.now ?? (() => new Date());
+		this.newInstallationId = options.installationId ?? randomUUID;
+	}
+
+	async load() {
+		try {
+			const parsed = persistedSchema.safeParse(
+				JSON.parse(await fs.readFile(this.options.statePath, "utf8")),
+			);
+			this.state = parsed.success ? parsed.data : emptyState();
+		} catch {
+			this.state = emptyState();
+		}
+		void this.flush();
+	}
+
+	getState(): TelemetryState {
+		return { consent: this.state.consent };
+	}
+
+	async setConsent(consent: Exclude<TelemetryConsent, "unset">) {
+		this.state.consent = consent;
+		if (consent === "declined") {
+			this.activeRequest?.abort();
+			delete this.state.installationId;
+			this.state.days = {};
+		}
+		await this.persist();
+		if (consent === "enabled") void this.flush();
+		return this.getState();
+	}
+
+	async recordActivity(usedHtmlApp: boolean) {
+		// Opt-out model: "unset" (notice shown but not yet acknowledged) still
+		// collects; only an explicit decline stops it.
+		if (this.state.consent === "declined") return;
+		const localDate = formatLocalDate(this.now());
+		const current = this.state.days[localDate];
+		this.state.days[localDate] = {
+			activityDelivered: current?.activityDelivered ?? false,
+			htmlAppUsed: current?.htmlAppUsed === true || usedHtmlApp,
+			htmlAppDelivered: current?.htmlAppDelivered ?? false,
+		};
+		await this.persist();
+		await this.flush();
+	}
+
+	async flush(): Promise<void> {
+		if (this.sendPromise) {
+			await this.sendPromise;
+			return this.flush();
+		}
+		this.sendPromise = this.flushPending().finally(() => {
+			this.sendPromise = null;
+		});
+		return this.sendPromise;
+	}
+
+	private async flushPending() {
+		if (this.state.consent === "declined" || !this.options.canSend) return;
+		this.state.installationId ??= this.newInstallationId();
+		await this.persist();
+
+		for (const [localDate, activity] of Object.entries(
+			this.state.days,
+		).sort()) {
+			if (this.state.consent === "declined") return;
+			if (!activity.activityDelivered) {
+				activity.activityDelivered = await this.send(
+					telemetryEventNames.desktopActive,
+					localDate,
+				);
+				await this.persist();
+			}
+			if (activity.htmlAppUsed && !activity.htmlAppDelivered) {
+				activity.htmlAppDelivered = await this.send(
+					telemetryEventNames.htmlAppUsed,
+					localDate,
+				);
+				await this.persist();
+			}
+		}
+	}
+
+	private async send(name: string, localDate: string) {
+		try {
+			this.activeRequest = new AbortController();
+			const userAgent = this.options.userAgent();
+			const response = await this.fetch(this.options.endpoint, {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					...(userAgent ? { "user-agent": userAgent } : {}),
+				},
+				body: JSON.stringify({
+					domain: this.options.domain,
+					name,
+					// Plausible's event API requires a url; nothing is fetched. It only
+					// scopes events to the dashboard, grouped under this pseudo-page.
+					url: `https://${this.options.domain}/telemetry/desktop`,
+					interactive: false,
+					props: {
+						installationId: this.state.installationId,
+						localDate,
+						version: this.options.version,
+						os: this.options.platform ?? os.platform(),
+						arch: this.options.arch ?? os.arch(),
+					},
+				}),
+				signal: this.activeRequest.signal,
+			});
+			return (
+				response.ok &&
+				response.headers.get("x-plausible-dropped") !== "1" &&
+				this.state.consent !== "declined"
+			);
+		} catch {
+			return false;
+		} finally {
+			this.activeRequest = null;
+		}
+	}
+
+	private async persist() {
+		const content = `${JSON.stringify(this.state, null, 2)}\n`;
+		const write = this.persistPromise
+			.catch(() => {})
+			.then(async () => {
+				await fs.mkdir(path.dirname(this.options.statePath), {
+					recursive: true,
+				});
+				await fs.writeFile(this.options.statePath, content, { mode: 0o600 });
+			});
+		this.persistPromise = write;
+		await write;
+	}
+}
+
+export function formatLocalDate(date: Date) {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
