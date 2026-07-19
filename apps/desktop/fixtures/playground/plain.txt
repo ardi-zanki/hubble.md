@@ -1,0 +1,6 @@
+Plain text fixture
+
+This works great
+
+- very nice!
+- just plain ole text
