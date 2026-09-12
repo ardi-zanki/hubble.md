@@ -3,14 +3,14 @@ import type { AppCommandId } from "@hubble.md/editor";
 import {
 	Button,
 	commandReviewThread,
+	EditableFileTitle,
 	ReviewCommentSummary,
 	type ReviewCommentSummaryProps,
-	Toolbar as SharedToolbar,
 	useCommandShortcut,
 	useCommandShortcutLabel,
 } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
-import { type CSSProperties, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import MingcuteArrowLeftLine from "~icons/mingcute/arrow-left-line";
 import MingcuteArrowRightLine from "~icons/mingcute/arrow-right-line";
@@ -29,6 +29,7 @@ import {
 	hasMarkdownExtension,
 	hasTextExtension,
 	isEditableFile,
+	pathEquals,
 	relativeWorkspacePath,
 	supportsSourceToggle,
 } from "../lib/filePath";
@@ -38,51 +39,45 @@ import {
 	goBack,
 	goForward,
 	openPathInDefaultApp,
+	renameCurrentMarkdownFile,
 	requestChatAboutNote,
 	setViewerMode,
-	toggleSidebar,
 	toggleTerminal,
 } from "../store/actions";
 import { useHistoryNav } from "../store/hooks";
 import {
 	currentPathStore,
 	reviewThreadsStore,
-	sidebarOpenStore,
+	titleGenerationPreviewStore,
 	viewerStore,
 	workspacePathStore,
 } from "../store/state";
 import { ClaudeLogo, CodexLogo } from "./AgentLogos";
-import { DocumentTabs } from "./DocumentTabs";
 
-const dragRegionStyle = {
-	WebkitAppRegion: "drag",
-} as CSSProperties;
-
-// Traffic lights are hidden in fullscreen, so drop their reserved inset.
-function useIsFullScreen() {
-	const [isFullScreen, setIsFullScreen] = useState(false);
-	useEffect(() => {
-		void desktopApi.getFullScreen().then(setIsFullScreen);
-		return desktopApi.onFullScreenChange(setIsFullScreen);
-	}, []);
-	return isFullScreen;
-}
-
-export function Toolbar({
+export function FileInfoBar({
 	scrollContainer,
-	showSidebarBadge = false,
-	onNewTab,
 }: {
 	scrollContainer: HTMLDivElement | null;
-	showSidebarBadge?: boolean;
-	onNewTab?: () => void;
 }) {
 	const workspacePath = useStoreValue(workspacePathStore);
-	const sidebarOpen = useStoreValue(sidebarOpenStore);
 	const currentPath = useStoreValue(currentPathStore);
+	const titlePreview = useStoreValue(titleGenerationPreviewStore);
+	const titlePath = filePathForTitlePreview(currentPath, titlePreview);
 	const reviewThreads = useStoreValue(reviewThreadsStore);
-	const isFullScreen = useIsFullScreen();
 	const compact = useCompactWindow();
+	const [showBorder, setShowBorder] = useState(false);
+
+	useEffect(() => {
+		if (!scrollContainer) {
+			setShowBorder(false);
+			return;
+		}
+		const update = () => setShowBorder(scrollContainer.scrollTop > 0);
+		update();
+		scrollContainer.addEventListener("scroll", update, { passive: true });
+		return () => scrollContainer.removeEventListener("scroll", update);
+	}, [scrollContainer]);
+
 	// The changelog note is virtual: show a friendly title and disable the
 	// file actions (rename, reveal, copy path) that assume a file on disk.
 	const isChangelog = isChangelogPath(currentPath);
@@ -97,28 +92,27 @@ export function Toolbar({
 						kind === "success" ? toast.success(message) : toast.error(message),
 				}
 			: null;
-	const newTabTitle = useCommandShortcutLabel("New tab", "app.new-tab");
 
 	return (
-		<SharedToolbar
-			currentPath={isChangelog ? "What's new" : (currentPath ?? null)}
-			sidebarOpen={sidebarOpen}
-			sidebarOverlays={compact}
-			sidebarBadge={showSidebarBadge}
-			scrollContainer={scrollContainer}
-			platformInset={!isFullScreen}
-			rootProps={{ style: dragRegionStyle }}
-			onToggleSidebar={toggleSidebar}
-			leftSlot={compact ? null : <NavigationControls />}
-			centerSlot={
-				<DocumentTabs
-					onNewTab={onNewTab}
-					newTabTitle={newTabTitle}
-					flushStart={sidebarOpen && !compact}
+		<div
+			key={currentPath ?? "empty"}
+			data-file-info-bar
+			className={`relative flex h-9 min-w-0 shrink-0 items-center overflow-hidden px-3 select-none after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:border-b after:border-dashed ${showBorder ? "after:border-border" : "after:border-transparent"}`}
+		>
+			<div className="flex flex-[0_100_114px] items-center pe-4">
+				{compact ? null : <NavigationControls />}
+			</div>
+			<div className="flex min-w-0 flex-auto justify-center">
+				<EditableFileTitle
+					currentPath={isChangelog ? "What's new" : (titlePath ?? null)}
+					onRename={
+						isChangelog
+							? undefined
+							: (nextName) => void renameCurrentMarkdownFile(nextName)
+					}
 				/>
-			}
-			onMoveWindow={(x, y) => void desktopApi.moveWindow(x, y)}
-			rightSlot={
+			</div>
+			<div className="flex flex-[0_100_114px] items-center justify-end ps-2">
 				<div className="flex items-center gap-1">
 					{!compact && (
 						<Button
@@ -144,8 +138,8 @@ export function Toolbar({
 						/>
 					)}
 				</div>
-			}
-		/>
+			</div>
+		</div>
 	);
 }
 
@@ -350,4 +344,14 @@ function ShortcutHint({ commandId }: { commandId: AppCommandId }) {
 			{shortcut}
 		</span>
 	);
+}
+
+export function filePathForTitlePreview(
+	currentPath: string | null | undefined,
+	titlePreview: { path: string; previewPath: string } | null,
+) {
+	if (!currentPath || titlePreview?.path !== currentPath) return currentPath;
+	return pathEquals(currentPath, titlePreview.previewPath)
+		? currentPath
+		: titlePreview.previewPath;
 }

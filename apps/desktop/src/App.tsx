@@ -26,14 +26,15 @@ import {
 	recordRecentCommand,
 } from "./commands/recentCommands";
 import { buildAppCommands } from "./commands/useAppCommands";
+import { FileInfoBar } from "./components/FileInfoBar";
 import { HtmlAppEmptyState } from "./components/HtmlAppEmptyState";
 import { Settings } from "./components/Settings";
 import { type DesktopSidebarFocus, Sidebar } from "./components/Sidebar";
 import { TelemetryConsentCallout } from "./components/TelemetrySection";
 import { TerminalPanel } from "./components/TerminalPanel";
-import { Toolbar } from "./components/Toolbar";
 import { SidebarCallout } from "./components/UpdatesSection";
 import { WelcomeScreen } from "./components/WelcomeScreen";
+import { WindowTitleBar } from "./components/WindowTitleBar";
 import { desktopApi } from "./desktopApi";
 import type { DesktopUpdateState } from "./desktopApi/types";
 import { createEmbedExtension } from "./editor/EmbedExtension";
@@ -701,8 +702,7 @@ function App() {
 				}
 			}}
 		>
-			<Toolbar
-				scrollContainer={scrollContainerEl}
+			<WindowTitleBar
 				showSidebarBadge={
 					!sidebarOpen &&
 					(showReadyCallout ||
@@ -772,6 +772,7 @@ function App() {
 					onFocusCapture={closeSidebarOverlay}
 				>
 					<div className="flex-1 min-h-0 min-w-0 flex flex-col">
+						<FileInfoBar scrollContainer={scrollContainerEl} />
 						<div className="flex-1 min-h-0 min-w-0 relative">
 							{state.status === "loading" && <p>Loading…</p>}
 							{state.status === "error" && (
