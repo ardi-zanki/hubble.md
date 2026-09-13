@@ -336,7 +336,6 @@ describe("desktop savePathContent", () => {
 			document: {
 				...current.document,
 				currentPath: path,
-				lastOpenedPath: path,
 				content: "draft 1",
 				diskContent: "before",
 				externalChange: { kind: "none" },
@@ -381,7 +380,6 @@ describe("desktop savePathContent", () => {
 			document: {
 				...current.document,
 				currentPath: path,
-				lastOpenedPath: path,
 				content: "draft 1",
 				diskContent: "before",
 				externalChange: { kind: "none" },
@@ -423,7 +421,6 @@ describe("desktop savePathContent", () => {
 			document: {
 				...current.document,
 				currentPath: path,
-				lastOpenedPath: path,
 				content: "draft 1",
 				diskContent: "before",
 				externalChange: { kind: "none" },
@@ -452,7 +449,6 @@ describe("desktop savePathContent", () => {
 			document: {
 				...current.document,
 				currentPath: path,
-				lastOpenedPath: path,
 				content: "draft",
 				diskContent: "before",
 				externalChange: { kind: "none" },
@@ -478,7 +474,6 @@ describe("desktop savePathContent", () => {
 			document: {
 				...current.document,
 				currentPath: "/workspace/old.md",
-				lastOpenedPath: "/workspace/old.md",
 				content: "old file",
 				diskContent: "old file",
 				externalChange: { kind: "none" },
@@ -718,7 +713,7 @@ describe("desktop renameMarkdownFile", () => {
 			files: [{ path: "/workspace/renamed.md", modified_at: 1 }],
 			folders: [],
 		});
-		const { appStore, renameMarkdownFile, viewerStore, workspaceStore } =
+		const { appStore, renameMarkdownFile, viewerStore } =
 			await loadStoreActions(api);
 		const path = "/workspace/original.md";
 
@@ -728,12 +723,10 @@ describe("desktop renameMarkdownFile", () => {
 				...current.workspace,
 				workspacePath: "/workspace",
 				files: [{ path, modified_at: 1 }],
-				lastOpenedPaths: { "/workspace": path },
 			},
 			document: {
 				...current.document,
 				currentPath: path,
-				lastOpenedPath: path,
 				content: "embed content",
 				diskContent: "embed content",
 				externalChange: { kind: "none" },
@@ -748,9 +741,6 @@ describe("desktop renameMarkdownFile", () => {
 		expect(api.readFileText).toHaveBeenLastCalledWith("/workspace/renamed.md");
 		expect(viewerStore.get().currentPath).toBe("/workspace/renamed.md");
 		expect(viewerStore.get().content).toBe("embed content");
-		expect(workspaceStore.get().lastOpenedPaths["/workspace"]).toBe(
-			"/workspace/renamed.md",
-		);
 	});
 
 	it("preserves the existing extension and dotted stem suffixes", async () => {
@@ -821,7 +811,6 @@ describe("desktop renameMarkdownFile", () => {
 			document: {
 				...current.document,
 				currentPath: "/workspace/notes/plan.md",
-				lastOpenedPath: "/workspace/notes/plan.md",
 				content: "plan",
 				diskContent: "plan",
 				externalChange: { kind: "none" },
@@ -862,7 +851,6 @@ describe("desktop renameMarkdownFile", () => {
 			document: {
 				...current.document,
 				currentPath: "C:\\workspace\\notes\\plan.md",
-				lastOpenedPath: "C:\\workspace\\notes\\plan.md",
 				content: "plan",
 				diskContent: "plan",
 				externalChange: { kind: "none" },
@@ -1035,7 +1023,6 @@ describe("desktop renameMarkdownFile", () => {
 			document: {
 				...current.document,
 				currentPath: "/workspace/source.md",
-				lastOpenedPath: "/workspace/source.md",
 				content: "[Target](target.md)\nunsaved edit",
 				diskContent: "[Target](target.md)",
 				externalChange: { kind: "none" },
@@ -1532,12 +1519,10 @@ describe("desktop folder actions", () => {
 				files: [{ path: "/workspace/drafts/plan.md", modified_at: 1 }],
 				folders: [{ path: "/workspace/drafts", modified_at: 1 }],
 				pinnedNotes: ["/workspace/drafts/plan.md"],
-				lastOpenedPaths: { "/workspace": "/workspace/drafts/plan.md" },
 			},
 			document: {
 				...current.document,
 				currentPath: "/workspace/drafts/plan.md",
-				lastOpenedPath: "/workspace/drafts/plan.md",
 				content: "[Self](plan.md)",
 				diskContent: "[Self](plan.md)",
 				externalChange: { kind: "none" },
@@ -1906,12 +1891,10 @@ describe("desktop moveSidebarItem", () => {
 					{ path: "/workspace/archive/existing.md", modified_at: 1 },
 				],
 				pinnedNotes: ["/workspace/note.md"],
-				lastOpenedPaths: { "/workspace": "/workspace/note.md" },
 			},
 			document: {
 				...current.document,
 				currentPath: "/workspace/note.md",
-				lastOpenedPath: "/workspace/note.md",
 				content: "draft",
 				diskContent: "draft",
 				externalChange: { kind: "none" },
@@ -2040,7 +2023,6 @@ describe("desktop moveSidebarItem", () => {
 			document: {
 				...current.document,
 				currentPath: "/workspace/client/brief.md",
-				lastOpenedPath: "/workspace/client/brief.md",
 				content: "[Outside](../outside.md)",
 				diskContent: "[Outside](../outside.md)",
 				externalChange: { kind: "none" },
@@ -2626,11 +2608,6 @@ describe("desktop loadPath", () => {
 			workspace: {
 				...current.workspace,
 				workspacePath: "/workspace",
-				lastOpenedPaths: { "/workspace": missingPath },
-			},
-			document: {
-				...current.document,
-				lastOpenedPath: missingPath,
 			},
 		}));
 
@@ -2638,8 +2615,6 @@ describe("desktop loadPath", () => {
 
 		expect(viewerStore.get().currentPath).toBeNull();
 		expect(viewerStore.get().status).toBe("idle");
-		expect(viewerStore.get().lastOpenedPath).toBeNull();
-		expect(appStore.get().workspace.lastOpenedPaths).toEqual({});
 		expect(toastError).not.toHaveBeenCalled();
 	});
 
@@ -2966,7 +2941,7 @@ describe("desktop tabs", () => {
 		expect(second.viewerStore.get().currentPath).toBe("/workspace/a.md");
 	});
 
-	it("uses the last-opened file when no tab session has been saved", async () => {
+	it("starts empty when no tab session has been saved", async () => {
 		const api = createDesktopApi();
 		api.pathExists.mockResolvedValue(true);
 		const app = await loadStoreActions(
@@ -2974,13 +2949,12 @@ describe("desktop tabs", () => {
 			JSON.stringify({
 				workspace: {
 					workspacePath: "/workspace",
-					lastOpenedPaths: { "/workspace": "/workspace/previous.md" },
 				},
 			}),
 		);
 		await app.restoreTabs();
-		expect(app.viewerStore.get().currentPath).toBe("/workspace/previous.md");
-		expect(app.tabsStore.get().order).toHaveLength(1);
+		expect(app.viewerStore.get().currentPath).toBeNull();
+		expect(app.tabsStore.get().order).toEqual([]);
 	});
 
 	it("ignores malformed saved sessions and deduplicates valid paths", async () => {

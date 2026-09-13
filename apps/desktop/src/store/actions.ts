@@ -707,7 +707,7 @@ export function clearViewer() {
 	appStore.set((state) => ({
 		...state,
 		tabs: emptyTabs(),
-		document: emptyDoc(state.document.lastOpenedPath),
+		document: emptyDoc(),
 	}));
 }
 
@@ -773,14 +773,10 @@ export async function openWorkspace(path?: string) {
 			...state.tabSessions,
 			[state.workspace.workspacePath ?? ""]: tabSession(state.tabs),
 		};
-		const lastPath = state.workspace.lastOpenedPaths[nextPath];
 		return {
 			...state,
 			tabSessions,
-			tabs: tabsFromSession(
-				tabSessions[nextPath] ??
-					(lastPath ? { paths: [lastPath], activePath: lastPath } : undefined),
-			),
+			tabs: tabsFromSession(tabSessions[nextPath]),
 			document: emptyDoc(),
 			workspace: {
 				...state.workspace,
@@ -1082,14 +1078,6 @@ export async function renameMarkdownFile(path: string, nextName: string) {
 				pinnedNotes: state.workspace.pinnedNotes.map((pinnedPath) =>
 					pinnedPath === path ? nextPath : pinnedPath,
 				),
-				lastOpenedPaths: Object.fromEntries(
-					Object.entries(state.workspace.lastOpenedPaths).map(
-						([workspacePath, openedPath]) => [
-							workspacePath,
-							openedPath === path ? nextPath : openedPath,
-						],
-					),
-				),
 			},
 			tabs: withRewrittenTabPaths(state.tabs, (tabPath) =>
 				tabPath === path ? nextPath : tabPath,
@@ -1100,10 +1088,6 @@ export async function renameMarkdownFile(path: string, nextName: string) {
 					state.document.currentPath === path
 						? nextPath
 						: state.document.currentPath,
-				lastOpenedPath:
-					state.document.lastOpenedPath === path
-						? nextPath
-						: state.document.lastOpenedPath,
 			},
 		}));
 		await syncPinnedNotes();
@@ -1222,14 +1206,6 @@ export async function renameFolder(
 				pinnedNotes: state.workspace.pinnedNotes.map((pinnedPath) =>
 					replacePathPrefix(pinnedPath, path, nextPath),
 				),
-				lastOpenedPaths: Object.fromEntries(
-					Object.entries(state.workspace.lastOpenedPaths).map(
-						([workspace, openedPath]) => [
-							workspace,
-							replacePathPrefix(openedPath, path, nextPath),
-						],
-					),
-				),
 			},
 			tabs: withRewrittenTabPaths(state.tabs, (tabPath) =>
 				replacePathPrefix(tabPath, path, nextPath),
@@ -1238,9 +1214,6 @@ export async function renameFolder(
 				...state.document,
 				currentPath: state.document.currentPath
 					? replacePathPrefix(state.document.currentPath, path, nextPath)
-					: null,
-				lastOpenedPath: state.document.lastOpenedPath
-					? replacePathPrefix(state.document.lastOpenedPath, path, nextPath)
 					: null,
 			},
 		}));
@@ -1335,14 +1308,6 @@ export async function moveSidebarItem(
 				pinnedNotes: state.workspace.pinnedNotes.map((pinnedPath) =>
 					replacePathPrefix(pinnedPath, sourcePath, nextPath),
 				),
-				lastOpenedPaths: Object.fromEntries(
-					Object.entries(state.workspace.lastOpenedPaths).map(
-						([workspace, openedPath]) => [
-							workspace,
-							replacePathPrefix(openedPath, sourcePath, nextPath),
-						],
-					),
-				),
 			},
 			tabs: withRewrittenTabPaths(state.tabs, (tabPath) =>
 				replacePathPrefix(tabPath, sourcePath, nextPath),
@@ -1351,13 +1316,6 @@ export async function moveSidebarItem(
 				...state.document,
 				currentPath: state.document.currentPath
 					? replacePathPrefix(state.document.currentPath, sourcePath, nextPath)
-					: null,
-				lastOpenedPath: state.document.lastOpenedPath
-					? replacePathPrefix(
-							state.document.lastOpenedPath,
-							sourcePath,
-							nextPath,
-						)
 					: null,
 			},
 		}));
@@ -1533,20 +1491,8 @@ const { run: loadInternalPath, invalidate: invalidateLoadPath } = takeLatest(
 				if (gone) dropHistory(gone);
 				appStore.set((state) => ({
 					...state,
-					workspace: {
-						...state.workspace,
-						lastOpenedPaths: Object.fromEntries(
-							Object.entries(state.workspace.lastOpenedPaths).filter(
-								([, openedPath]) => openedPath !== path,
-							),
-						),
-					},
 					tabs: gone ? withClosedTab(state.tabs, gone) : state.tabs,
-					document: emptyDoc(
-						state.document.lastOpenedPath === path
-							? null
-							: state.document.lastOpenedPath,
-					),
+					document: emptyDoc(),
 				}));
 				// Falling back to a neighbouring Tab has to wait for this run to
 				// finish, or `takeLatest` cancels the load it starts.
@@ -1681,7 +1627,7 @@ export async function closeTab(id: TabId) {
 	}
 	appStore.set((state) => ({
 		...state,
-		document: emptyDoc(state.document.lastOpenedPath),
+		document: emptyDoc(),
 	}));
 }
 
@@ -1724,9 +1670,8 @@ export async function activateAdjacentTab(delta: number) {
 
 /**
  * Opens the app changelog as an ephemeral note. It never touches disk or
- * history: `lastOpenedPath` and the workspace's `lastOpenedPaths` keep the
- * real note so relaunch restores it, and the stack index stays put so back
- * returns to the note the user was on. Returns whether it opened.
+ * tab state, and the stack index stays put so back returns to the note the
+ * user was on. Returns whether it opened.
  */
 export async function openChangelog(): Promise<boolean> {
 	const current = viewerStore.get();

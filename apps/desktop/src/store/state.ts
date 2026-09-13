@@ -34,7 +34,6 @@ type ExternalChange =
 
 type DocumentState = {
 	currentPath: string | null;
-	lastOpenedPath: string | null;
 	content: string;
 	diskContent: string;
 	externalChange: ExternalChange;
@@ -59,11 +58,8 @@ export type HistoryState = {
 	isNavigating: boolean;
 };
 
-export const emptyDoc = (
-	lastOpenedPath: string | null = null,
-): DocumentState => ({
+export const emptyDoc = (): DocumentState => ({
 	currentPath: null,
-	lastOpenedPath,
 	content: "",
 	diskContent: "",
 	externalChange: NO_CONFLICT,
@@ -133,26 +129,12 @@ export function withOpenedDoc(
 	content: string,
 	tab?: TabTarget,
 ): DesktopState {
-	const workspacePath = state.workspace.workspacePath;
-	const workspace =
-		workspacePath && isInWorkspace(path, workspacePath)
-			? {
-					...state.workspace,
-					lastOpenedPaths: {
-						...state.workspace.lastOpenedPaths,
-						[workspacePath]: path,
-					},
-				}
-			: state.workspace;
-
 	return {
 		...state,
-		workspace,
 		tabs: withOpenedTab(state.tabs, path, tab),
 		document: {
 			...state.document,
 			currentPath: path,
-			lastOpenedPath: path,
 			...cleanFileState(content),
 			viewMode: "rich",
 		},

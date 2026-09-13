@@ -22,7 +22,6 @@ type PendingDelete = {
 	workspacePath: string;
 	reopenPath: string | null;
 	removedPins: string[];
-	removedLastOpened: Record<string, string>;
 	historyBefore: ReturnType<typeof historyStore.get>;
 	historyAfter: ReturnType<typeof historyStore.get>;
 	// Snapshotting the whole slice restores closed Tabs at their old positions,
@@ -126,10 +125,6 @@ export function createDeleteActions(deps: DeleteDeps) {
 				pinnedNotes: [
 					...new Set([...state.pinnedNotes, ...deletion.removedPins]),
 				],
-				lastOpenedPaths: {
-					...state.lastOpenedPaths,
-					...deletion.removedLastOpened,
-				},
 			}));
 			if (historyStore.get() === deletion.historyAfter) {
 				historyStore.set(deletion.historyBefore);
@@ -227,11 +222,6 @@ export function createDeleteActions(deps: DeleteDeps) {
 			viewerBefore.currentPath !== null &&
 			deletedPath(viewerBefore.currentPath);
 		const removedPins = workspaceBefore.pinnedNotes.filter(deletedPath);
-		const removedLastOpened = Object.fromEntries(
-			Object.entries(workspaceBefore.lastOpenedPaths).filter(([, path]) =>
-				deletedPath(path),
-			),
-		);
 		// Background Tabs can be showing deleted files too, so their trails are
 		// pruned whether or not the visible note was one of them.
 		for (const item of items) {
@@ -255,28 +245,9 @@ export function createDeleteActions(deps: DeleteDeps) {
 				pinnedNotes: state.workspace.pinnedNotes.filter(
 					(pin) => !deletedPath(pin),
 				),
-				lastOpenedPaths: Object.fromEntries(
-					Object.entries(state.workspace.lastOpenedPaths).filter(
-						([, openedPath]) => !deletedPath(openedPath),
-					),
-				),
 			},
 			tabs: withoutTabsMatching(state.tabs, deletedPath),
-			document: deletedCurrent
-				? emptyDoc(
-						state.document.lastOpenedPath &&
-							deletedPath(state.document.lastOpenedPath)
-							? null
-							: state.document.lastOpenedPath,
-					)
-				: {
-						...state.document,
-						lastOpenedPath:
-							state.document.lastOpenedPath &&
-							deletedPath(state.document.lastOpenedPath)
-								? null
-								: state.document.lastOpenedPath,
-					},
+			document: deletedCurrent ? emptyDoc() : state.document,
 		}));
 		// Deleting the visible note leaves whichever Tab survived it focused, so
 		// the editor follows rather than sitting empty behind a live Tab strip.
@@ -299,7 +270,6 @@ export function createDeleteActions(deps: DeleteDeps) {
 			workspacePath: workspaceBefore.workspacePath,
 			reopenPath: deletedCurrent ? viewerBefore.currentPath : null,
 			removedPins,
-			removedLastOpened,
 			historyBefore,
 			historyAfter: historyStore.get(),
 			tabsBefore,
@@ -357,27 +327,10 @@ export function createDeleteActions(deps: DeleteDeps) {
 					pinnedNotes: state.workspace.pinnedNotes.filter(
 						(pinnedPath) => pinnedPath !== path,
 					),
-					lastOpenedPaths: Object.fromEntries(
-						Object.entries(state.workspace.lastOpenedPaths).filter(
-							([, openedPath]) => openedPath !== path,
-						),
-					),
 				},
 				tabs: withoutTabsMatching(state.tabs, (tabPath) => tabPath === path),
 				document:
-					state.document.currentPath === path
-						? emptyDoc(
-								state.document.lastOpenedPath === path
-									? null
-									: state.document.lastOpenedPath,
-							)
-						: {
-								...state.document,
-								lastOpenedPath:
-									state.document.lastOpenedPath === path
-										? null
-										: state.document.lastOpenedPath,
-							},
+					state.document.currentPath === path ? emptyDoc() : state.document,
 			}));
 			await deps.syncPins();
 			await deps.refreshFileList();
@@ -405,11 +358,6 @@ export function createDeleteActions(deps: DeleteDeps) {
 					pinnedNotes: state.workspace.pinnedNotes.filter(
 						(pinnedPath) => !pathInFolder(pinnedPath, path),
 					),
-					lastOpenedPaths: Object.fromEntries(
-						Object.entries(state.workspace.lastOpenedPaths).filter(
-							([, openedPath]) => !pathInFolder(openedPath, path),
-						),
-					),
 				},
 				tabs: withoutTabsMatching(state.tabs, (tabPath) =>
 					pathInFolder(tabPath, path),
@@ -417,20 +365,8 @@ export function createDeleteActions(deps: DeleteDeps) {
 				document:
 					state.document.currentPath &&
 					pathInFolder(state.document.currentPath, path)
-						? emptyDoc(
-								state.document.lastOpenedPath &&
-									pathInFolder(state.document.lastOpenedPath, path)
-									? null
-									: state.document.lastOpenedPath,
-							)
-						: {
-								...state.document,
-								lastOpenedPath:
-									state.document.lastOpenedPath &&
-									pathInFolder(state.document.lastOpenedPath, path)
-										? null
-										: state.document.lastOpenedPath,
-							},
+						? emptyDoc()
+						: state.document,
 			}));
 			await deps.syncPins();
 			await deps.refreshFileList();

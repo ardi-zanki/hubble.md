@@ -295,14 +295,6 @@ export function createTitleManager(deps: TitleManagerDeps) {
 				pinnedNotes: state.workspace.pinnedNotes.map((path) =>
 					pathEquals(path, previousPath) ? nextPath : path,
 				),
-				lastOpenedPaths: Object.fromEntries(
-					Object.entries(state.workspace.lastOpenedPaths).map(
-						([workspacePath, openedPath]) => [
-							workspacePath,
-							pathEquals(openedPath, previousPath) ? nextPath : openedPath,
-						],
-					),
-				),
 			},
 			tabs: withRewrittenTabPaths(state.tabs, (tabPath) =>
 				pathEquals(tabPath, previousPath) ? nextPath : tabPath,
@@ -312,12 +304,6 @@ export function createTitleManager(deps: TitleManagerDeps) {
 				currentPath: pathEquals(state.document.currentPath ?? "", previousPath)
 					? nextPath
 					: state.document.currentPath,
-				lastOpenedPath: pathEquals(
-					state.document.lastOpenedPath ?? "",
-					previousPath,
-				)
-					? nextPath
-					: state.document.lastOpenedPath,
 			},
 		}));
 	}

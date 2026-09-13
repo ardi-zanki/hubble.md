@@ -18,7 +18,6 @@ import {
 type WorkspaceState = {
 	workspacePath: string | null;
 	recentWorkspaces: string[];
-	lastOpenedPaths: Record<string, string>;
 	sortMode: SortMode;
 	files: FileEntry[];
 	folders: FolderEntry[];
@@ -61,10 +60,8 @@ type Persisted = {
 	workspace?: {
 		workspacePath?: string | null;
 		recentWorkspaces?: string[];
-		lastOpenedPaths?: Record<string, string>;
 		sortMode?: SortMode;
 	};
-	document?: { lastOpenedPath?: string | null };
 	ui?: {
 		sidebarOpen?: boolean;
 		isTerminalOpen?: boolean;
@@ -99,12 +96,6 @@ function hydrateWorkspace(ws: Persisted["workspace"]): WorkspaceState {
 		recentWorkspaces: Array.isArray(ws?.recentWorkspaces)
 			? ws.recentWorkspaces
 			: [],
-		lastOpenedPaths:
-			ws?.lastOpenedPaths &&
-			typeof ws.lastOpenedPaths === "object" &&
-			!Array.isArray(ws.lastOpenedPaths)
-				? ws.lastOpenedPaths
-				: {},
 		sortMode: ws?.sortMode === "alpha" ? "alpha" : "recent",
 		files: [],
 		folders: [],
@@ -116,20 +107,11 @@ export function getInitialState(): DesktopState {
 	const p = readStorage<Persisted>(STORAGE_KEY);
 	const workspace = hydrateWorkspace(p?.workspace);
 	const tabSessions = readTabSessions(p?.tabSessions);
-	const lastPath = workspace.workspacePath
-		? (workspace.lastOpenedPaths[workspace.workspacePath] ??
-			p?.document?.lastOpenedPath)
-		: p?.document?.lastOpenedPath;
 	return {
 		workspace,
 		tabSessions,
-		document: emptyDoc(p?.document?.lastOpenedPath ?? null),
-		// Use the last-opened preference only before a tab session exists; an empty
-		// saved session means the user closed every tab.
-		tabs: tabsFromSession(
-			tabSessions[workspace.workspacePath ?? ""] ??
-				(lastPath ? { paths: [lastPath], activePath: lastPath } : undefined),
-		),
+		document: emptyDoc(),
+		tabs: tabsFromSession(tabSessions[workspace.workspacePath ?? ""]),
 		ui: {
 			sidebarOpen: p?.ui?.sidebarOpen ?? false,
 			isSwitcherOpen: false,
@@ -174,11 +156,7 @@ export function serialize(state: DesktopState): Persisted {
 		workspace: {
 			workspacePath: state.workspace.workspacePath,
 			recentWorkspaces: state.workspace.recentWorkspaces,
-			lastOpenedPaths: state.workspace.lastOpenedPaths,
 			sortMode: state.workspace.sortMode,
-		},
-		document: {
-			lastOpenedPath: state.document.lastOpenedPath,
 		},
 		ui: {
 			sidebarOpen: state.ui.sidebarOpen,
