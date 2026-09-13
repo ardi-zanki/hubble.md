@@ -18,11 +18,9 @@ const noDragStyle = { WebkitAppRegion: "no-drag" } as CSSProperties;
 export function AllTabsMenu({
 	open,
 	onOpenChange,
-	tabsCollapsed = false,
 	triggerRef,
 }: {
 	open: boolean;
-	tabsCollapsed?: boolean;
 	triggerRef?: Ref<HTMLButtonElement>;
 	onOpenChange: (open: boolean) => void;
 }) {
@@ -39,16 +37,14 @@ export function AllTabsMenu({
 						ref={triggerRef}
 						variant="ghost"
 						size="icon-sm"
-						className="mx-1 shrink-0"
+						className="relative z-20 mx-1 shrink-0"
 						style={noDragStyle}
 						aria-label="Show all tabs"
 						title={title}
 					/>
 				}
 			>
-				<MingcuteDownLine
-					className={`size-4 ${tabsCollapsed ? "motion-safe:animate-[tab-menu-pulse_450ms_ease-in-out_2]" : ""}`}
-				/>
+				<MingcuteDownLine className="size-4" />
 			</Menu.Trigger>
 			<Menu.Portal>
 				<Menu.Positioner

@@ -34,7 +34,6 @@ export function WindowTitleBar({
 	allTabsOpen: boolean;
 	onAllTabsOpenChange: (open: boolean) => void;
 }) {
-	const [tabsCollapsed, setTabsCollapsed] = useState(false);
 	const tabAreaRef = useRef<HTMLDivElement>(null);
 	const allTabsButtonRef = useRef<HTMLButtonElement>(null);
 	const sidebarOpen = useStoreValue(sidebarOpenStore);
@@ -57,7 +56,6 @@ export function WindowTitleBar({
 		) {
 			allTabsButtonRef.current?.focus();
 		}
-		setTabsCollapsed(collapsed);
 	}
 
 	return (
@@ -99,12 +97,12 @@ export function WindowTitleBar({
 					newTabTitle={newTabTitle}
 					flushStart={sidebarOpen && !compact}
 					onCollapsedChange={handleTabsCollapsedChange}
+					collapseTargetRef={allTabsButtonRef}
 				/>
 			</div>
 			<AllTabsMenu
 				open={allTabsOpen}
 				onOpenChange={onAllTabsOpenChange}
-				tabsCollapsed={tabsCollapsed}
 				triggerRef={allTabsButtonRef}
 			/>
 			<div

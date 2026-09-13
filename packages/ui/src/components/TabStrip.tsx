@@ -1,7 +1,9 @@
 import {
 	type CSSProperties,
 	type KeyboardEvent as ReactKeyboardEvent,
+	type RefObject,
 	useEffect,
+	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
@@ -9,6 +11,7 @@ import MingcuteAddLine from "~icons/mingcute/add-line";
 import MingcuteCloseLine from "~icons/mingcute/close-line";
 import { cn } from "../lib/utils";
 import { Button } from "../primitives/button";
+import { animateTabCollapse } from "./animateTabCollapse";
 
 const NO_DRAG_STYLE = {
 	WebkitAppRegion: "no-drag",
@@ -30,6 +33,8 @@ export type TabStripProps = {
 	flushStart?: boolean;
 	/** Enables hiding crowded tabs when the caller provides another way to select them. */
 	onCollapsedChange?: (collapsed: boolean) => void;
+	/** Destination for departing tabs and their arrival pulses. */
+	collapseTargetRef?: RefObject<HTMLElement | null>;
 	onActivate: (id: string) => void;
 	onClose: (id: string) => void;
 	onNewTab?: () => void;
@@ -48,6 +53,7 @@ export function TabStrip({
 	activeTabId,
 	flushStart = false,
 	onCollapsedChange,
+	collapseTargetRef,
 	onActivate,
 	onClose,
 	onNewTab,
@@ -83,6 +89,13 @@ export function TabStrip({
 		observer.observe(strip);
 		return () => observer.disconnect();
 	}, [onCollapsedChange, tabCount]);
+
+	useLayoutEffect(() => {
+		const strip = stripRef.current;
+		const target = collapseTargetRef?.current;
+		if (!collapsed || !strip || !target) return;
+		return animateTabCollapse(strip, target);
+	}, [collapsed, collapseTargetRef]);
 
 	const anchor = Math.max(
 		0,
@@ -153,7 +166,7 @@ export function TabStrip({
 	if (tabs.length === 0 && !onNewTab) return null;
 
 	return (
-		<div className="relative z-10 flex min-w-0 flex-1 items-end gap-1 overflow-hidden">
+		<div className="relative z-10 flex min-w-0 flex-1 items-end gap-1 overflow-visible">
 			{tabs.length > 0 ? (
 				<div
 					className="min-w-0 flex-initial"
@@ -170,10 +183,8 @@ export function TabStrip({
 						onKeyDown={onKeyDown}
 						// Keep the measured width while hidden so collapsing cannot trigger a resize loop.
 						className={cn(
-							"flex min-w-0 items-stretch overflow-hidden transition-[opacity,visibility] [transition-duration:150ms,0ms] motion-reduce:transition-none",
-							collapsed
-								? "invisible opacity-0 [transition-delay:0ms,150ms]"
-								: "visible opacity-100",
+							"flex min-w-0 items-stretch",
+							collapsed ? "invisible" : "visible overflow-hidden",
 						)}
 					>
 						{tabs.map((tab, index) => {
@@ -182,6 +193,7 @@ export function TabStrip({
 							return (
 								<div
 									key={tab.id}
+									data-tab-item
 									data-selected={active ? "true" : undefined}
 									className={cn(
 										"@container/tab group relative isolate flex h-8 min-w-0 max-w-48 flex-1 items-center overflow-hidden pb-1",
@@ -270,7 +282,10 @@ export function TabStrip({
 					aria-label="New tab"
 					title={newTabTitle}
 					onClick={onNewTab}
-					className={cn("w-8 shrink-0 self-center", collapsed && "ms-auto")}
+					className={cn(
+						"relative z-20 w-8 shrink-0 self-center",
+						collapsed && "ms-auto",
+					)}
 					style={NO_DRAG_STYLE}
 				>
 					<MingcuteAddLine className="size-3.5" />

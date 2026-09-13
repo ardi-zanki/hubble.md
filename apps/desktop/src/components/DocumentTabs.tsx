@@ -1,5 +1,6 @@
 import { TabStrip, type TabStripItem } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
+import type { RefObject } from "react";
 import { isChangelogPath } from "../lib/changelogNote";
 import { fileStem } from "../lib/filePath";
 import {
@@ -19,11 +20,13 @@ export function DocumentTabs({
 	newTabTitle,
 	flushStart,
 	onCollapsedChange,
+	collapseTargetRef,
 }: {
 	onNewTab?: () => void;
 	newTabTitle?: string;
 	flushStart: boolean;
 	onCollapsedChange: (collapsed: boolean) => void;
+	collapseTargetRef: RefObject<HTMLButtonElement | null>;
 }) {
 	const tabs = useStoreValue(tabsStore);
 	// The changelog takes over the editor without a Tab of its own, so it is
@@ -43,6 +46,7 @@ export function DocumentTabs({
 			tabs={items}
 			flushStart={flushStart}
 			onCollapsedChange={onCollapsedChange}
+			collapseTargetRef={collapseTargetRef}
 			activeTabId={onChangelog ? null : tabs.activeTabId}
 			onActivate={(id) => void activateTab(id)}
 			onClose={(id) => void closeTab(id)}

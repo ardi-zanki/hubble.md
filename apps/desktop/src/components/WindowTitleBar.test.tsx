@@ -36,19 +36,8 @@ vi.mock("../store/state", () => ({
 vi.mock("../store/actions", () => ({ toggleSidebar: state.toggleSidebar }));
 vi.mock("../lib/layout", () => ({ useCompactWindow: () => state.compact }));
 vi.mock("./AllTabsMenu", () => ({
-	AllTabsMenu: ({
-		triggerRef,
-		tabsCollapsed,
-	}: {
-		triggerRef: Ref<HTMLButtonElement>;
-		tabsCollapsed: boolean;
-	}) => (
-		<button
-			type="button"
-			ref={triggerRef}
-			data-all-tabs
-			data-collapsed={String(tabsCollapsed)}
-		>
+	AllTabsMenu: ({ triggerRef }: { triggerRef: Ref<HTMLButtonElement> }) => (
+		<button type="button" ref={triggerRef} data-all-tabs>
 			All tabs
 		</button>
 	),
@@ -143,9 +132,7 @@ describe("WindowTitleBar", () => {
 		if (tab) vi.spyOn(tab, "matches").mockReturnValue(true);
 		await act(async () => state.onCollapsedChange?.(true));
 		expect(document.activeElement).toBe(dropdown);
-		expect(dropdown?.getAttribute("data-collapsed")).toBe("true");
 		await act(async () => state.onCollapsedChange?.(false));
-		expect(dropdown?.getAttribute("data-collapsed")).toBe("false");
 		expect(document.activeElement).toBe(dropdown);
 	});
 
