@@ -7,14 +7,8 @@ import {
 } from "react";
 import MingcuteAddLine from "~icons/mingcute/add-line";
 import MingcuteCloseLine from "~icons/mingcute/close-line";
-import { horizontalOverflowEdges } from "../lib/scrollOverflow";
 import { cn } from "../lib/utils";
 import { Button } from "../primitives/button";
-
-/** Comfortable width for a single title; tabs grow to this when space allows. */
-export const TAB_MAX_WIDTH_CLASS = "max-w-48";
-/** Stop shrinking here so the stem stays readable, then scroll. */
-export const TAB_MIN_WIDTH_CLASS = "min-w-24";
 
 const NO_DRAG_STYLE = {
 	WebkitAppRegion: "no-drag",
@@ -34,6 +28,8 @@ export type TabStripProps = {
 	activeTabId: string | null;
 	/** Removes the first tab's bottom-left flare so its edge meets the expanded sidebar's divider. */
 	flushStart?: boolean;
+	/** Enables hiding crowded tabs when the caller provides another way to select them. */
+	onCollapsedChange?: (collapsed: boolean) => void;
 	onActivate: (id: string) => void;
 	onClose: (id: string) => void;
 	onNewTab?: () => void;
@@ -45,13 +41,13 @@ const tabAt = (strip: HTMLElement | null, index: number) =>
 	strip?.querySelectorAll<HTMLElement>('[role="tab"]')[index];
 
 /**
- * Open notes in the top bar, where the file name used to sit. The strip is
- * one stop in the page's tab order; arrow keys move between notes from there.
+ * The strip is one stop in the page's tab order; arrow keys move between notes.
  */
 export function TabStrip({
 	tabs,
 	activeTabId,
 	flushStart = false,
+	onCollapsedChange,
 	onActivate,
 	onClose,
 	onNewTab,
@@ -62,39 +58,36 @@ export function TabStrip({
 	const renameInputRef = useRef<HTMLInputElement | null>(null);
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draft, setDraft] = useState("");
-	const [overflow, setOverflow] = useState({ start: false, end: false });
+	const [collapsed, setCollapsed] = useState(false);
+	const collapsedRef = useRef(false);
+	const tabCount = tabs.length;
+
+	useEffect(() => {
+		const update = (next: boolean) => {
+			if (next === collapsedRef.current) return;
+			collapsedRef.current = next;
+			// Let the caller move focus before the tabs become inert.
+			onCollapsedChange?.(next);
+			setCollapsed(next);
+		};
+		const strip = stripRef.current;
+		if (!onCollapsedChange || !strip || tabCount === 0) {
+			update(false);
+			return;
+		}
+		const measure = (width: number) => update(width / tabCount < 48);
+		measure(strip.getBoundingClientRect().width);
+		const observer = new ResizeObserver(([entry]) => {
+			measure(entry.contentRect.width);
+		});
+		observer.observe(strip);
+		return () => observer.disconnect();
+	}, [onCollapsedChange, tabCount]);
 
 	const anchor = Math.max(
 		0,
 		tabs.findIndex((tab) => tab.id === activeTabId),
 	);
-
-	useEffect(() => {
-		tabAt(stripRef.current, anchor)?.scrollIntoView?.({
-			block: "nearest",
-			inline: "nearest",
-		});
-	}, [anchor]);
-
-	useEffect(() => {
-		if (tabs.length === 0) {
-			setOverflow({ start: false, end: false });
-			return;
-		}
-		const el = stripRef.current;
-		if (!el) return;
-		const update = () => setOverflow(horizontalOverflowEdges(el));
-		update();
-		el.addEventListener("scroll", update, { passive: true });
-		window.addEventListener("resize", update);
-		const resize = new ResizeObserver(update);
-		resize.observe(el);
-		return () => {
-			el.removeEventListener("scroll", update);
-			window.removeEventListener("resize", update);
-			resize.disconnect();
-		};
-	}, [tabs.length]);
 
 	useEffect(() => {
 		if (!editingId) return;
@@ -163,21 +156,25 @@ export function TabStrip({
 		<div className="relative z-10 flex min-w-0 flex-1 items-end gap-1 overflow-hidden">
 			{tabs.length > 0 ? (
 				<div
-					className={cn(
-						"min-w-0 flex-initial",
-						overflow.start && "[border-inline-start:1px_dashed_var(--border)]",
-						overflow.end && "[border-inline-end:1px_dashed_var(--border)]",
-					)}
+					className="min-w-0 flex-initial"
 					style={{
-						width: `calc(${tabs.length} * 12rem + ${tabs.length - 1}px)`,
+						width: `calc(${tabs.length} * 12rem)`,
 					}}
 				>
 					<div
 						ref={stripRef}
 						role="tablist"
 						aria-label="Open notes"
+						aria-hidden={collapsed || undefined}
+						inert={collapsed}
 						onKeyDown={onKeyDown}
-						className="flex min-w-0 items-stretch gap-px overflow-x-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+						// Keep the measured width while hidden so collapsing cannot trigger a resize loop.
+						className={cn(
+							"flex min-w-0 items-stretch overflow-hidden transition-[opacity,visibility] [transition-duration:150ms,0ms] motion-reduce:transition-none",
+							collapsed
+								? "invisible opacity-0 [transition-delay:0ms,150ms]"
+								: "visible opacity-100",
+						)}
 					>
 						{tabs.map((tab, index) => {
 							const active = tab.id === activeTabId;
@@ -187,9 +184,7 @@ export function TabStrip({
 									key={tab.id}
 									data-selected={active ? "true" : undefined}
 									className={cn(
-										"group relative isolate flex h-8 min-w-0 flex-1 items-center px-5 pb-1",
-										TAB_MIN_WIDTH_CLASS,
-										TAB_MAX_WIDTH_CLASS,
+										"@container/tab group relative isolate flex h-8 min-w-0 max-w-48 flex-1 items-center overflow-hidden pb-1",
 										active
 											? "text-foreground"
 											: "text-muted-foreground hover:text-foreground before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:bottom-1 before:-z-10 before:rounded-md hover:before:bg-muted/60",
@@ -207,7 +202,7 @@ export function TabStrip({
 									{editing ? (
 										<input
 											ref={renameInputRef}
-											className="mr-5 h-5 min-w-0 flex-1 select-text rounded-sm bg-transparent px-0.5 text-xs text-foreground outline-none"
+											className="h-5 min-w-0 flex-1 select-text rounded-sm bg-transparent px-[min(1.25rem,20cqw)] text-xs text-foreground outline-none @min-[96px]/tab:pr-10"
 											value={draft}
 											aria-label={`Rename ${tab.label}`}
 											onBlur={() => commitRename(tab.id)}
@@ -239,18 +234,19 @@ export function TabStrip({
 												event.preventDefault();
 												onClose(tab.id);
 											}}
-											className="min-w-0 flex-1 truncate py-0.5 pr-5 text-start text-xs before:absolute before:inset-0"
+											className="min-w-0 flex-1 truncate px-[min(1.25rem,20cqw)] py-0.5 text-start text-xs before:absolute before:inset-0 @min-[96px]/tab:pr-10"
 										>
 											{tab.label}
 										</button>
 									)}
+									{/* Narrow tabs need their full width for the title, even on hover. */}
 									<button
 										type="button"
 										tabIndex={-1}
 										aria-label={`Close ${tab.label}`}
 										onClick={() => onClose(tab.id)}
 										className={cn(
-											"absolute top-1.25 right-4 rounded p-0.5 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100",
+											"absolute top-1.25 right-4 hidden rounded p-0.5 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 @min-[96px]/tab:block",
 											active && "opacity-100",
 										)}
 									>
@@ -269,7 +265,7 @@ export function TabStrip({
 					aria-label="New tab"
 					title={newTabTitle}
 					onClick={onNewTab}
-					className="w-8 shrink-0 self-center"
+					className={cn("w-8 shrink-0 self-center", collapsed && "ms-auto")}
 					style={NO_DRAG_STYLE}
 				>
 					<MingcuteAddLine className="size-3.5" />

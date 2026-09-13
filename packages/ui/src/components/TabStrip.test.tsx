@@ -5,12 +5,7 @@ import { act, type ReactNode } from "react";
 // needs createRoot's render/unmount surface.
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-	TAB_MAX_WIDTH_CLASS,
-	TAB_MIN_WIDTH_CLASS,
-	TabStrip,
-	type TabStripProps,
-} from "./TabStrip";
+import { TabStrip, type TabStripProps } from "./TabStrip";
 
 type Root = {
 	render(children: ReactNode): void;
@@ -30,6 +25,7 @@ afterEach(() => {
 	roots.length = 0;
 	document.body.replaceChildren();
 	vi.restoreAllMocks();
+	vi.unstubAllGlobals();
 });
 
 function renderStrip(props: Partial<TabStripProps> = {}) {
@@ -39,26 +35,90 @@ function renderStrip(props: Partial<TabStripProps> = {}) {
 	document.body.appendChild(container);
 	const root = createRoot(container) as Root;
 	roots.push(root);
-	act(() =>
-		root.render(
-			<TabStrip
-				tabs={[
-					{ id: "a", label: "plan", title: "/w/plan.md" },
-					{ id: "b", label: "notes", title: "/w/notes.md" },
-				]}
-				activeTabId="a"
-				onActivate={onActivate}
-				onClose={onClose}
-				{...props}
-			/>,
-		),
-	);
-	return { onActivate, onClose };
+	const render = (next: Partial<TabStripProps> = {}) =>
+		act(() =>
+			root.render(
+				<TabStrip
+					tabs={[
+						{ id: "a", label: "plan", title: "/w/plan.md" },
+						{ id: "b", label: "notes", title: "/w/notes.md" },
+					]}
+					activeTabId="a"
+					onActivate={onActivate}
+					onClose={onClose}
+					{...props}
+					{...next}
+				/>,
+			),
+		);
+	render();
+	return { onActivate, onClose, rerender: render };
 }
 
 const tabs = () => [...document.querySelectorAll<HTMLElement>("[role=tab]")];
 
 describe("TabStrip", () => {
+	it("hides below 48px per tab and restores at the threshold without changing layout", () => {
+		const resize = mockResize(96);
+		const onCollapsedChange = vi.fn();
+		renderStrip({ onCollapsedChange, onNewTab: vi.fn() });
+		const strip = document.querySelector<HTMLElement>("[role=tablist]");
+		const wrapperStyle = strip?.parentElement?.getAttribute("style");
+		expect(strip?.hasAttribute("inert")).toBe(false);
+		onCollapsedChange.mockImplementation((collapsed: boolean) => {
+			if (collapsed) expect(strip?.hasAttribute("inert")).toBe(false);
+		});
+
+		resize(95);
+		expect(onCollapsedChange).toHaveBeenLastCalledWith(true);
+		expect(strip?.getAttribute("aria-hidden")).toBe("true");
+		expect(strip?.hasAttribute("inert")).toBe(true);
+		expect(strip?.classList.contains("invisible")).toBe(true);
+		expect(strip?.parentElement?.getAttribute("style")).toBe(wrapperStyle);
+		expect(
+			document.querySelector("[aria-label='New tab']")?.closest("[inert]"),
+		).toBeNull();
+		expect(
+			document
+				.querySelector("[aria-label='New tab']")
+				?.classList.contains("ms-auto"),
+		).toBe(true);
+
+		const calls = onCollapsedChange.mock.calls.length;
+		resize(95);
+		expect(onCollapsedChange).toHaveBeenCalledTimes(calls);
+		resize(96);
+		expect(onCollapsedChange).toHaveBeenLastCalledWith(false);
+		expect(strip?.hasAttribute("inert")).toBe(false);
+		expect(strip?.hasAttribute("aria-hidden")).toBe(false);
+	});
+
+	it("remeasures after tabs close and resets when the last tab closes", () => {
+		mockResize(80);
+		const onCollapsedChange = vi.fn();
+		const { rerender } = renderStrip({ onCollapsedChange });
+		expect(onCollapsedChange).toHaveBeenLastCalledWith(true);
+		rerender({ tabs: [{ id: "a", label: "plan", title: "/w/plan.md" }] });
+		expect(onCollapsedChange).toHaveBeenLastCalledWith(false);
+		rerender();
+		expect(onCollapsedChange).toHaveBeenLastCalledWith(true);
+		rerender({ tabs: [] });
+		expect(onCollapsedChange).toHaveBeenLastCalledWith(false);
+	});
+
+	it("does not hide tabs without an alternate tab selector and disconnects on unmount", () => {
+		const resize = mockResize(40);
+		const { rerender } = renderStrip();
+		expect(
+			document.querySelector("[role=tablist]")?.hasAttribute("inert"),
+		).toBe(false);
+		expect(resize.observe).not.toHaveBeenCalled();
+		rerender({ onCollapsedChange: vi.fn() });
+		expect(resize.observe).toHaveBeenCalledTimes(1);
+		act(() => roots.pop()?.unmount());
+		expect(resize.disconnect).toHaveBeenCalledTimes(1);
+	});
+
 	it("shows from the first note, so the editor never shifts", () => {
 		renderStrip({ tabs: [{ id: "a", label: "plan", title: "/w/plan.md" }] });
 
@@ -165,20 +225,7 @@ describe("TabStrip", () => {
 		expect(onActivate).not.toHaveBeenCalled();
 	});
 
-	it("gives each tab a comfortable max and a readable min", () => {
-		renderStrip();
-
-		const chrome = [...document.querySelectorAll("[data-selected], .group")];
-		const tabChrome = chrome.filter((el) => el.querySelector("[role=tab]"));
-		expect(tabChrome.length).toBe(2);
-		for (const el of tabChrome) {
-			expect(el.className).toContain(TAB_MIN_WIDTH_CLASS);
-			expect(el.className).toContain(TAB_MAX_WIDTH_CLASS);
-			expect(el.className).toContain("flex-1");
-		}
-	});
-
-	it("keeps the new-tab control outside the scrolling strip", () => {
+	it("keeps the new-tab control outside the tab list", () => {
 		const onNewTab = vi.fn();
 		renderStrip({ onNewTab });
 
@@ -292,3 +339,35 @@ describe("TabStrip", () => {
 		expect(onRename).not.toHaveBeenCalled();
 	});
 });
+
+function mockResize(initialWidth: number) {
+	let width = initialWidth;
+	let callback: ResizeObserverCallback;
+	const observe = vi.fn();
+	const disconnect = vi.fn();
+	vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+		() => ({ width }) as DOMRect,
+	);
+	vi.stubGlobal(
+		"ResizeObserver",
+		class {
+			constructor(onResize: ResizeObserverCallback) {
+				callback = onResize;
+			}
+			observe = observe;
+			disconnect = disconnect;
+		},
+	);
+	return Object.assign(
+		(nextWidth: number) => {
+			width = nextWidth;
+			act(() =>
+				callback(
+					[{ contentRect: { width } } as ResizeObserverEntry],
+					{} as ResizeObserver,
+				),
+			);
+		},
+		{ observe, disconnect },
+	);
+}

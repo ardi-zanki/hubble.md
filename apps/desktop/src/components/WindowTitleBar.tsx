@@ -1,11 +1,12 @@
 import { Button, useCommandShortcutLabel } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
-import { type CSSProperties, useEffect, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import MingcuteLayoutLeftLine from "~icons/mingcute/layout-left-line";
 import { desktopApi } from "../desktopApi";
 import { useCompactWindow } from "../lib/layout";
 import { toggleSidebar } from "../store/actions";
 import { sidebarOpenStore } from "../store/state";
+import { AllTabsMenu } from "./AllTabsMenu";
 import { DocumentTabs } from "./DocumentTabs";
 
 const START_INSET =
@@ -25,10 +26,17 @@ const dragRegionStyle = {
 export function WindowTitleBar({
 	showSidebarBadge = false,
 	onNewTab,
+	allTabsOpen,
+	onAllTabsOpenChange,
 }: {
 	showSidebarBadge?: boolean;
 	onNewTab?: () => void;
+	allTabsOpen: boolean;
+	onAllTabsOpenChange: (open: boolean) => void;
 }) {
+	const [tabsCollapsed, setTabsCollapsed] = useState(false);
+	const tabAreaRef = useRef<HTMLDivElement>(null);
+	const allTabsButtonRef = useRef<HTMLButtonElement>(null);
 	const sidebarOpen = useStoreValue(sidebarOpenStore);
 	const isFullScreen = useIsFullScreen();
 	const compact = useCompactWindow();
@@ -37,6 +45,19 @@ export function WindowTitleBar({
 		"app.toggle-sidebar",
 	);
 	const newTabTitle = useCommandShortcutLabel("New tab", "app.new-tab");
+
+	function handleTabsCollapsedChange(collapsed: boolean) {
+		if (
+			collapsed &&
+			document.activeElement?.matches(":focus-visible") &&
+			tabAreaRef.current
+				?.querySelector('[role="tablist"]')
+				?.contains(document.activeElement)
+		) {
+			allTabsButtonRef.current?.focus();
+		}
+		setTabsCollapsed(collapsed);
+	}
 
 	return (
 		<div
@@ -71,13 +92,20 @@ export function WindowTitleBar({
 				</Button>
 			</div>
 			{/* Overlap the sidebar seam; the active tab covers the inset divider. */}
-			<div className="-ms-px flex min-w-0 flex-1 self-stretch">
+			<div ref={tabAreaRef} className="-ms-px flex min-w-0 flex-1 self-stretch">
 				<DocumentTabs
 					onNewTab={onNewTab}
 					newTabTitle={newTabTitle}
 					flushStart={sidebarOpen && !compact}
+					onCollapsedChange={handleTabsCollapsedChange}
 				/>
 			</div>
+			<AllTabsMenu
+				open={allTabsOpen}
+				onOpenChange={onAllTabsOpenChange}
+				tabsCollapsed={tabsCollapsed}
+				triggerRef={allTabsButtonRef}
+			/>
 			<div
 				className="shrink-0"
 				style={{ inlineSize: isFullScreen ? 0 : END_INSET }}

@@ -214,6 +214,7 @@ function App() {
 		useState<HTMLDivElement | null>(null);
 	useScrollMemory(state.currentPath, scrollContainerEl);
 	const [settingsOpen, setSettingsOpen] = useState(false);
+	const [allTabsOpen, setAllTabsOpen] = useState(false);
 	const [copyAsMarkdownRequest, setCopyAsMarkdownRequest] = useState(0);
 	const [updateState, setUpdateState] = useState<DesktopUpdateState | null>(
 		null,
@@ -279,6 +280,7 @@ function App() {
 				setCopyAsMarkdownRequest((request) => request + 1),
 			focusSidebar: focusSidebarNav,
 			openNewTab: () => openSearch("new-tab"),
+			toggleAllTabs: () => setAllTabsOpen((open) => !open),
 		},
 		{
 			currentPath: state.currentPath ?? null,
@@ -471,6 +473,7 @@ function App() {
 				// The File menu accelerator fires too, but opening is idempotent.
 				"app.go-to-file": () => openSearch("current"),
 				"app.new-tab": () => openSearch("new-tab"),
+				"app.all-tabs": () => setAllTabsOpen((open) => !open),
 				"app.open-folder": openWorkspaceWithSidebar,
 				"app.open-file": openFilePicker,
 				"app.copy-path": () => copyFilePath(currentPath),
@@ -690,6 +693,8 @@ function App() {
 			}}
 		>
 			<WindowTitleBar
+				allTabsOpen={allTabsOpen}
+				onAllTabsOpenChange={setAllTabsOpen}
 				showSidebarBadge={
 					!sidebarOpen &&
 					(showReadyCallout ||

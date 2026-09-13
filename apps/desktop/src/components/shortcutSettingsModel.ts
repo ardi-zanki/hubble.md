@@ -23,6 +23,7 @@ const descriptions: Record<CommandId, string> = {
 	"app.open-file": "Choose a file from the filesystem.",
 	"app.open-folder": "Choose a folder to open as a workspace.",
 	"app.go-to-file": "Search files in the current open folder.",
+	"app.all-tabs": "Show or hide the list of open tabs.",
 	"app.new-tab": "Open the file search in a new tab.",
 	"app.close-tab": "Close the current tab.",
 	"app.next-tab": "Switch to the next tab.",

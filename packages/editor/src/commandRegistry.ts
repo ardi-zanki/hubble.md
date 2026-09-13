@@ -54,6 +54,11 @@ export const commandRegistry = {
 		label: "Go to File...",
 		isEnabled: hasWorkspace,
 	},
+	"app.all-tabs": {
+		defaultBinding: "CmdOrCtrl+Shift+A",
+		label: "Show All Tabs",
+		isEnabled: always,
+	},
 	"app.new-tab": {
 		defaultBinding: "CmdOrCtrl+T",
 		label: "New Tab",

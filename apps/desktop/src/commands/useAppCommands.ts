@@ -63,6 +63,7 @@ export type AppCommandActions = {
 	requestCopyAsMarkdown: () => void;
 	focusSidebar: () => void;
 	openNewTab: () => void;
+	toggleAllTabs: () => void;
 };
 
 function toRegistryContext(context: AppCommandContext): RegistryContext {
@@ -213,6 +214,12 @@ function defineCommands(
 		),
 
 		// Navigate
+		fromRegistry(
+			"app.all-tabs",
+			"Navigate",
+			["tab", "list", "switch"],
+			actions.toggleAllTabs,
+		),
 		fromRegistry(
 			"app.new-tab",
 			"Navigate",
