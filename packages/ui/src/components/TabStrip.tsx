@@ -166,7 +166,7 @@ export function TabStrip({
 									{editing ? (
 										<input
 											ref={renameInputRef}
-											className="h-5 min-w-0 flex-1 select-text rounded-sm bg-transparent px-[min(1.25rem,20cqw)] text-xs text-foreground outline-none @min-[96px]/tab:pr-10"
+											className="h-5 min-w-0 flex-1 select-text rounded-sm bg-transparent px-[min(1.25rem,20cqw)] text-xs text-foreground outline-none group-data-[selected=true]:pr-10 @min-[96px]/tab:pr-10"
 											value={draft}
 											aria-label={`Rename ${tab.label}`}
 											onBlur={() => commitRename(tab.id)}
@@ -187,6 +187,7 @@ export function TabStrip({
 											type="button"
 											role="tab"
 											aria-selected={active}
+											aria-label={tab.label}
 											tabIndex={index === anchor ? 0 : -1}
 											title={tab.title}
 											onClick={() => onActivate(tab.id)}
@@ -198,20 +199,24 @@ export function TabStrip({
 												event.preventDefault();
 												onClose(tab.id);
 											}}
-											className="min-w-0 flex-1 truncate px-[min(1.25rem,20cqw)] py-0.5 text-start text-xs before:absolute before:inset-0 @min-[96px]/tab:pr-10"
+											className="@container/tab-label min-w-0 flex-1 overflow-hidden px-[min(1.25rem,20cqw)] py-0.5 text-start text-xs before:absolute before:inset-0 group-data-[selected=true]:pr-10 @min-[96px]/tab:pr-10"
 										>
-											{tab.label}
+											<span className="block truncate @max-[3ch]/tab-label:invisible">
+												{tab.label}
+											</span>
 										</button>
 									)}
-									{/* Narrow tabs need their full width for the title, even on hover. */}
+									{/* Keep the selected tab closable; narrow inactive tabs prioritize the title. */}
 									<button
 										type="button"
 										tabIndex={-1}
 										aria-label={`Close ${tab.label}`}
 										onClick={() => onClose(tab.id)}
 										className={cn(
-											"absolute top-1.25 right-4 hidden rounded p-0.5 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 @min-[96px]/tab:block",
-											active && "opacity-100",
+											"absolute top-1.25 right-4 rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100",
+											active
+												? "block opacity-100"
+												: "hidden opacity-0 @min-[96px]/tab:block",
 										)}
 									>
 										<MingcuteCloseLine className="size-3.5" />
