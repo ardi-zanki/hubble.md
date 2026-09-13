@@ -31,7 +31,7 @@ export function animateTabs(
 	const animations: Animation[] = [];
 	const label = target.querySelector<HTMLElement>("[data-tab-menu-label]");
 	const holdUntil = 500 + stagger * (tabs.length - 1) + 400;
-	const labelDuration = holdUntil + 180;
+	const labelDuration = holdUntil + 240;
 	if (collapsed && label?.animate) {
 		const backgroundFrames = [
 			{ backgroundColor: "var(--muted)", offset: 0 },
@@ -53,7 +53,7 @@ export function animateTabs(
 						offset: 0,
 						easing: "cubic-bezier(.22,1,.36,1)",
 					},
-					{ clipPath: "inset(0 0 0 0)", offset: 180 / labelDuration },
+					{ clipPath: "inset(0 0 0 0)", offset: 240 / labelDuration },
 					{
 						clipPath: "inset(0 0 0 0)",
 						offset: holdUntil / labelDuration,
