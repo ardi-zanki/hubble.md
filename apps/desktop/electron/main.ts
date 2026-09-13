@@ -1977,9 +1977,8 @@ protocol.registerSchemesAsPrivileged([
 	},
 ]);
 
-// `createWindow` awaits persisted state before it assigns `mainWindow`, so two
-// callers racing the same gap would each open a window. Every caller shares the
-// in-flight promise instead.
+// While `createWindow` loads saved state, `mainWindow` is still null.
+// Reuse its promise so another open request cannot create a second window.
 let pendingWindowCreation: Promise<void> | null = null;
 function ensureMainWindow() {
 	if (mainWindow && !mainWindow.isDestroyed()) return Promise.resolve();
@@ -1989,28 +1988,22 @@ function ensureMainWindow() {
 	return pendingWindowCreation;
 }
 
-// Set once the `whenReady()` handler below has registered IPC, so a window
-// created outside it always has the handlers its renderer calls during init.
+// Set to true after `whenReady()` finishes setup, including IPC registration.
+// Until then, `openFile` saves the path but leaves window creation to startup:
+// a new renderer would call IPC handlers that may not exist yet.
 let appBootstrapped = false;
 
-// A document opened against an already-running app has to raise the window
-// itself. macOS routes that through `open-file` and other platforms through
-// `second-instance`, so both share this. `pendingOpenPath` is set by the
-// caller, which is what covers the two paths that don't reach the renderer
-// here: a window created below, and an `open-file` that arrives before the
-// bootstrap finishes. Both drain it via `desktop:get-launch-file-path` during
-// renderer init.
-function revealForOpenFile(openPath: string) {
+function openFile(openPath: string) {
+	// New windows read this path during renderer startup.
+	pendingOpenPath = openPath;
 	if (!mainWindow || mainWindow.isDestroyed()) {
-		// macOS keeps the app alive with no window after ⌘W. During bootstrap
-		// there is nothing to do: it ends in the same `ensureMainWindow()`.
+		// Before IPC is ready, leave window creation to `whenReady()`.
 		if (appBootstrapped) void ensureMainWindow();
 		return;
 	}
 	if (mainWindow.isMinimized()) mainWindow.restore();
 	mainWindow.show();
-	// `BrowserWindow.focus()` alone does not raise the app above the frontmost
-	// one when the open request came from another app, such as Finder.
+	// Window focus alone cannot take keyboard focus from another app on macOS.
 	app.focus({ steal: true });
 	mainWindow.focus();
 	sendToRenderer("desktop:open-file", toRendererPath(openPath));
@@ -2023,16 +2016,14 @@ if (!singleInstanceLock) {
 	app.on("second-instance", (_event, argv) => {
 		const openPath = firstExistingFileArg(argv.slice(1));
 		if (!openPath) return;
-		pendingOpenPath = openPath;
-		revealForOpenFile(openPath);
+		openFile(openPath);
 	});
 
 	app.on("open-file", (event, filePath) => {
 		event.preventDefault();
 		const resolved = resolvePath(filePath);
 		grantFileWithParent(resolved);
-		pendingOpenPath = resolved;
-		revealForOpenFile(resolved);
+		openFile(resolved);
 	});
 
 	// "Desktop Active" means the app was used that day (TELEMETRY.md): launch
