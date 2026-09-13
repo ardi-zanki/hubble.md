@@ -69,7 +69,7 @@
 		if (event.defaultPrevented) return;
 		const anchor =
 			event.target instanceof Element ? event.target.closest("a[href]") : null;
-		if (!anchor || !/^https?:\/\//i.test(anchor.href)) return;
+		if (!anchor || !/^(https?:\/\/|mailto:)/i.test(anchor.href)) return;
 		event.preventDefault();
 		safeRequestHubble("links.open", { url: anchor.href });
 	});

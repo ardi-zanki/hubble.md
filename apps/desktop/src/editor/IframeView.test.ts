@@ -89,9 +89,20 @@ describe("HTML app external links", () => {
 		);
 	});
 
-	it("rejects non-http(s) URLs without calling the desktop API", async () => {
+	it.each([
+		"mailto:test@example.com",
+		"MAILTO:test@example.com?subject=Hello%20there&body=First%20line%0ASecond",
+		"mailto:?subject=Hello",
+	])("opens email URL %s unchanged", async (url) => {
+		await expect(openLink(url)).resolves.toEqual({ ok: true, value: { url } });
+		expect(desktopApi.openExternalUrl).toHaveBeenCalledWith(url);
+	});
+
+	it("rejects unsupported URLs without calling the desktop API", async () => {
 		for (const url of [
 			"file:///etc/passwd",
+			"mailtox:test@example.com",
+			"tel:123456789",
 			"javascript:alert(1)",
 			"example.com",
 			42,

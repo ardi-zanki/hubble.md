@@ -75,8 +75,8 @@ const createInputSchema = z
 const externalUrlSchema = z
 	.string()
 	.refine(
-		(url) => /^https?:\/\//i.test(url),
-		"Only http(s) external URLs are allowed",
+		(url) => /^(https?:\/\/|mailto:)/i.test(url),
+		"Only http(s) and mailto external URLs are allowed",
 	);
 const filePatchSchema = z
 	.object({

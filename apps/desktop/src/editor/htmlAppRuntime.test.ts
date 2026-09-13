@@ -61,6 +61,18 @@ describe("HTML app runtime anchor clicks", () => {
 		]);
 	});
 
+	it.each([
+		"mailto:test@example.com",
+		"mailto:test@example.com?subject=Hello%20there&body=First%20line%0ASecond",
+		"MAILTO:test@example.com",
+	])("routes email anchor %s through links.open", (url) => {
+		const { anchor, defaultPrevented } = clickAnchor(url);
+		expect(defaultPrevented).toBe(true);
+		expect(brokerRequests).toMatchObject([
+			{ method: "links.open", params: { url: anchor.href } },
+		]);
+	});
+
 	it("routes clicks on elements nested inside external anchors", () => {
 		const anchor = document.createElement("a");
 		anchor.setAttribute("href", "http://example.com");
@@ -76,7 +88,7 @@ describe("HTML app runtime anchor clicks", () => {
 		]);
 	});
 
-	it("leaves relative, in-page, and non-http links alone", () => {
+	it("leaves relative, in-page, and unsupported links alone", () => {
 		for (const href of ["#section", "./other.html", "javascript:void(0)"]) {
 			const { defaultPrevented } = clickAnchor(href);
 			expect(defaultPrevented).toBe(false);

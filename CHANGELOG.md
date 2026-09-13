@@ -9,7 +9,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 
-- HTML Apps can open external links in the system browser, from plain `<a>` links or the new `hubble.links.open(url)` API. [#262](https://github.com/bholmesdev/hubble.md/issues/262)
+- HTML Apps can open web links in the system browser and email links in the default email app, from plain `<a>` links or the new `hubble.links.open(url)` API. Thanks [@marcodlk](https://github.com/marcodlk)! [#274](https://github.com/bholmesdev/hubble.md/pull/274)
 
 ### Changed
 
