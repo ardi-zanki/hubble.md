@@ -5,7 +5,7 @@ import MingcuteLayoutLeftLine from "~icons/mingcute/layout-left-line";
 import { desktopApi } from "../desktopApi";
 import { useCompactWindow } from "../lib/layout";
 import { toggleSidebar } from "../store/actions";
-import { sidebarOpenStore } from "../store/state";
+import { sidebarOpenStore, tabsStore } from "../store/state";
 import { AllTabsMenu } from "./AllTabsMenu";
 import { DocumentTabs } from "./DocumentTabs";
 
@@ -38,6 +38,7 @@ export function WindowTitleBar({
 	const tabAreaRef = useRef<HTMLDivElement>(null);
 	const allTabsButtonRef = useRef<HTMLButtonElement>(null);
 	const sidebarOpen = useStoreValue(sidebarOpenStore);
+	const hasTabs = useStoreValue(tabsStore, (tabs) => tabs.order.length > 0);
 	const isFullScreen = useIsFullScreen();
 	const compact = useCompactWindow();
 	const toggleSidebarTitle = useCommandShortcutLabel(
@@ -66,12 +67,12 @@ export function WindowTitleBar({
 			style={dragRegionStyle}
 		>
 			<div
-				className="flex items-center pe-4"
+				className={`flex items-center ${hasTabs ? "pe-4" : ""}`}
 				style={{
 					flex:
 						sidebarOpen && !compact
 							? "0 0 var(--sidebar-width, 220px)"
-							: "0 100 114px",
+							: `0 100 ${hasTabs ? 114 : 98}px`,
 					paddingInlineStart: isFullScreen ? 0 : START_INSET,
 				}}
 			>

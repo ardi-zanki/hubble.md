@@ -26,9 +26,13 @@ vi.mock("../desktopApi", () => ({
 	},
 }));
 vi.mock("@simplestack/store/react", () => ({
-	useStoreValue: () => state.sidebarOpen,
+	useStoreValue: (store: string) =>
+		store === "sidebar" ? state.sidebarOpen : true,
 }));
-vi.mock("../store/state", () => ({ sidebarOpenStore: {} }));
+vi.mock("../store/state", () => ({
+	sidebarOpenStore: "sidebar",
+	tabsStore: "tabs",
+}));
 vi.mock("../store/actions", () => ({ toggleSidebar: state.toggleSidebar }));
 vi.mock("../lib/layout", () => ({ useCompactWindow: () => state.compact }));
 vi.mock("./AllTabsMenu", () => ({
