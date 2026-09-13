@@ -11,7 +11,7 @@ import MingcuteAddLine from "~icons/mingcute/add-line";
 import MingcuteCloseLine from "~icons/mingcute/close-line";
 import { cn } from "../lib/utils";
 import { Button } from "../primitives/button";
-import { animateTabCollapse } from "./animateTabCollapse";
+import { animateTabs } from "./animateTabs";
 
 const NO_DRAG_STYLE = {
 	WebkitAppRegion: "no-drag",
@@ -66,6 +66,7 @@ export function TabStrip({
 	const [draft, setDraft] = useState("");
 	const [collapsed, setCollapsed] = useState(false);
 	const collapsedRef = useRef(false);
+	const previousCollapsed = useRef(false);
 	const tabCount = tabs.length;
 
 	useEffect(() => {
@@ -81,6 +82,8 @@ export function TabStrip({
 			update(false);
 			return;
 		}
+		// Below 48px per tab, hide the crowded strip and direct users to All Tabs.
+		// Show the strip again once the tabs have enough room to be useful.
 		const measure = (width: number) => update(width / tabCount < 48);
 		measure(strip.getBoundingClientRect().width);
 		const observer = new ResizeObserver(([entry]) => {
@@ -91,10 +94,12 @@ export function TabStrip({
 	}, [onCollapsedChange, tabCount]);
 
 	useLayoutEffect(() => {
+		const changed = previousCollapsed.current !== collapsed;
+		previousCollapsed.current = collapsed;
 		const strip = stripRef.current;
 		const target = collapseTargetRef?.current;
-		if (!collapsed || !strip || !target) return;
-		return animateTabCollapse(strip, target);
+		if (!changed || !strip || !target) return;
+		return animateTabs(strip, target, collapsed);
 	}, [collapsed, collapseTargetRef]);
 
 	const anchor = Math.max(

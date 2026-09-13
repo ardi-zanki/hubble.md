@@ -44,6 +44,13 @@ export function AllTabsMenu({
 					/>
 				}
 			>
+				<span
+					data-tab-menu-label
+					aria-hidden="true"
+					className="absolute inset-y-0 end-[calc(100%-2px)] flex items-center overflow-hidden rounded-s-sm bg-muted px-2 text-[11px] whitespace-nowrap [clip-path:inset(0_0_0_100%)]"
+				>
+					All Tabs
+				</span>
 				<MingcuteDownLine className="size-4" />
 			</Menu.Trigger>
 			<Menu.Portal>
