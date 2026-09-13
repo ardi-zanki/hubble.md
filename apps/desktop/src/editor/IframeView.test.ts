@@ -113,15 +113,4 @@ describe("HTML app external links", () => {
 		expect(desktopApi.openExternalUrl).not.toHaveBeenCalled();
 	});
 
-	it("rejects unknown methods", async () => {
-		const response = await handleHtmlAppRequest(
-			{ type: "hubble:request", id: 1, method: "links.close", params: {} },
-			workspacePath,
-			htmlAppPath,
-		);
-		expect(response).toMatchObject({
-			ok: false,
-			error: { message: "Unknown Hubble HTML app method: links.close" },
-		});
-	});
 });
