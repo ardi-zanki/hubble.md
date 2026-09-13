@@ -1989,6 +1989,38 @@ protocol.registerSchemesAsPrivileged([
 	},
 ]);
 
+// While `createWindow` loads saved state, `mainWindow` is still null.
+// Reuse its promise so another open request cannot create a second window.
+let pendingWindowCreation: Promise<void> | null = null;
+function ensureMainWindow() {
+	if (mainWindow && !mainWindow.isDestroyed()) return Promise.resolve();
+	pendingWindowCreation ??= createWindow().finally(() => {
+		pendingWindowCreation = null;
+	});
+	return pendingWindowCreation;
+}
+
+// Set to true after `whenReady()` finishes setup, including IPC registration.
+// Until then, `openFile` saves the path but leaves window creation to startup:
+// a new renderer would call IPC handlers that may not exist yet.
+let appBootstrapped = false;
+
+function openFile(openPath: string) {
+	// New windows read this path during renderer startup.
+	pendingOpenPath = openPath;
+	if (!mainWindow || mainWindow.isDestroyed()) {
+		// Before IPC is ready, leave window creation to `whenReady()`.
+		if (appBootstrapped) void ensureMainWindow();
+		return;
+	}
+	if (mainWindow.isMinimized()) mainWindow.restore();
+	mainWindow.show();
+	// Window focus alone cannot take keyboard focus from another app on macOS.
+	app.focus({ steal: true });
+	mainWindow.focus();
+	sendToRenderer("desktop:open-file", toRendererPath(openPath));
+}
+
 const singleInstanceLock = app.requestSingleInstanceLock();
 if (!singleInstanceLock) {
 	app.quit();
@@ -1996,20 +2028,14 @@ if (!singleInstanceLock) {
 	app.on("second-instance", (_event, argv) => {
 		const openPath = firstExistingFileArg(argv.slice(1));
 		if (!openPath) return;
-		pendingOpenPath = openPath;
-		if (mainWindow) {
-			if (mainWindow.isMinimized()) mainWindow.restore();
-			mainWindow.focus();
-			sendToRenderer("desktop:open-file", toRendererPath(openPath));
-		}
+		openFile(openPath);
 	});
 
 	app.on("open-file", (event, filePath) => {
 		event.preventDefault();
 		const resolved = resolvePath(filePath);
 		grantFileWithParent(resolved);
-		pendingOpenPath = resolved;
-		sendToRenderer("desktop:open-file", toRendererPath(resolved));
+		openFile(resolved);
 	});
 
 	// "Desktop Active" means the app was used that day (TELEMETRY.md): launch
@@ -2034,7 +2060,8 @@ if (!singleInstanceLock) {
 		registerIpc();
 		buildMenu();
 		configureAutoUpdates();
-		await createWindow();
+		appBootstrapped = true;
+		await ensureMainWindow();
 	});
 
 	app.on("window-all-closed", () => {
@@ -2042,8 +2069,6 @@ if (!singleInstanceLock) {
 	});
 
 	app.on("activate", () => {
-		if (BrowserWindow.getAllWindows().length === 0) {
-			void createWindow();
-		}
+		void ensureMainWindow();
 	});
 }
