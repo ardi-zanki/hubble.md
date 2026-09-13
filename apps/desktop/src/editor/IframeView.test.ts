@@ -112,5 +112,4 @@ describe("HTML app external links", () => {
 		}
 		expect(desktopApi.openExternalUrl).not.toHaveBeenCalled();
 	});
-
 });
