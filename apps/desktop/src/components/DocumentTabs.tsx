@@ -18,12 +18,10 @@ export function DocumentTabs({
 	onNewTab,
 	newTabTitle,
 	flushStart,
-	onCollapsedChange,
 }: {
 	onNewTab?: () => void;
 	newTabTitle?: string;
 	flushStart: boolean;
-	onCollapsedChange: (collapsed: boolean) => void;
 }) {
 	const tabs = useStoreValue(tabsStore);
 	// The changelog takes over the editor without a Tab of its own, so it is
@@ -42,7 +40,6 @@ export function DocumentTabs({
 		<TabStrip
 			tabs={items}
 			flushStart={flushStart}
-			onCollapsedChange={onCollapsedChange}
 			activeTabId={onChangelog ? null : tabs.activeTabId}
 			onActivate={(id) => void activateTab(id)}
 			onClose={(id) => void closeTab(id)}
