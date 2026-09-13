@@ -1784,8 +1784,8 @@ function registerIpc() {
 	});
 
 	ipcMain.handle("desktop:open-external-url", async (_event, { url }) => {
-		if (typeof url !== "string" || !/^https?:\/\//i.test(url)) {
-			throw new Error("Only http(s) external URLs are allowed");
+		if (typeof url !== "string" || !/^(https?:\/\/|mailto:)/i.test(url)) {
+			throw new Error("Only http(s) and mailto external URLs are allowed");
 		}
 		await shell.openExternal(url);
 	});

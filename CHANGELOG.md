@@ -9,6 +9,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 
+- HTML Apps can open web links in the system browser and email links in the default email app, from plain `<a>` links or the new `hubble.links.open(url)` API. Thanks [@marcodlk](https://github.com/marcodlk)! [#274](https://github.com/bholmesdev/hubble.md/pull/274)
+
 ### Changed
 
 - The app window now appears about 200ms sooner on launch, already in the right theme, instead of staying hidden behind a bouncing dock icon until the whole app had loaded. Thanks [@zcuric](https://github.com/zcuric)! [#281](https://github.com/bholmesdev/hubble.md/pull/281)
