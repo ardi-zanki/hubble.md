@@ -235,7 +235,6 @@ export function TabStrip({
 											type="button"
 											role="tab"
 											aria-selected={active}
-											aria-label={tab.label}
 											tabIndex={index === anchor ? 0 : -1}
 											title={tab.title}
 											onClick={() => onActivate(tab.id)}
@@ -247,11 +246,9 @@ export function TabStrip({
 												event.preventDefault();
 												onClose(tab.id);
 											}}
-											className="@container/tab-label min-w-0 flex-1 overflow-hidden px-[min(1.25rem,20cqw)] py-0.5 text-start text-xs before:absolute before:inset-0 group-data-[selected=true]:pr-10 @min-[96px]/tab:pr-10"
+											className="min-w-0 flex-1 truncate px-[min(1.25rem,20cqw)] py-0.5 text-start text-xs before:absolute before:inset-0 group-data-[selected=true]:pr-10 @min-[96px]/tab:pr-10"
 										>
-											<span className="block truncate @max-[3ch]/tab-label:invisible">
-												{tab.label}
-											</span>
+											{tab.label}
 										</button>
 									)}
 									{/* Keep the selected tab closable; narrow inactive tabs prioritize the title. */}
