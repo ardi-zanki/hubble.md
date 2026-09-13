@@ -85,6 +85,7 @@ import {
 	refreshFilesDebounced,
 	reloadFromDiskConflict,
 	requestChatAboutNote,
+	restoreTabs,
 	savePathContent,
 	setLastSeenVersion,
 	setReviewThreads,
@@ -655,21 +656,7 @@ function App() {
 				}
 				return;
 			}
-			const nextState = viewerStore.get();
-			const workspace = workspaceStore.get();
-			const lastPath =
-				nextState.lastOpenedPath ??
-				(workspace.workspacePath
-					? workspace.lastOpenedPaths[workspace.workspacePath]
-					: undefined);
-			if (lastPath) {
-				// Restore must stay in Hubble: missing files stay quiet, and a code-file
-				// preference must not launch another app during startup.
-				await loadPath(lastPath, {
-					missing: "silent",
-					launchExternal: false,
-				});
-			}
+			await restoreTabs();
 		};
 		void init();
 		return () => {

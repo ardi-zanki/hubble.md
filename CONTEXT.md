@@ -66,7 +66,7 @@ A note the user has open in the desktop editor, shown as one entry in the tab st
 
 A Tab records **where** a note is, not what it holds: its path and its own back/forward trail. The open document itself stays singular — one [[Markdown File]] is loaded at a time, in one editor, with one file watcher. Activating a Tab saves the current note and loads the Tab's note from disk, the same thing clicking a sidebar row already does. Background Tabs therefore hold no unsaved text, no dirty state, and no conflict state; there is nothing in a Tab to go stale.
 
-Tabs are session state. They are not persisted, so a relaunch restores the last opened note as a single Tab rather than the set that was open.
+Each workspace’s ordered Tab paths and Active Tab are saved in local storage. Reloading the app or returning to a workspace restores that set, skipping files that no longer exist. An empty set stays empty. Back/forward trails remain in memory; document contents stay on disk.
 _Avoid_: buffer, pane, window.
 
 ### Active Tab

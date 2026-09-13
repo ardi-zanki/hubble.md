@@ -104,6 +104,8 @@ import {
 	nextActiveTabId,
 	type TabId,
 	type TabTarget,
+	tabSession,
+	tabsFromSession,
 	withBackgroundTab,
 	withClosedTab,
 	withRewrittenTabPaths,
@@ -745,6 +747,8 @@ export function removeRecentWorkspace(path: string) {
 	});
 }
 
+let workspaceRequest = 0;
+
 /** Opens a workspace by path. If no path given, shows a folder picker first. */
 export async function openWorkspace(path?: string) {
 	let nextPath = path;
@@ -753,24 +757,37 @@ export async function openWorkspace(path?: string) {
 		if (typeof selected !== "string") return;
 		nextPath = selected;
 	}
+	const request = ++workspaceRequest;
+	if (!(await leaveCurrentDocument())) return;
+	if (request !== workspaceRequest) return;
 	if (workspaceStore.get().workspacePath !== nextPath) {
 		await expireDeleteUndo();
 	}
-
-	// Tabs belong to the open folder: their notes live in it, and their trails
-	// record paths inside it. Opening another folder starts a fresh set.
+	if (request !== workspaceRequest) return;
+	invalidateLoadPath();
 	appStore.set((state) => {
 		const filtered = state.workspace.recentWorkspaces.filter(
 			(p) => p !== nextPath,
 		);
+		const tabSessions = {
+			...state.tabSessions,
+			[state.workspace.workspacePath ?? ""]: tabSession(state.tabs),
+		};
+		const lastPath = state.workspace.lastOpenedPaths[nextPath];
 		return {
 			...state,
-			tabs: emptyTabs(),
+			tabSessions,
+			tabs: tabsFromSession(
+				tabSessions[nextPath] ??
+					(lastPath ? { paths: [lastPath], activePath: lastPath } : undefined),
+			),
+			document: emptyDoc(),
 			workspace: {
 				...state.workspace,
 				workspacePath: nextPath,
 				recentWorkspaces: [nextPath, ...filtered].slice(0, MAX_RECENT),
 				files: [],
+				folders: [],
 				pinnedNotes: [],
 			},
 		};
@@ -779,14 +796,44 @@ export async function openWorkspace(path?: string) {
 	forgetScrollPositions();
 	switcherOpenStore.set(false);
 	await Promise.all([refreshFileList(nextPath), loadPinnedNotes(nextPath)]);
+	if (request !== workspaceRequest) return;
+	await restoreTabs();
+}
 
-	const lastFile = workspaceStore.get().lastOpenedPaths[nextPath];
-	if (lastFile) {
-		await loadPath(lastFile, { missing: "silent", launchExternal: false });
+/** Tabs are already hydrated; check their files and load the active document asynchronously. */
+export async function restoreTabs() {
+	const tabs = tabsStore.get();
+	const workspacePath = workspaceStore.get().workspacePath;
+	const missing = await Promise.all(
+		tabs.order.map(async (id) => {
+			try {
+				return (await desktopApi.pathExists(tabs.byId[id].path)) ? null : id;
+			} catch {
+				// A temporary permission or disk error must not discard a saved tab.
+				return null;
+			}
+		}),
+	);
+	if (
+		workspaceStore.get().workspacePath !== workspacePath ||
+		tabsStore.get() !== tabs
+	)
 		return;
+	const restored = missing.reduce(
+		(current, id) => (id ? withClosedTab(current, id) : current),
+		tabs,
+	);
+	appStore.set((state) => ({ ...state, tabs: restored }));
+	for (const id of restored.order) seedHistory(id, restored.byId[id].path);
+	const active = restored.activeTabId;
+	if (active) {
+		await loadPath(restored.byId[active].path, {
+			history: "none",
+			missing: "silent",
+			launchExternal: false,
+			tab: active,
+		});
 	}
-
-	clearViewer();
 }
 
 export function updateEditorContent(path: string, content: string) {
@@ -1472,6 +1519,13 @@ const { run: loadInternalPath, invalidate: invalidateLoadPath } = takeLatest(
 						? { ...state, status: state.currentPath ? "ready" : "idle" }
 						: state,
 				);
+			} else if (!missingPathErrorPattern.test(message)) {
+				viewerStore.set((state) => ({
+					...state,
+					currentPath: path,
+					status: "error",
+					error: message,
+				}));
 			} else {
 				// The file is gone rather than unreadable, so only the Tab holding
 				// it closes. Other Tabs point at files that are still there.

@@ -2868,25 +2868,148 @@ describe("desktop tabs", () => {
 		expect(appStore.get().tabs.activeTabId).toBeNull();
 	});
 
-	it("does not persist tabs across a relaunch", async () => {
+	it.each([
+		null,
+		"/workspace",
+	])("restores ordered tabs after relaunch in %s", async (workspace) => {
 		const api = createDesktopApi();
 		api.pathExists.mockResolvedValue(true);
-		api.readFileText.mockResolvedValue("content");
-		const { STORAGE_KEY } = await import("./persistence");
-		const { appStore, loadPath } = await loadStoreActions(api);
-
-		await loadPath("/workspace/a.md");
-		expect(appStore.get().tabs.order).toHaveLength(1);
-
+		const first = await loadStoreActions(api);
+		if (workspace) await first.openWorkspace(workspace);
+		await first.openTabForPath("/workspace/a.md");
+		await first.openTabForPath("/workspace/b.md");
+		await first.openBackgroundTab("/workspace/c.md");
+		const paths = first.tabsStore
+			.get()
+			.order.map((id) => first.tabsStore.get().byId[id].path);
 		const [, written] = vi.mocked(localStorage.setItem).mock.lastCall ?? [];
-		expect(vi.mocked(localStorage.setItem).mock.lastCall?.[0]).toBe(
-			STORAGE_KEY,
+		const second = await loadStoreActions(api, written);
+		await second.restoreTabs();
+		expect(
+			second.tabsStore
+				.get()
+				.order.map((id) => second.tabsStore.get().byId[id].path),
+		).toEqual(paths);
+		expect(second.viewerStore.get().currentPath).toBe("/workspace/b.md");
+		const active = second.tabsStore.get().activeTabId;
+		expect(active && second.tabsStore.get().byId[active].path).toBe(
+			"/workspace/b.md",
 		);
-		expect(JSON.parse(written ?? "{}")).not.toHaveProperty("tabs");
+		await second.openTabForPath("/workspace/d.md");
+		expect(new Set(second.tabsStore.get().order).size).toBe(4);
+	});
 
-		const relaunched = await loadStoreActions(createDesktopApi(), written);
+	it("restores each workspace's tabs independently", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const app = await loadStoreActions(api);
+		await app.openWorkspace("/one");
+		await app.openTabForPath("/one/a.md");
+		await app.openTabForPath("/one/b.md");
+		await app.openWorkspace("/two");
+		await app.openTabForPath("/two/c.md");
+		await app.openWorkspace("/one");
+		expect(
+			app.tabsStore.get().order.map((id) => app.tabsStore.get().byId[id].path),
+		).toEqual(["/one/a.md", "/one/b.md"]);
+		expect(app.viewerStore.get().currentPath).toBe("/one/b.md");
+		await app.openWorkspace("/two");
+		expect(
+			app.tabsStore.get().order.map((id) => app.tabsStore.get().byId[id].path),
+		).toEqual(["/two/c.md"]);
+	});
 
-		expect(relaunched.appStore.get().tabs.order).toEqual([]);
+	it("saves pending edits before switching workspace sessions", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const app = await loadStoreActions(api);
+		await app.openWorkspace("/one");
+		await app.openTabForPath("/one/a.md");
+		app.viewerStore.set((state) => ({ ...state, content: "pending edit" }));
+		await app.openWorkspace("/two");
+		expect(api.writeFileText).toHaveBeenCalledWith("/one/a.md", "pending edit");
+		expect(app.workspaceStore.get().workspacePath).toBe("/two");
+	});
+
+	it("keeps an intentionally empty tab session empty on reload", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const first = await loadStoreActions(api);
+		await first.openWorkspace("/workspace");
+		await first.openTabForPath("/workspace/a.md");
+		await first.closeAllTabs();
+		const [, written] = vi.mocked(localStorage.setItem).mock.lastCall ?? [];
+		const second = await loadStoreActions(api, written);
+		await second.restoreTabs();
+		expect(second.tabsStore.get().order).toEqual([]);
+		expect(second.viewerStore.get().currentPath).toBeNull();
+	});
+
+	it("skips missing saved files and selects a surviving tab", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const first = await loadStoreActions(api);
+		await first.openWorkspace("/workspace");
+		await first.openTabForPath("/workspace/a.md");
+		await first.openTabForPath("/workspace/b.md");
+		const [, written] = vi.mocked(localStorage.setItem).mock.lastCall ?? [];
+		api.pathExists.mockImplementation(
+			async (path: string) => path !== "/workspace/b.md",
+		);
+		const second = await loadStoreActions(api, written);
+		await second.restoreTabs();
+		expect(
+			second.tabsStore
+				.get()
+				.order.map((id) => second.tabsStore.get().byId[id].path),
+		).toEqual(["/workspace/a.md"]);
+		expect(second.viewerStore.get().currentPath).toBe("/workspace/a.md");
+	});
+
+	it("uses the last-opened file when no tab session has been saved", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const app = await loadStoreActions(
+			api,
+			JSON.stringify({
+				workspace: {
+					workspacePath: "/workspace",
+					lastOpenedPaths: { "/workspace": "/workspace/previous.md" },
+				},
+			}),
+		);
+		await app.restoreTabs();
+		expect(app.viewerStore.get().currentPath).toBe("/workspace/previous.md");
+		expect(app.tabsStore.get().order).toHaveLength(1);
+	});
+
+	it("ignores malformed saved sessions and deduplicates valid paths", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const app = await loadStoreActions(
+			api,
+			JSON.stringify({
+				workspace: { workspacePath: "/workspace" },
+				tabSessions: {
+					"/broken": null,
+					"/workspace": {
+						paths: [
+							"/workspace/a.md",
+							null,
+							5,
+							"/workspace/a.md",
+							"/workspace/b.md",
+						],
+						activePath: "/missing.md",
+					},
+				},
+			}),
+		);
+		await app.restoreTabs();
+		expect(
+			app.tabsStore.get().order.map((id) => app.tabsStore.get().byId[id].path),
+		).toEqual(["/workspace/a.md", "/workspace/b.md"]);
+		expect(app.viewerStore.get().currentPath).toBe("/workspace/a.md");
 	});
 
 	it("opens a second tab beside the active one", async () => {

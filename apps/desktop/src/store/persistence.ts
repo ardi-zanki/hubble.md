@@ -1,4 +1,5 @@
 import { type CommandBindings, cleanCommandBindings } from "@hubble.md/editor";
+import { z } from "zod";
 import type { ThemePreference } from "../theme";
 import { DEFAULT_CHAT_COMMAND } from "./settings";
 import {
@@ -7,7 +8,12 @@ import {
 	type FolderEntry,
 	type SortMode,
 } from "./state";
-import { emptyTabs, type TabsState } from "./tabs";
+import {
+	type TabSession,
+	type TabsState,
+	tabSession,
+	tabsFromSession,
+} from "./tabs";
 
 type WorkspaceState = {
 	workspacePath: string | null;
@@ -45,11 +51,13 @@ export type DesktopState = {
 	workspace: WorkspaceState;
 	document: DocumentState;
 	tabs: TabsState;
+	tabSessions: Record<string, TabSession>;
 	ui: UiState;
 	settings: SettingsState;
 };
 
 type Persisted = {
+	tabSessions?: Record<string, TabSession>;
 	workspace?: {
 		workspacePath?: string | null;
 		recentWorkspaces?: string[];
@@ -106,12 +114,22 @@ function hydrateWorkspace(ws: Persisted["workspace"]): WorkspaceState {
 
 export function getInitialState(): DesktopState {
 	const p = readStorage<Persisted>(STORAGE_KEY);
+	const workspace = hydrateWorkspace(p?.workspace);
+	const tabSessions = readTabSessions(p?.tabSessions);
+	const lastPath = workspace.workspacePath
+		? (workspace.lastOpenedPaths[workspace.workspacePath] ??
+			p?.document?.lastOpenedPath)
+		: p?.document?.lastOpenedPath;
 	return {
-		workspace: hydrateWorkspace(p?.workspace),
+		workspace,
+		tabSessions,
 		document: emptyDoc(p?.document?.lastOpenedPath ?? null),
-		// Tabs are session state, like the back/forward stacks. Launch restores
-		// the last opened note, which opens a single Tab through the usual path.
-		tabs: emptyTabs(),
+		// Use the last-opened preference only before a tab session exists; an empty
+		// saved session means the user closed every tab.
+		tabs: tabsFromSession(
+			tabSessions[workspace.workspacePath ?? ""] ??
+				(lastPath ? { paths: [lastPath], activePath: lastPath } : undefined),
+		),
 		ui: {
 			sidebarOpen: p?.ui?.sidebarOpen ?? false,
 			isSwitcherOpen: false,
@@ -149,6 +167,10 @@ export function getInitialState(): DesktopState {
 
 export function serialize(state: DesktopState): Persisted {
 	return {
+		tabSessions: {
+			...state.tabSessions,
+			[state.workspace.workspacePath ?? ""]: tabSession(state.tabs),
+		},
 		workspace: {
 			workspacePath: state.workspace.workspacePath,
 			recentWorkspaces: state.workspace.recentWorkspaces,
@@ -171,4 +193,33 @@ export function serialize(state: DesktopState): Persisted {
 			theme: state.settings.theme,
 		},
 	};
+}
+
+const tabSessionSchema = z
+	.object({
+		paths: z
+			.array(z.string().min(1).catch(""))
+			.transform((paths) => [...new Set(paths.filter(Boolean))]),
+		activePath: z.string().nullable().catch(null),
+	})
+	.transform(
+		({ paths, activePath }): TabSession => ({
+			paths,
+			activePath:
+				activePath && paths.includes(activePath)
+					? activePath
+					: (paths[0] ?? null),
+		}),
+	);
+
+const tabSessionsSchema = z
+	.record(z.string(), tabSessionSchema.nullable().catch(null))
+	.catch({});
+
+function readTabSessions(value: unknown): Record<string, TabSession> {
+	return Object.fromEntries(
+		Object.entries(tabSessionsSchema.parse(value)).filter(
+			(entry): entry is [string, TabSession] => entry[1] !== null,
+		),
+	);
 }

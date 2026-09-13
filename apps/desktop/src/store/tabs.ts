@@ -15,6 +15,33 @@ export type TabsState = {
 	byId: Record<TabId, Tab>;
 };
 
+export type TabSession = {
+	paths: string[];
+	activePath: string | null;
+};
+
+export function tabSession(tabs: TabsState): TabSession {
+	return {
+		paths: tabs.order.map((id) => tabs.byId[id].path),
+		activePath: tabs.activeTabId
+			? (tabs.byId[tabs.activeTabId]?.path ?? null)
+			: null,
+	};
+}
+
+export function tabsFromSession(session?: TabSession): TabsState {
+	let tabs = emptyTabs();
+	for (const path of session?.paths ?? []) {
+		tabs = withOpenedTab(tabs, path, "new");
+	}
+	return {
+		...tabs,
+		activeTabId: session?.activePath
+			? (findTabByPath(tabs, session.activePath) ?? tabs.order[0] ?? null)
+			: (tabs.order[0] ?? null),
+	};
+}
+
 /**
  * Which Tab a load lands in. Omitted means the Active Tab, so navigation that
  * predates tabs keeps replacing what is on screen rather than piling up Tabs
