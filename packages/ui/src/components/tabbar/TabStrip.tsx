@@ -32,9 +32,10 @@ export type TabStripProps = {
 	activeTabId: string | null;
 	/** Removes the first tab's bottom-left flare so its edge meets the expanded sidebar's divider. */
 	flushStart?: boolean;
+	showStartDivider?: boolean;
 	/** Enables hiding crowded tabs when the caller provides another way to select them. */
 	onCollapsedChange?: (collapsed: boolean) => void;
-	/** Destination for departing tabs and their arrival pulses. */
+	/** All Tabs button that tabs animate into and out of. */
 	collapseTargetRef?: RefObject<HTMLElement | null>;
 	onActivate: (id: string) => void;
 	onClose: (id: string) => void;
@@ -44,9 +45,6 @@ export type TabStripProps = {
 	onRename?: (id: string, nextName: string) => void;
 };
 
-const tabAt = (strip: HTMLElement | null, index: number) =>
-	strip?.querySelectorAll<HTMLElement>('[role="tab"]')[index];
-
 /**
  * The strip is one stop in the page's tab order; arrow keys move between notes.
  */
@@ -54,6 +52,7 @@ export function TabStrip({
 	tabs,
 	activeTabId,
 	flushStart = false,
+	showStartDivider = false,
 	onCollapsedChange,
 	collapseTargetRef,
 	onActivate,
@@ -150,7 +149,9 @@ export function TabStrip({
 	};
 
 	const focusTabAt = (index: number) => {
-		tabAt(stripRef.current, index)?.focus();
+		stripRef.current
+			?.querySelectorAll<HTMLElement>('[role="tab"]')
+			[index]?.focus();
 	};
 
 	const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -246,6 +247,12 @@ export function TabStrip({
 											: undefined,
 									}}
 								>
+									{index === 0 && !active && showStartDivider ? (
+										<span
+											aria-hidden="true"
+											className="pointer-events-none absolute top-1 left-0 h-5 w-px bg-border"
+										/>
+									) : null}
 									{active ? (
 										<TabOutline flushStart={flushStart && index === 0} />
 									) : null}

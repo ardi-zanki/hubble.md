@@ -170,8 +170,6 @@ export const telemetryConsentStore = store<TelemetryConsent | null>(null);
 export const workspaceStore = appStore.select("workspace");
 export const viewerStore = appStore.select("document");
 export const uiStore = appStore.select("ui");
-export const tabsStore = appStore.select("tabs");
-export const activeTabIdStore = tabsStore.select("activeTabId");
 
 export const workspacePathStore = workspaceStore.select("workspacePath");
 export const recentWorkspacesStore = workspaceStore.select("recentWorkspaces");

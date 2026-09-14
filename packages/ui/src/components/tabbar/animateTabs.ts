@@ -30,15 +30,18 @@ export function animateTabs(
 	);
 	const animations: Animation[] = [];
 	const label = target.querySelector<HTMLElement>("[data-tab-menu-label]");
-	const holdUntil = 500 + stagger * (tabs.length - 1) + 400;
-	const labelDuration = holdUntil + 240;
+	const tabDuration = 500;
+	const labelWipeDuration = 240;
+	const labelEasing = "cubic-bezier(.22,1,.36,1)";
+	const holdUntil = tabDuration + stagger * (tabs.length - 1) + 400;
+	const labelDuration = holdUntil + labelWipeDuration;
 	if (collapsed && label?.animate) {
 		const backgroundFrames = [
 			{ backgroundColor: "var(--muted)", offset: 0 },
 			{
 				backgroundColor: "var(--muted)",
 				offset: holdUntil / labelDuration,
-				easing: "cubic-bezier(.22,1,.36,1)",
+				easing: labelEasing,
 			},
 			{ backgroundColor: getComputedStyle(target).backgroundColor, offset: 1 },
 		];
@@ -51,13 +54,16 @@ export function animateTabs(
 					{
 						clipPath: "inset(0 0 0 100%)",
 						offset: 0,
-						easing: "cubic-bezier(.22,1,.36,1)",
+						easing: labelEasing,
 					},
-					{ clipPath: "inset(0 0 0 0)", offset: 240 / labelDuration },
+					{
+						clipPath: "inset(0 0 0 0)",
+						offset: labelWipeDuration / labelDuration,
+					},
 					{
 						clipPath: "inset(0 0 0 0)",
 						offset: holdUntil / labelDuration,
-						easing: "cubic-bezier(.22,1,.36,1)",
+						easing: labelEasing,
 					},
 					{ clipPath: "inset(0 0 0 100%)", offset: 1 },
 				],
@@ -97,7 +103,7 @@ export function animateTabs(
 							.reverse()
 							.map((frame) => ({ ...frame, offset: 1 - frame.offset })),
 				{
-					duration: 500,
+					duration: tabDuration,
 					delay,
 					easing: "cubic-bezier(.16,1,.3,1)",
 					fill: "backwards",

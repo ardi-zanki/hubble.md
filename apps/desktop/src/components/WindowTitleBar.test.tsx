@@ -31,8 +31,8 @@ vi.mock("@simplestack/store/react", () => ({
 }));
 vi.mock("../store/state", () => ({
 	sidebarOpenStore: "sidebar",
-	tabsStore: "tabs",
 }));
+vi.mock("../store/tabStore", () => ({ tabsStore: "tabs" }));
 vi.mock("../store/actions", () => ({ toggleSidebar: state.toggleSidebar }));
 vi.mock("../lib/layout", () => ({ useCompactWindow: () => state.compact }));
 vi.mock("./AllTabsMenu", () => ({

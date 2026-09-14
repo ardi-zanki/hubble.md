@@ -105,7 +105,6 @@ import {
 	shortcutBindingsStore,
 	sidebarOpenStore,
 	spellcheckStore,
-	tabsStore,
 	telemetryConsentStore,
 	terminalPositionStore,
 	uiStore,
@@ -114,6 +113,7 @@ import {
 	workspacePathStore,
 	workspaceStore,
 } from "./store/state";
+import { tabsStore } from "./store/tabStore";
 import { isDarkTheme, subscribeTheme } from "./theme";
 
 // Forces editor refresh when underlying TipTap extensions change

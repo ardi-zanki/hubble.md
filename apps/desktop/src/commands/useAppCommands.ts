@@ -42,7 +42,7 @@ import {
 	toggleTerminal,
 } from "../store/actions";
 import { canGoBack, canGoForward } from "../store/history";
-import { tabsStore } from "../store/state";
+import { tabsStore } from "../store/tabStore";
 
 const CONTRIBUTING_URL =
 	"https://github.com/bholmesdev/hubble.md/blob/main/CONTRIBUTING.md";

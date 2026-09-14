@@ -5,7 +5,8 @@ import MingcuteLayoutLeftLine from "~icons/mingcute/layout-left-line";
 import { desktopApi } from "../desktopApi";
 import { useCompactWindow } from "../lib/layout";
 import { toggleSidebar } from "../store/actions";
-import { sidebarOpenStore, tabsStore } from "../store/state";
+import { sidebarOpenStore } from "../store/state";
+import { tabsStore } from "../store/tabStore";
 import { AllTabsMenu } from "./AllTabsMenu";
 import { DocumentTabs } from "./DocumentTabs";
 
@@ -96,6 +97,7 @@ export function WindowTitleBar({
 					onNewTab={onNewTab}
 					newTabTitle={newTabTitle}
 					flushStart={sidebarOpen && !compact}
+					showStartDivider={!sidebarOpen}
 					onCollapsedChange={handleTabsCollapsedChange}
 					collapseTargetRef={allTabsButtonRef}
 				/>

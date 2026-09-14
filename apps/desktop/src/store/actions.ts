@@ -11,11 +11,10 @@ import { desktopApi } from "../desktopApi";
 import type { TelemetryChoice, WorkspaceDelta } from "../desktopApi/types";
 import { classifyFileChange } from "../externalFileChange";
 import {
-	CHANGELOG_PATH,
 	isChangelogPath,
 	prepareChangelogMarkdown,
 } from "../lib/changelogNote";
-import { keyedQueue, sequential, takeLatest } from "../lib/concurrency";
+import { keyedQueue, takeLatest } from "../lib/concurrency";
 import {
 	absoluteWorkspacePath,
 	basename,
@@ -62,7 +61,6 @@ import {
 	pushHistory,
 	resetHistory,
 	rewriteHistory,
-	seedHistory,
 	setHistory,
 } from "./history";
 import type { CodeFileOpenMode, TerminalPosition } from "./persistence";
@@ -89,7 +87,6 @@ import {
 	sidebarOpenStore,
 	spellcheckStore,
 	switcherOpenStore,
-	tabsStore,
 	telemetryConsentStore,
 	themePreferenceStore,
 	uiStore,
@@ -98,18 +95,15 @@ import {
 	withOpenedDoc,
 	workspaceStore,
 } from "./state";
+import { createTabActions } from "./tabActions";
+import { tabsStore } from "./tabStore";
 import {
 	emptyTabs,
 	findTabByPath,
-	MAX_CLOSED_TABS,
-	nextActiveTabId,
-	type TabId,
 	type TabTarget,
 	tabSession,
 	tabsFromSession,
-	withBackgroundTab,
 	withClosedTab,
-	withReorderedTab,
 	withRewrittenTabPaths,
 } from "./tabs";
 import { createTitleManager } from "./titleManagement";
@@ -531,7 +525,7 @@ type LoadPathOptions = {
 	missing?: "toast" | "silent";
 	/** `false` keeps code files in Hubble regardless of the default-app preference. */
 	launchExternal?: boolean;
-	/** Defaults to the Active Tab, so callers that predate tabs are unchanged. */
+	/** Defaults to the active tab. */
 	tab?: TabTarget;
 };
 
@@ -704,7 +698,6 @@ export function clearPendingTerminalCommand() {
 export function clearViewer() {
 	const path = viewerStore.get().currentPath;
 	if (path) titleManager.stop(path);
-	// Every Tab goes, so every trail goes with it.
 	resetHistory();
 	appStore.set((state) => ({
 		...state,
@@ -751,6 +744,25 @@ export function removeRecentWorkspace(path: string) {
 
 let workspaceRequest = 0;
 
+export const {
+	restoreTabs,
+	openTabForPath,
+	openBackgroundTab,
+	activateTab,
+	reorderTab,
+	closeTab,
+	reopenClosedTab,
+	closeOtherTabs,
+	closeAllTabs,
+	closeActiveTab,
+	activateAdjacentTab,
+	openChangelog,
+} = createTabActions({
+	loadPath,
+	leaveCurrentDocument,
+	getWorkspaceRequest: () => workspaceRequest,
+});
+
 /** Opens a workspace by path. If no path given, shows a folder picker first. */
 export async function openWorkspace(path?: string) {
 	let nextPath = path;
@@ -796,43 +808,6 @@ export async function openWorkspace(path?: string) {
 	await Promise.all([refreshFileList(nextPath), loadPinnedNotes(nextPath)]);
 	if (request !== workspaceRequest) return;
 	await restoreTabs();
-}
-
-/** Tabs are already hydrated; check their files and load the active document asynchronously. */
-export async function restoreTabs() {
-	const tabs = tabsStore.get();
-	const workspacePath = workspaceStore.get().workspacePath;
-	const missing = await Promise.all(
-		tabs.order.map(async (id) => {
-			if (isChangelogPath(tabs.byId[id].path)) return null;
-			try {
-				return (await desktopApi.pathExists(tabs.byId[id].path)) ? null : id;
-			} catch {
-				// A temporary permission or disk error must not discard a saved tab.
-				return null;
-			}
-		}),
-	);
-	if (
-		workspaceStore.get().workspacePath !== workspacePath ||
-		tabsStore.get() !== tabs
-	)
-		return;
-	const restored = missing.reduce(
-		(current, id) => (id ? withClosedTab(current, id) : current),
-		tabs,
-	);
-	appStore.set((state) => ({ ...state, tabs: restored }));
-	for (const id of restored.order) seedHistory(id, restored.byId[id].path);
-	const active = restored.activeTabId;
-	if (active) {
-		await loadPath(restored.byId[active].path, {
-			history: "none",
-			missing: "silent",
-			launchExternal: false,
-			tab: active,
-		});
-	}
 }
 
 export function updateEditorContent(path: string, content: string) {
@@ -974,29 +949,16 @@ export function savePathContent(
 }
 
 /**
- * Steps off the open document: records where the user was, writes their edits,
- * and reports whether leaving is allowed. Every route out of a note goes
- * through here, so opening a note, closing its Tab, and moving through history
- * all leave it the same way.
- *
- * Saving here rather than letting the editor's unmount flush do it is what
- * makes leaving reliable. That flush runs after the store has already moved to
- * the next path, so `savePathContentNow` sees a path that is no longer current
- * and drops the write.
- *
- * Returns false when the note is in conflict, since the banner asking whether
- * the disk copy or the open copy wins cannot be answered from another note.
+ * Save edits and scroll before switching documents. The editor's unmount flush
+ * runs too late: saves for a path that is no longer current are dropped.
+ * Block navigation until save errors or disk conflicts are resolved.
  */
 async function leaveCurrentDocument(nextPath?: string): Promise<boolean> {
 	const { currentPath, content } = viewerStore.get();
 	if (!currentPath) return true;
-	// Reopening the same path is not leaving it, and skipping that case
-	// matters: the active-file watcher reloads the current path when a read
-	// fails, and saving first would write a file that just disappeared back
-	// to disk.
+	// The file watcher reloads this path on read failure; saving could recreate a deleted file.
 	if (nextPath && pathEquals(currentPath, nextPath)) return true;
-	// The editor's scroll container is shared between notes and resets as soon
-	// as the next one renders, so where the user was has to be read now.
+	// The shared scroll container resets when the next document renders.
 	captureScroll(currentPath);
 	try {
 		await savePathContent(currentPath, content, { throwOnError: true });
@@ -1004,8 +966,7 @@ async function leaveCurrentDocument(nextPath?: string): Promise<boolean> {
 		return false;
 	}
 	if (viewerStore.get().externalChange.kind !== "conflict") return true;
-	// Refusing without saying so reads as a dead click, and the banner offering
-	// the choice can be off screen behind the sidebar.
+	// The conflict banner may be hidden behind the sidebar.
 	toast.error("This note changed on disk", {
 		description: "Choose which version to keep before leaving it.",
 	});
@@ -1498,8 +1459,7 @@ const { run: loadInternalPath, invalidate: invalidateLoadPath } = takeLatest(
 					error: message,
 				}));
 			} else {
-				// The file is gone rather than unreadable, so only the Tab holding
-				// it closes. Other Tabs point at files that are still there.
+				// Close missing files, but keep tabs with temporary read errors.
 				const gone = findTabByPath(tabsStore.get(), path);
 				if (gone) dropHistory(gone);
 				appStore.set((state) => ({
@@ -1507,8 +1467,6 @@ const { run: loadInternalPath, invalidate: invalidateLoadPath } = takeLatest(
 					tabs: gone ? withClosedTab(state.tabs, gone) : state.tabs,
 					document: emptyDoc(),
 				}));
-				// Falling back to a neighbouring Tab has to wait for this run to
-				// finish, or `takeLatest` cancels the load it starts.
 				const fallback = tabsStore.get().activeTabId;
 				const next = fallback ? tabsStore.get().byId[fallback]?.path : null;
 				if (next) {
@@ -1549,206 +1507,6 @@ export async function loadPath(path: string, options?: LoadPathOptions) {
 			description: handleFileError(err),
 		});
 	}
-}
-
-/**
- * Opens `path` in its own Tab, focusing the Tab already showing it rather than
- * opening a second one. Two Tabs on one note would give it two autosave timers
- * writing the same file.
- */
-export async function openTabForPath(path: string) {
-	const open = findTabByPath(tabsStore.get(), path);
-	if (open) {
-		await activateTab(open);
-		return;
-	}
-	await loadPath(path, { tab: "new" });
-}
-
-/**
- * Opens `path` as a Tab to the right of the Active one without switching to
- * it. An already-open path is left as-is. With no Active Tab there is nothing
- * to stay on, so the file opens normally.
- */
-export async function openBackgroundTab(path: string) {
-	const tabs = tabsStore.get();
-	if (findTabByPath(tabs, path)) return;
-	if (!tabs.activeTabId) {
-		await openTabForPath(path);
-		return;
-	}
-	const next = withBackgroundTab(tabs, path);
-	const mintedId = next.order.find((id) => !tabs.byId[id]);
-	appStore.set((state) => ({
-		...state,
-		tabs: next,
-	}));
-	if (mintedId) seedHistory(mintedId, path);
-}
-
-/**
- * Shows the note a Tab is holding. Activation re-reads from disk the way a
- * sidebar click does, so it neither pushes onto that Tab's trail nor launches
- * an external app for a code file — `navigateHistory` takes the same care.
- */
-export async function activateTab(id: TabId) {
-	const tabs = tabsStore.get();
-	const tab = tabs.byId[id];
-	if (!tab) return;
-	// Clicking the Tab already in front would re-read from disk and throw away
-	// undo for nothing. Switching notes costs undo; clicking where you already
-	// are should not.
-	const showing = viewerStore.get().currentPath;
-	if (tabs.activeTabId === id && pathEquals(showing ?? "", tab.path)) return;
-	await loadPath(tab.path, {
-		history: "none",
-		launchExternal: false,
-		tab: id,
-	});
-}
-
-export function reorderTab(id: TabId, toIndex: number) {
-	appStore.set((state) => {
-		const tabs = withReorderedTab(state.tabs, id, toIndex);
-		return tabs === state.tabs ? state : { ...state, tabs };
-	});
-}
-
-/**
- * Closes a Tab and its back/forward trail, moving to the neighbour it leaves
- * behind. Closing the last Tab empties the editor rather than picking a note.
- */
-export async function closeTab(id: TabId) {
-	if (!tabsStore.get().byId[id]) return;
-	if (tabsStore.get().activeTabId === id && !(await leaveCurrentDocument()))
-		return;
-
-	// Read the Tabs after leaving, not before: saving the outgoing note is a
-	// round trip to disk, and a delete landing while it is in flight closes
-	// Tabs underneath us. Deciding on the stale snapshot would then load a
-	// neighbour that is itself gone.
-	const tabs = tabsStore.get();
-	if (!tabs.byId[id]) return;
-	const wasActive = tabs.activeTabId === id;
-	const next = wasActive ? nextActiveTabId(tabs, id) : null;
-
-	dropHistory(id);
-	appStore.set((state) => ({
-		...state,
-		tabs: {
-			...withClosedTab(state.tabs, id),
-			closed: [
-				...state.tabs.closed,
-				{ path: tabs.byId[id].path, index: tabs.order.indexOf(id) },
-			].slice(-MAX_CLOSED_TABS),
-		},
-	}));
-
-	if (!wasActive) return;
-	const nextPath = next ? tabsStore.get().byId[next]?.path : null;
-	if (nextPath && next) {
-		await loadPath(nextPath, {
-			history: "none",
-			launchExternal: false,
-			tab: next,
-		});
-		return;
-	}
-	appStore.set((state) => ({
-		...state,
-		document: emptyDoc(),
-	}));
-}
-
-const reopenClosedTabInOrder = sequential(async (request: number) => {
-	while (request === workspaceRequest) {
-		const stack = tabsStore.get().closed;
-		const closed = stack[stack.length - 1];
-		if (!closed) return;
-		if (!isChangelogPath(closed.path)) {
-			let exists: boolean;
-			try {
-				exists = await desktopApi.pathExists(closed.path);
-			} catch {
-				return;
-			}
-			if (request !== workspaceRequest) return;
-			if (!exists) {
-				tabsStore.set((tabs) => ({
-					...tabs,
-					closed: tabs.closed.filter((entry) => entry !== closed),
-				}));
-				continue;
-			}
-		}
-		const existing = findTabByPath(tabsStore.get(), closed.path);
-		if (existing) await activateTab(existing);
-		else await loadPath(closed.path, { tab: "new", launchExternal: false });
-		if (request !== workspaceRequest) return;
-		const tabs = tabsStore.get();
-		const active = tabs.activeTabId;
-		if (
-			!active ||
-			!pathEquals(tabs.byId[active].path, closed.path) ||
-			!pathEquals(viewerStore.get().currentPath ?? "", closed.path) ||
-			viewerStore.get().status !== "ready"
-		)
-			return;
-		tabsStore.set((current) => ({
-			...withReorderedTab(current, active, closed.index),
-			closed: current.closed.filter((entry) => entry !== closed),
-		}));
-		return;
-	}
-});
-
-/** Keep failed opens on the stack; only a shown document consumes its entry. */
-export function reopenClosedTab() {
-	return reopenClosedTabInOrder(workspaceRequest);
-}
-
-/**
- * Closes every Tab but the one in front. Cmd-clicking notes in the sidebar
- * accumulates background Tabs; this is the way back to one note without
- * clicking every cross.
- */
-export async function closeOtherTabs() {
-	const { order, activeTabId } = tabsStore.get();
-	if (!activeTabId) return;
-	for (const id of order) {
-		if (id !== activeTabId) await closeTab(id);
-	}
-}
-
-/** Closes every Tab, emptying the editor. */
-export async function closeAllTabs() {
-	// Background Tabs go first, or closing the front one would load a
-	// neighbour that is about to close anyway.
-	await closeOtherTabs();
-	await closeActiveTab();
-}
-
-/** Closes whichever Tab is in front. No-op when none is. */
-export async function closeActiveTab() {
-	const active = tabsStore.get().activeTabId;
-	if (active) await closeTab(active);
-}
-
-/** Steps to the Tab `delta` places away, wrapping at either end. */
-export async function activateAdjacentTab(delta: number) {
-	const { order, activeTabId } = tabsStore.get();
-	if (order.length < 2 || !activeTabId) return;
-	const at = order.indexOf(activeTabId);
-	if (at < 0) return;
-	const next = order[(at + delta + order.length) % order.length];
-	await activateTab(next);
-}
-
-/** Opens the app changelog in its own Tab, reusing it when already open. */
-export async function openChangelog(): Promise<boolean> {
-	if (isChangelogPath(viewerStore.get().currentPath)) return true;
-	await openTabForPath(CHANGELOG_PATH);
-	return isChangelogPath(viewerStore.get().currentPath);
 }
 
 async function navigateHistory(delta: -1 | 1) {

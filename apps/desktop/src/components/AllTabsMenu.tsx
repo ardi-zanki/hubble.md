@@ -7,7 +7,8 @@ import MingcuteDownLine from "~icons/mingcute/down-line";
 import { isChangelogPath } from "../lib/changelogNote";
 import { basename, dirname, relativeWorkspacePath } from "../lib/filePath";
 import { activateTab } from "../store/actions";
-import { tabsStore, workspacePathStore } from "../store/state";
+import { workspacePathStore } from "../store/state";
+import { tabsStore } from "../store/tabStore";
 
 const noDragStyle = { WebkitAppRegion: "no-drag" } as CSSProperties;
 

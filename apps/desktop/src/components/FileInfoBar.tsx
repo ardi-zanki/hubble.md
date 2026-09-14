@@ -25,6 +25,7 @@ import type { AgentClient } from "../desktopApi/types";
 import { isChangelogPath } from "../lib/changelogNote";
 import { copyText } from "../lib/clipboard";
 import {
+	dirname,
 	hasHtmlExtension,
 	hasMarkdownExtension,
 	hasTextExtension,
@@ -54,6 +55,9 @@ import {
 } from "../store/state";
 import { ClaudeLogo, CodexLogo } from "./AgentLogos";
 
+const menuItemClass =
+	"flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent";
+
 export function FileInfoBar({
 	scrollContainer,
 }: {
@@ -81,6 +85,10 @@ export function FileInfoBar({
 	// The changelog note is virtual: show a friendly title and disable the
 	// file actions (rename, reveal, copy path) that assume a file on disk.
 	const isChangelog = isChangelogPath(currentPath);
+	const folder =
+		titlePath && !isChangelog
+			? dirname(relativeWorkspacePath(titlePath, workspacePath ?? null))
+			: null;
 	const actionPath = currentPath && !isChangelog ? currentPath : null;
 	const comments: ReviewCommentSummaryProps | null =
 		currentPath && hasMarkdownExtension(currentPath)
@@ -102,7 +110,23 @@ export function FileInfoBar({
 			<div className="flex flex-[0_100_114px] items-center pe-4">
 				{compact ? null : <NavigationControls />}
 			</div>
-			<div className="flex min-w-0 flex-auto justify-center">
+			<div className="flex min-w-0 flex-auto items-center justify-center gap-1 [&>button]:px-0 [&>input]:px-0">
+				{folder ? (
+					<>
+						<span
+							className="min-w-0 max-w-[50%] truncate text-xs text-muted-foreground"
+							title={folder}
+						>
+							{folder.split(/[\\/]/).join(" / ")}
+						</span>
+						<span
+							aria-hidden="true"
+							className="text-xs text-muted-foreground/60"
+						>
+							/
+						</span>
+					</>
+				) : null}
 				<EditableFileTitle
 					currentPath={isChangelog ? "What's new" : (titlePath ?? null)}
 					onRename={
@@ -249,10 +273,7 @@ function ActionsMenu({
 					<Menu.Popup className="z-50 w-52 origin-(--transform-origin) rounded-sm border border-border bg-popover p-1 text-[11px] text-popover-foreground outline-hidden transition-[transform,opacity] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
 						{showTerminal && (
 							<>
-								<Menu.Item
-									className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent"
-									onClick={toggleTerminal}
-								>
+								<Menu.Item className={menuItemClass} onClick={toggleTerminal}>
 									<MingcuteTerminalLine className="size-3 shrink-0" />
 									<span className="min-w-0 flex-1">Toggle terminal</span>
 									<ShortcutHint commandId="app.toggle-terminal" />
@@ -263,7 +284,7 @@ function ActionsMenu({
 						{path && workspacePath && (
 							<>
 								<Menu.Item
-									className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent"
+									className={menuItemClass}
 									onClick={requestChatAboutNote}
 								>
 									<MingcuteTerminalLine className="size-3 shrink-0" />
@@ -271,14 +292,14 @@ function ActionsMenu({
 									<ShortcutHint commandId="app.chat-about-note" />
 								</Menu.Item>
 								<Menu.Item
-									className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent"
+									className={menuItemClass}
 									onClick={() => void openInAgent("codex")}
 								>
 									<CodexLogo className="size-3 shrink-0" />
 									<span className="min-w-0 flex-1">Open in Codex</span>
 								</Menu.Item>
 								<Menu.Item
-									className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent"
+									className={menuItemClass}
 									onClick={() => void openInAgent("claude")}
 								>
 									<ClaudeLogo className="size-3 shrink-0" />
@@ -289,7 +310,7 @@ function ActionsMenu({
 						)}
 						{path && supportsSourceToggle(path) && (
 							<Menu.Item
-								className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent"
+								className={menuItemClass}
 								onClick={() => setViewerMode(isSourceMode ? "rich" : "source")}
 							>
 								<MingcuteCodeLine className="size-3 shrink-0" />
@@ -300,14 +321,14 @@ function ActionsMenu({
 						{path && (
 							<>
 								<Menu.Item
-									className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent"
+									className={menuItemClass}
 									onClick={() => void openPathInDefaultApp(path)}
 								>
 									<MingcuteExternalLinkLine className="size-3 shrink-0" />
 									<span className="min-w-0 flex-1">Open in default app</span>
 								</Menu.Item>
 								<Menu.Item
-									className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent"
+									className={menuItemClass}
 									onClick={() => void revealFile()}
 								>
 									<MingcuteFolderOpenLine className="size-3 shrink-0" />
@@ -317,7 +338,7 @@ function ActionsMenu({
 									<ShortcutHint commandId="app.reveal" />
 								</Menu.Item>
 								<Menu.Item
-									className="flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-start text-[11px] outline-hidden select-none data-highlighted:bg-accent"
+									className={menuItemClass}
 									onClick={() => void copyFilePath()}
 								>
 									<MingcuteCopy2Line className="size-3 shrink-0" />

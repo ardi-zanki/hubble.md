@@ -1,16 +1,12 @@
 import { useEffect } from "react";
 import { recallScroll, setScrollContainer } from "./scrollMemory";
 
-/** Roughly a second at 60fps, after which the note is not going to grow. */
+// Bound retries while the editor lays out the reopened note.
 const RESTORE_FRAMES = 60;
 
 /**
- * Puts a reopened note back where the user left it, and keeps the module's
- * reference to the live scroll container current.
- *
- * Restoring has to outlast the editor filling in: the container serves every
- * note and still holds the last one's content for a frame or two, so
- * `scrollTop` is set again each frame until it sticks.
+ * Retry until the editor is tall enough to restore the saved position.
+ * The shared container can still hold the previous note during the first frame.
  */
 export function useScrollMemory(
 	path: string | null,

@@ -1,25 +1,14 @@
 import { pathInFolder, replacePathPrefix } from "../lib/filePath";
 import {
-	activeTabIdStore,
 	type HistoryStack,
 	type HistoryState,
 	historyStore,
 	MAX_HISTORY,
-	tabsStore,
 } from "./state";
+import { activeTabIdStore, tabsStore } from "./tabStore";
 import type { TabId } from "./tabs";
 
-/**
- * Per-tab back/forward stacks over opened file paths.
- *
- * This module owns reads and writes of `historyStore`. Navigation itself
- * (save current doc, load target) lives in actions.ts to avoid an import
- * cycle with `loadPath`.
- *
- * Keying by tab rather than by open folder is what lets each tab hold its own
- * trail. It also removes the need for a sentinel key: every open note belongs
- * to a tab, including a Loose File opened with no workspace.
- */
+// This module owns per-tab history; actions.ts saves and loads documents to avoid an import cycle.
 
 /** Clamps a persisted or edited stack so `index` always points at an entry. */
 export function normalizeStack(stack?: HistoryStack): HistoryStack {
@@ -32,25 +21,11 @@ export function normalizeStack(stack?: HistoryStack): HistoryStack {
 	};
 }
 
-function stackFor(history: HistoryState, tabId: TabId | null | undefined) {
-	return normalizeStack(tabId ? history.byTab[tabId] : undefined);
-}
-
-/** The Active Tab's stack. */
 export function activeHistory() {
 	return stackFor(historyStore.get(), activeTabIdStore.get());
 }
 
-/**
- * Replaces the Active Tab's stack, and drops the stacks of Tabs that have
- * closed.
- *
- * Tabs go away from several places — closing one, deleting its file, clearing
- * the viewer, switching folders — and a stack left behind by any of them can
- * never be reached again. Sweeping them here, on the one write path, means no
- * removal site has to remember, and a missed one cleans up on the next
- * navigation.
- */
+/** Drop closed tabs' stacks on each write so every removal path gets cleaned up. */
 export function setHistory(stack: HistoryStack) {
 	const tabId = activeTabIdStore.get();
 	if (!tabId) return;
@@ -66,10 +41,7 @@ export function setHistory(stack: HistoryStack) {
 	}));
 }
 
-/**
- * Gives a new Tab a one-entry trail so the first navigation from it can
- * come back. No-op when that Tab already has a stack.
- */
+/** Save a new tab's starting path so Back can return to it. */
 export function seedHistory(tabId: TabId, path: string) {
 	historyStore.set((state) => {
 		if (state.byTab[tabId]?.entries.length) return state;
@@ -83,7 +55,6 @@ export function seedHistory(tabId: TabId, path: string) {
 	});
 }
 
-/** Forgets a closed tab's stack. */
 export function dropHistory(tabId: TabId) {
 	historyStore.set((state) => {
 		if (!(tabId in state.byTab)) return state;
@@ -92,7 +63,6 @@ export function dropHistory(tabId: TabId) {
 	});
 }
 
-/** Forgets every stack, for when the whole tab set is replaced. */
 export function resetHistory() {
 	historyStore.set((state) => ({ ...state, byTab: {} }));
 }
@@ -110,30 +80,11 @@ export function pushHistory(path: string) {
 	setHistory({ entries, index: entries.length - 1 });
 }
 
-/** Empties the Active Tab's stack. */
 export function clearHistory() {
 	setHistory({ entries: [], index: -1 });
 }
 
-/** Applies `update` to every tab's stack, normalizing around it. */
-function mapHistory(update: (stack: HistoryStack) => HistoryStack) {
-	historyStore.set((state) => ({
-		...state,
-		byTab: Object.fromEntries(
-			Object.entries(state.byTab).map(([key, stack]) => [
-				key,
-				normalizeStack(update(normalizeStack(stack))),
-			]),
-		),
-	}));
-}
-
-/**
- * Points history at a file's new location after a rename or move so back and
- * forward keep working. With `isFolder`, rewrites the path prefix of every
- * entry inside the folder. Runs across all tabs because a renamed path can
- * appear in any tab's trail, not only the one showing it.
- */
+/** A renamed path can appear in any tab's history, so update every stack. */
 export function rewriteHistory(
 	fromPath: string,
 	toPath: string,
@@ -185,4 +136,21 @@ export function canGoForward(
 ) {
 	const { index, entries } = stackFor(history, tabId);
 	return index >= 0 && index < entries.length - 1;
+}
+
+function stackFor(history: HistoryState, tabId: TabId | null | undefined) {
+	return normalizeStack(tabId ? history.byTab[tabId] : undefined);
+}
+
+/** Applies `update` to every tab's stack, normalizing around it. */
+function mapHistory(update: (stack: HistoryStack) => HistoryStack) {
+	historyStore.set((state) => ({
+		...state,
+		byTab: Object.fromEntries(
+			Object.entries(state.byTab).map(([key, stack]) => [
+				key,
+				normalizeStack(update(normalizeStack(stack))),
+			]),
+		),
+	}));
 }

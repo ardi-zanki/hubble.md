@@ -1,11 +1,7 @@
 import { isChangelogPath } from "../lib/changelogNote";
-import { basename, dirname, fileStem, pathEquals } from "../lib/filePath";
+import { fileStem, pathEquals } from "../lib/filePath";
 
-/**
- * An open note in the tab strip. A Tab records where a note is, not what it
- * holds: the open document itself stays in `DocumentState`, and activating a
- * Tab re-reads it from disk the same way opening a note from the sidebar does.
- */
+/** Tabs hold paths; DocumentState holds the active document's contents. */
 export type Tab = { path: string };
 
 export type TabId = string;
@@ -51,11 +47,7 @@ export function tabsFromSession(session?: TabSession): TabsState {
 	};
 }
 
-/**
- * Which Tab a load lands in. Omitted means the Active Tab, so navigation that
- * predates tabs keeps replacing what is on screen rather than piling up Tabs
- * behind the user.
- */
+/** Omit the target to replace the active tab's file. */
 export type TabTarget = TabId | "new";
 
 export const emptyTabs = (): TabsState => ({
@@ -65,9 +57,7 @@ export const emptyTabs = (): TabsState => ({
 	byId: {},
 });
 
-// Ids are opaque because a note's path is not its identity: auto-titling
-// renames a new note moments after it is created, and rename and move rewrite
-// paths under an open Tab.
+// Keep tab identity stable when a file is renamed or moved.
 let lastTabId = 0;
 
 function mintTabId(): TabId {
@@ -75,18 +65,13 @@ function mintTabId(): TabId {
 	return `tab-${lastTabId}`;
 }
 
-/** The Tab showing `path`, or null when no open Tab does. */
 export function findTabByPath(tabs: TabsState, path: string): TabId | null {
 	return (
 		tabs.order.find((id) => pathEquals(tabs.byId[id]?.path ?? "", path)) ?? null
 	);
 }
 
-/**
- * Opens `path` in `target`, minting a Tab when there is none to reuse. The new
- * Tab lands directly right of the Active one, so opening from a Tab keeps its
- * result next to where it was asked for.
- */
+/** Reuse an open path; otherwise replace the target or insert beside the active tab. */
 export function withOpenedTab(
 	tabs: TabsState,
 	path: string,
@@ -118,22 +103,12 @@ export function withOpenedTab(
 	};
 }
 
-/**
- * Opens `path` in a new Tab immediately right of the Active one, without
- * focusing it. A Tab already showing `path` is left alone rather than
- * duplicated.
- */
+/** Leave existing tabs alone; insert new paths beside the active tab without focusing. */
 export function withBackgroundTab(tabs: TabsState, path: string): TabsState {
 	if (findTabByPath(tabs, path)) return tabs;
-	const id = mintTabId();
-	const activeAt = tabs.activeTabId ? tabs.order.indexOf(tabs.activeTabId) : -1;
-	const order = [...tabs.order];
-	order.splice(activeAt < 0 ? order.length : activeAt + 1, 0, id);
 	return {
-		...tabs,
-		order,
+		...withOpenedTab(tabs, path, "new"),
 		activeTabId: tabs.activeTabId,
-		byId: { ...tabs.byId, [id]: { path } },
 	};
 }
 
@@ -177,11 +152,7 @@ export function withClosedTab(tabs: TabsState, id: TabId): TabsState {
 	};
 }
 
-/**
- * Moves every Tab's path through `rewrite`. Rename, folder rename, and move
- * each decide what counts as a match differently, so the caller supplies the
- * rewrite it already uses elsewhere and this only walks the Tabs.
- */
+/** Callers supply the path match rules for file and folder moves. */
 export function withRewrittenTabPaths(
 	tabs: TabsState,
 	rewrite: (path: string) => string,
@@ -197,7 +168,6 @@ export function withRewrittenTabPaths(
 	};
 }
 
-/** Closes every Tab whose path `isGone` accepts. */
 export function withoutTabsMatching(
 	tabs: TabsState,
 	isGone: (path: string) => boolean,
@@ -207,24 +177,11 @@ export function withoutTabsMatching(
 		.reduce(withClosedTab, tabs);
 }
 
-/**
- * Tab labels: the note's name, qualified with its folder when another open Tab
- * shares that name. Two notes called `index` in different folders are the case
- * that makes an unqualified strip unreadable.
- */
 export function tabLabels(tabs: TabsState): Record<TabId, string> {
-	const stems = tabs.order.map((id) => {
-		const path = tabs.byId[id]?.path ?? "";
-		return isChangelogPath(path) ? "What's new" : fileStem(path);
-	});
 	return Object.fromEntries(
-		tabs.order.map((id, at) => {
-			const stem = stems[at];
-			const shared = stems.some(
-				(other, index) => index !== at && other === stem,
-			);
-			const folder = dirname(tabs.byId[id]?.path ?? "");
-			return [id, shared && folder ? `${basename(folder)}/${stem}` : stem];
+		tabs.order.map((id) => {
+			const path = tabs.byId[id]?.path ?? "";
+			return [id, isChangelogPath(path) ? "What's new" : fileStem(path)];
 		}),
 	);
 }

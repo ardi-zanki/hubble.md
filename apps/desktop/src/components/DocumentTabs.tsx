@@ -2,48 +2,53 @@ import { TabStrip, type TabStripItem } from "@hubble.md/ui";
 import { useStoreValue } from "@simplestack/store/react";
 import type { RefObject } from "react";
 import { isChangelogPath } from "../lib/changelogNote";
-import { fileStem } from "../lib/filePath";
+import { fileStem, relativeWorkspacePath } from "../lib/filePath";
 import {
 	activateTab,
 	closeTab,
 	renameCurrentMarkdownFile,
 	reorderTab,
 } from "../store/actions";
-import { tabsStore } from "../store/state";
+import { workspacePathStore } from "../store/state";
+import { tabsStore } from "../store/tabStore";
 import { tabLabels } from "../store/tabs";
 
-/**
- * Supplies the Tab strip from the store, keeping `packages/ui` free of any
- * store coupling.
- */
+/** Keeps the shared tab strip independent of the desktop store. */
 export function DocumentTabs({
 	onNewTab,
 	newTabTitle,
 	flushStart,
+	showStartDivider,
 	onCollapsedChange,
 	collapseTargetRef,
 }: {
 	onNewTab?: () => void;
 	newTabTitle?: string;
 	flushStart: boolean;
+	showStartDivider: boolean;
 	onCollapsedChange: (collapsed: boolean) => void;
 	collapseTargetRef: RefObject<HTMLButtonElement | null>;
 }) {
 	const tabs = useStoreValue(tabsStore);
+	const workspacePath = useStoreValue(workspacePathStore);
 	const labels = tabLabels(tabs);
-	const items: TabStripItem[] = tabs.order.map((id) => ({
-		id,
-		label: labels[id] ?? "",
-		title: isChangelogPath(tabs.byId[id]?.path)
-			? "What's new"
-			: (tabs.byId[id]?.path ?? ""),
-		name: fileStem(tabs.byId[id]?.path ?? ""),
-	}));
+	const items: TabStripItem[] = tabs.order.map((id) => {
+		const path = tabs.byId[id]?.path ?? "";
+		return {
+			id,
+			label: labels[id] ?? "",
+			title: isChangelogPath(path)
+				? "What's new"
+				: relativeWorkspacePath(path, workspacePath ?? null),
+			name: fileStem(path),
+		};
+	});
 
 	return (
 		<TabStrip
 			tabs={items}
 			flushStart={flushStart}
+			showStartDivider={showStartDivider}
 			onCollapsedChange={onCollapsedChange}
 			collapseTargetRef={collapseTargetRef}
 			activeTabId={tabs.activeTabId}

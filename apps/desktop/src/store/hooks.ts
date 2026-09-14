@@ -1,6 +1,7 @@
 import { useStoreValue } from "@simplestack/store/react";
 import { canGoBack, canGoForward } from "./history";
-import { activeTabIdStore, historyStore } from "./state";
+import { historyStore } from "./state";
+import { activeTabIdStore } from "./tabStore";
 
 // Back/forward enablement depends on two stores: the history stacks and the
 // Active Tab that picks the active stack. Boolean selectors re-render callers

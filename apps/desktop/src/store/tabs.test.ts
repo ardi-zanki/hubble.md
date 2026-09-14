@@ -139,7 +139,7 @@ describe("rewriting tab paths", () => {
 });
 
 describe("tab labels", () => {
-	it("qualifies a name only when another open tab shares it", () => {
+	it("uses file names even when multiple tabs share one", () => {
 		expect(
 			tabLabels(
 				strip(
@@ -151,11 +151,7 @@ describe("tab labels", () => {
 					"a",
 				),
 			),
-		).toEqual({ a: "notes/index", b: "archive/index", c: "plan" });
-	});
-
-	it("drops the extension, since every note carries one", () => {
-		expect(tabLabels(strip({ a: "/w/plan.md" }, "a"))).toEqual({ a: "plan" });
+		).toEqual({ a: "index", b: "index", c: "plan" });
 	});
 });
 

@@ -8,10 +8,10 @@ import {
 	appStore,
 	emptyDoc,
 	historyStore,
-	tabsStore,
 	viewerStore,
 	workspaceStore,
 } from "./state";
+import { tabsStore } from "./tabStore";
 
 import { findTabByPath, type TabId, withoutTabsMatching } from "./tabs";
 
@@ -24,8 +24,7 @@ type PendingDelete = {
 	removedPins: string[];
 	historyBefore: ReturnType<typeof historyStore.get>;
 	historyAfter: ReturnType<typeof historyStore.get>;
-	// Snapshotting the whole slice restores closed Tabs at their old positions,
-	// the same trick the history stacks above use.
+	// Keep tab positions so undo can restore the original order.
 	tabsBefore: ReturnType<typeof tabsStore.get>;
 	tabsAfter: ReturnType<typeof tabsStore.get>;
 	pinRemovalSaved: Promise<void>;
@@ -129,8 +128,7 @@ export function createDeleteActions(deps: DeleteDeps) {
 			if (historyStore.get() === deletion.historyAfter) {
 				historyStore.set(deletion.historyBefore);
 			}
-			// Only restore Tabs the user has not rearranged since; otherwise the
-			// undo would throw away newer work to reinstate a stale strip.
+			// Do not overwrite tab changes made since the deletion.
 			if (tabsStore.get() === deletion.tabsAfter) {
 				appStore.set((state) => ({ ...state, tabs: deletion.tabsBefore }));
 			}
@@ -138,8 +136,7 @@ export function createDeleteActions(deps: DeleteDeps) {
 			const restoredTab = deletion.reopenPath
 				? findTabByPath(tabsStore.get(), deletion.reopenPath)
 				: null;
-			// Reopen when the editor is empty, or when restoring put the deleted
-			// note's Tab back in front. Anywhere else the user has moved on.
+			// Only reopen if the user has not moved to another note.
 			if (
 				deletion.reopenPath &&
 				(viewerStore.get().currentPath === null ||
@@ -222,8 +219,7 @@ export function createDeleteActions(deps: DeleteDeps) {
 			viewerBefore.currentPath !== null &&
 			deletedPath(viewerBefore.currentPath);
 		const removedPins = workspaceBefore.pinnedNotes.filter(deletedPath);
-		// Background Tabs can be showing deleted files too, so their trails are
-		// pruned whether or not the visible note was one of them.
+		// Deleted files may also appear in background tabs' history.
 		for (const item of items) {
 			if (item.kind === "file") pruneHistory(item.path);
 			else pruneHistory(item.folderId, true);
@@ -249,8 +245,7 @@ export function createDeleteActions(deps: DeleteDeps) {
 			tabs: withoutTabsMatching(state.tabs, deletedPath),
 			document: deletedCurrent ? emptyDoc() : state.document,
 		}));
-		// Deleting the visible note leaves whichever Tab survived it focused, so
-		// the editor follows rather than sitting empty behind a live Tab strip.
+		// Load the surviving active tab after deleting the visible note.
 		if (deletedCurrent) {
 			const survivor = tabsStore.get().activeTabId;
 			const survivorPath = survivor
