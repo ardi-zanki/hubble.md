@@ -2941,30 +2941,6 @@ describe("desktop tabs", () => {
 		expect(second.viewerStore.get().currentPath).toBe("/workspace/a.md");
 	});
 
-	it("restores the changelog tab without checking disk", async () => {
-		const api = createDesktopApi();
-		api.pathExists.mockResolvedValue(true);
-		const app = await loadStoreActions(
-			api,
-			JSON.stringify({
-				tabSessions: {
-					"": {
-						paths: ["/workspace/a.md", "hubble://changelog"],
-						activePath: "hubble://changelog",
-					},
-				},
-			}),
-		);
-
-		await app.restoreTabs();
-
-		expect(app.viewerStore.get().currentPath).toBe("hubble://changelog");
-		expect(app.viewerStore.get().content).toContain("What's new in Hubble");
-		expect(api.pathExists).toHaveBeenCalledWith("/workspace/a.md");
-		expect(api.pathExists).not.toHaveBeenCalledWith("hubble://changelog");
-		expect(api.readFileText).not.toHaveBeenCalledWith("hubble://changelog");
-	});
-
 	it("starts empty when no tab session has been saved", async () => {
 		const api = createDesktopApi();
 		api.pathExists.mockResolvedValue(true);

@@ -87,12 +87,12 @@ export const commandRegistry = {
 		isEnabled: (context) => context.hasTabs === true,
 	},
 	"app.next-tab": {
-		defaultBinding: "CmdOrCtrl+Alt+]",
+		defaultBinding: "Ctrl+Tab",
 		label: "Next Tab",
 		isEnabled: (context) => context.hasMultipleTabs === true,
 	},
 	"app.previous-tab": {
-		defaultBinding: "CmdOrCtrl+Alt+[",
+		defaultBinding: "Ctrl+Shift+Tab",
 		label: "Previous Tab",
 		isEnabled: (context) => context.hasMultipleTabs === true,
 	},
