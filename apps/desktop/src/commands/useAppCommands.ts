@@ -12,7 +12,6 @@ import {
 } from "@hubble.md/ui";
 import { toast } from "sonner";
 import { desktopApi } from "../desktopApi";
-import { createMarkdownFile } from "../fileActions";
 import { isChangelogPath } from "../lib/changelogNote";
 import { copyText } from "../lib/clipboard";
 import {
@@ -50,7 +49,6 @@ const CONTRIBUTING_URL =
 
 export type AppCommandContext = {
 	currentPath: string | null;
-	newFileParent: string | null;
 	newFolderParent: string | null;
 	workspacePath: string | null;
 	isSourceMode: boolean;
@@ -60,6 +58,7 @@ export type AppCommandContext = {
 };
 
 export type AppCommandActions = {
+	createNewFile: () => Promise<void>;
 	openSettings: () => void;
 	requestCopyAsMarkdown: () => void;
 	focusSidebar: () => void;
@@ -78,8 +77,7 @@ function toRegistryContext(context: AppCommandContext): RegistryContext {
 		isSourceMode: context.isSourceMode,
 		canGoBack: canGoBack(),
 		canGoForward: canGoForward(),
-		hasTabs: tabsStore.get().order.length > 0,
-		hasMultipleTabs: tabsStore.get().order.length > 1,
+		tabCount: tabsStore.get().order.length,
 		hasClosedTabs: tabsStore.get().closed.length > 0,
 	};
 }
@@ -156,8 +154,11 @@ function defineCommands(
 
 	return [
 		// File
-		fromRegistry("app.new-file", "File", ["create", "markdown", "note"], () =>
-			createMarkdownFile(context.newFileParent),
+		fromRegistry(
+			"app.new-file",
+			"File",
+			["create", "markdown", "note"],
+			actions.createNewFile,
 		),
 		paletteOnly({
 			id: "app.new-folder",

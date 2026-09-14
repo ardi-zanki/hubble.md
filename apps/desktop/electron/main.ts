@@ -168,8 +168,7 @@ let menuState: MenuState = {
 	isSourceMode: false,
 	canGoBack: false,
 	canGoForward: false,
-	hasTabs: false,
-	hasMultipleTabs: false,
+	tabCount: 0,
 	hasClosedTabs: false,
 };
 let updateState: DesktopUpdateState = {
@@ -938,12 +937,13 @@ function buildMenu() {
 				// gone, so this item stays enabled and decides at click time.
 				{
 					id: "app.close-tab",
-					label: menuState.hasTabs
-						? getCommand("app.close-tab").label
-						: "Close",
+					label:
+						menuState.tabCount > 0
+							? getCommand("app.close-tab").label
+							: "Close",
 					accelerator: getCommand("app.close-tab").defaultBinding,
 					click: () => {
-						if (menuState.hasTabs) {
+						if (menuState.tabCount > 0) {
 							sendToRenderer("desktop:menu-close-tab");
 							return;
 						}
@@ -1995,8 +1995,10 @@ function registerIpc() {
 			isSourceMode: state.isSourceMode === true,
 			canGoBack: state.canGoBack === true,
 			canGoForward: state.canGoForward === true,
-			hasTabs: state.hasTabs === true,
-			hasMultipleTabs: state.hasMultipleTabs === true,
+			tabCount:
+				Number.isInteger(state.tabCount) && state.tabCount > 0
+					? state.tabCount
+					: 0,
 			hasClosedTabs: state.hasClosedTabs === true,
 		};
 		buildMenu();

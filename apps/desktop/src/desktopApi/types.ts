@@ -101,8 +101,7 @@ export type MenuState = {
 	isSourceMode: boolean;
 	canGoBack: boolean;
 	canGoForward: boolean;
-	hasTabs: boolean;
-	hasMultipleTabs: boolean;
+	tabCount: number;
 	hasClosedTabs: boolean;
 };
 

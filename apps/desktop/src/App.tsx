@@ -274,8 +274,17 @@ function App() {
 		setSearchOpensInNewTab(mode === "new-tab");
 		changeSearchOpen(true);
 	};
+	const createNewFile = () => {
+		const created = createMarkdownFile(
+			focusedCreationFolder,
+			searchOpen && searchOpensInNewTab ? "new" : undefined,
+		);
+		if (searchOpen) changeSearchOpen(false);
+		return created;
+	};
 	const paletteCommands = buildAppCommands(
 		{
+			createNewFile,
 			openSettings: () => setSettingsOpen(true),
 			requestCopyAsMarkdown: () =>
 				setCopyAsMarkdownRequest((request) => request + 1),
@@ -285,7 +294,6 @@ function App() {
 		},
 		{
 			currentPath: state.currentPath ?? null,
-			newFileParent: focusedCreationFolder,
 			newFolderParent: searchOpen
 				? searchFolderParent
 				: (focusedFolderParent ?? null),
@@ -418,8 +426,7 @@ function App() {
 			isSourceMode: state.viewMode === "source",
 			canGoBack: menuCanGoBack,
 			canGoForward: menuCanGoForward,
-			hasTabs: tabs.order.length > 0,
-			hasMultipleTabs: tabs.order.length > 1,
+			tabCount: tabs.order.length,
 			hasClosedTabs: tabs.closed.length > 0,
 		});
 	}, [
@@ -470,7 +477,7 @@ function App() {
 			> = {
 				"app.go-back": goBack,
 				"app.go-forward": goForward,
-				"app.new-file": () => createMarkdownFile(focusedCreationFolder),
+				"app.new-file": createNewFile,
 				"app.settings": () => setSettingsOpen(true),
 				"app.open-recent": () => setWorkspaceSwitcherOpen(true),
 				// The File menu accelerator fires too, but opening is idempotent.
@@ -504,7 +511,7 @@ function App() {
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
 		// biome-ignore lint/correctness/useExhaustiveDependencies: React Compiler stabilizes render-local callbacks.
-	}, [openSearch, focusedCreationFolder, focusedSidebarPath]);
+	}, [openSearch, createNewFile, focusedSidebarPath]);
 
 	useEffect(() => {
 		let active = true;
@@ -536,9 +543,7 @@ function App() {
 					if (!undone) void desktopApi.undoText();
 				});
 			}),
-			desktopApi.onMenuCreateMarkdownFile(
-				() => void createMarkdownFile(focusedCreationFolder),
-			),
+			desktopApi.onMenuCreateMarkdownFile(() => void createNewFile()),
 			desktopApi.onMenuCreateHtmlFile(
 				() => void createHtmlFile(focusedCreationFolder),
 			),
@@ -580,7 +585,7 @@ function App() {
 			for (const dispose of disposers) dispose();
 		};
 		// biome-ignore lint/correctness/useExhaustiveDependencies: React Compiler stabilizes render-local callbacks.
-	}, [openSearch, focusedCreationFolder]);
+	}, [openSearch, createNewFile, focusedCreationFolder]);
 
 	useEffect(() => {
 		// Window focus can fire in bursts when switching apps, so debounce the
@@ -817,6 +822,7 @@ function App() {
 				open={searchOpen}
 				onOpenChange={changeSearchOpen}
 				files={paletteFiles}
+				pinnedCommandIds={searchOpensInNewTab ? ["app.new-file"] : undefined}
 				onSelectFile={(path) =>
 					void (searchOpensInNewTab ? openTabForPath(path) : loadPath(path))
 				}

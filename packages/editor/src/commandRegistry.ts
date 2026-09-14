@@ -6,8 +6,7 @@ export type CommandContext = {
 	isSourceMode?: boolean;
 	canGoBack?: boolean;
 	canGoForward?: boolean;
-	hasTabs?: boolean;
-	hasMultipleTabs?: boolean;
+	tabCount?: number;
 	hasClosedTabs?: boolean;
 };
 
@@ -85,7 +84,7 @@ export const commandRegistry = {
 	"app.close-tab": {
 		defaultBinding: "CmdOrCtrl+W",
 		label: "Close Tab",
-		isEnabled: (context) => context.hasTabs === true,
+		isEnabled: (context) => (context.tabCount ?? 0) > 0,
 	},
 	"app.reopen-closed-tab": {
 		defaultBinding: "CmdOrCtrl+Shift+T",
@@ -95,12 +94,12 @@ export const commandRegistry = {
 	"app.next-tab": {
 		defaultBinding: "Ctrl+Tab",
 		label: "Next Tab",
-		isEnabled: (context) => context.hasMultipleTabs === true,
+		isEnabled: (context) => (context.tabCount ?? 0) > 1,
 	},
 	"app.previous-tab": {
 		defaultBinding: "Ctrl+Shift+Tab",
 		label: "Previous Tab",
-		isEnabled: (context) => context.hasMultipleTabs === true,
+		isEnabled: (context) => (context.tabCount ?? 0) > 1,
 	},
 	"app.toggle-terminal": {
 		defaultBinding: "CmdOrCtrl+J",

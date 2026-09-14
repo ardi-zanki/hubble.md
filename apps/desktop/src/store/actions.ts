@@ -1350,6 +1350,7 @@ async function createEmptyFileInFolder(
 	parentPath: string,
 	stem: string,
 	extension: string,
+	tab?: TabTarget,
 ) {
 	const path = uniqueFilePath(parentPath, stem, extension);
 	try {
@@ -1365,7 +1366,7 @@ async function createEmptyFileInFolder(
 				{ path, modified_at, kind: fileKindForPath(path) },
 			],
 		}));
-		await loadPath(path);
+		await loadPath(path, { tab });
 		await refreshFileList();
 		return path;
 	} catch (err) {
@@ -1376,8 +1377,11 @@ async function createEmptyFileInFolder(
 	}
 }
 
-export function createMarkdownFileInFolder(parentPath: string) {
-	return createEmptyFileInFolder(parentPath, "new-file", ".md");
+export function createMarkdownFileInFolder(
+	parentPath: string,
+	tab?: TabTarget,
+) {
+	return createEmptyFileInFolder(parentPath, "new-file", ".md", tab);
 }
 
 export function createHtmlFileInFolder(parentPath: string) {
