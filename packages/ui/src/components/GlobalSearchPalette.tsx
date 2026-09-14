@@ -51,6 +51,7 @@ export type GlobalSearchPaletteProps = {
 	onOpenChange: (open: boolean) => void;
 	files: PaletteFile[];
 	onSelectFile: (path: string) => void;
+	pinnedCommandIds?: string[];
 	searchContents: (query: string) => Promise<PaletteContentResult>;
 	commands?: PaletteCommand[];
 	recentCommandIds?: string[];
@@ -167,6 +168,7 @@ function GlobalSearchPalette({
 	onOpenChange,
 	files,
 	onSelectFile,
+	pinnedCommandIds = [],
 	searchContents,
 	commands = [],
 	recentCommandIds = [],
@@ -188,7 +190,17 @@ function GlobalSearchPalette({
 		? rankCommands(query, commands, recentCommandIds)
 		: rankSearchCommands(query, commands, recentCommandIds);
 	const commandResults = commandMode ? groupCommands(rankedCommands) : [];
-	const searchCommandResults = commandMode ? [] : rankedCommands;
+	const pinnedCommands = commands.filter((command) =>
+		pinnedCommandIds.includes(command.id),
+	);
+	const searchCommandResults = commandMode
+		? []
+		: [
+				...pinnedCommands,
+				...rankedCommands.filter(
+					(command) => !pinnedCommandIds.includes(command.id),
+				),
+			];
 
 	const changeQuery = (next: string) => {
 		if (!commandMode && isCommandQuery(next)) {

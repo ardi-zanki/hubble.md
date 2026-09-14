@@ -6,6 +6,8 @@ export type CommandContext = {
 	isSourceMode?: boolean;
 	canGoBack?: boolean;
 	canGoForward?: boolean;
+	tabCount?: number;
+	hasClosedTabs?: boolean;
 };
 
 export type CommandDefinition = {
@@ -52,6 +54,16 @@ export const commandRegistry = {
 		label: "Go to File...",
 		isEnabled: hasWorkspace,
 	},
+	"app.all-tabs": {
+		defaultBinding: "CmdOrCtrl+Shift+A",
+		label: "Show All Tabs",
+		isEnabled: always,
+	},
+	"app.new-tab": {
+		defaultBinding: "CmdOrCtrl+T",
+		label: "New Tab",
+		isEnabled: hasWorkspace,
+	},
 	"app.settings": {
 		defaultBinding: "CmdOrCtrl+,",
 		label: "Settings...",
@@ -66,6 +78,28 @@ export const commandRegistry = {
 		defaultBinding: "CmdOrCtrl+]",
 		label: "Go Forward",
 		isEnabled: (context) => context.canGoForward === true,
+	},
+	// `CmdOrCtrl+W` also carries Electron's window-close role. The menu item
+	// closes a Tab when there is one and falls back to closing the window.
+	"app.close-tab": {
+		defaultBinding: "CmdOrCtrl+W",
+		label: "Close Tab",
+		isEnabled: (context) => (context.tabCount ?? 0) > 0,
+	},
+	"app.reopen-closed-tab": {
+		defaultBinding: "CmdOrCtrl+Shift+T",
+		label: "Reopen Closed Tab",
+		isEnabled: (context) => context.hasClosedTabs === true,
+	},
+	"app.next-tab": {
+		defaultBinding: "Ctrl+Tab",
+		label: "Next Tab",
+		isEnabled: (context) => (context.tabCount ?? 0) > 1,
+	},
+	"app.previous-tab": {
+		defaultBinding: "Ctrl+Shift+Tab",
+		label: "Previous Tab",
+		isEnabled: (context) => (context.tabCount ?? 0) > 1,
 	},
 	"app.toggle-terminal": {
 		defaultBinding: "CmdOrCtrl+J",
