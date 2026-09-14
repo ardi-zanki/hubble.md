@@ -21,3 +21,6 @@ allowBuilds:
   msw: true
   sharp: true
   node-pty: true
+
+patchedDependencies:
+  app-builder-lib@26.8.1: patches/app-builder-lib@26.8.1.patch
