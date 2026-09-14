@@ -61,7 +61,7 @@ export function WindowTitleBar({
 	return (
 		<div
 			data-window-title-bar
-			className="relative flex h-9 min-w-0 shrink-0 select-none items-center overflow-hidden bg-linear-to-b from-sidebar to-background after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:border-b after:border-border"
+			className="relative flex h-9 min-w-0 shrink-0 select-none items-center overflow-hidden bg-sidebar after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:border-b after:border-border"
 			style={dragRegionStyle}
 		>
 			<div

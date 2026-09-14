@@ -172,7 +172,7 @@ async function openFilePicker() {
 }
 
 const SIDEBAR_OVERLAY =
-	"max-sm:absolute max-sm:inset-y-0 max-sm:start-0 max-sm:z-30 max-sm:flex max-sm:shadow-overlay max-sm:transition-transform max-sm:motion-reduce:transition-none";
+	"max-sm:absolute max-sm:top-px max-sm:bottom-0 max-sm:start-0 max-sm:z-30 max-sm:flex max-sm:shadow-overlay max-sm:transition-transform max-sm:motion-reduce:transition-none";
 const SIDEBAR_OVERLAY_SHOWN =
 	"contents max-sm:translate-x-0 max-sm:duration-[180ms] max-sm:ease-[cubic-bezier(0.25,1,0.5,1)]";
 const SIDEBAR_OVERLAY_HIDDEN =
@@ -703,7 +703,7 @@ function App() {
 				}
 				onNewTab={hasWorkspace ? () => openSearch("new-tab") : undefined}
 			/>
-			<div className="relative flex min-h-0 flex-1 overflow-hidden">
+			<div className="relative -mt-px flex min-h-0 flex-1 overflow-hidden pt-px">
 				{/* Compact sidebar stays mounted while closed so it can slide out. */}
 				<div
 					data-sidebar-overlay
