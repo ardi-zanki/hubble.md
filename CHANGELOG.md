@@ -9,6 +9,14 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [0.2.0] - 2026-09-14
+
+### Added
+
 - [#282](https://github.com/bholmesdev/hubble.md/pull/282) Hubble now supports tabs! Works how you'd expect from Obsidian, Notion, or Google Chrome, with a horizontal tabbar and a set of familiar commands:
   - `cmd+t` opens the file palette to search for files or create a new note
   - `ctrl+t` and `ctrl+shift+t` walk through opened tabs
