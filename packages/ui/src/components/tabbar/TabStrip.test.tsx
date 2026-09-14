@@ -340,6 +340,115 @@ describe("TabStrip", () => {
 	});
 });
 
+describe("tab dragging", () => {
+	function setup() {
+		const onReorder = vi.fn();
+		const result = renderStrip({ onReorder });
+		const [active, inactive] = tabs();
+		for (const button of [active, inactive]) {
+			let captured = false;
+			Object.assign(button, {
+				setPointerCapture: vi.fn(() => {
+					captured = true;
+				}),
+				hasPointerCapture: vi.fn(() => captured),
+				releasePointerCapture: vi.fn(() => {
+					captured = false;
+				}),
+			});
+			vi.spyOn(
+				button.closest<HTMLElement>("[data-tab-item]") as HTMLElement,
+				"getBoundingClientRect",
+			).mockReturnValue({
+				width: 120,
+			} as DOMRect);
+		}
+		return { ...result, onReorder, active, inactive };
+	}
+
+	function pointer(button: HTMLElement, type: string, clientX: number) {
+		act(() => {
+			button.dispatchEvent(
+				new PointerEvent(type, {
+					bubbles: true,
+					cancelable: true,
+					pointerId: 1,
+					isPrimary: true,
+					button: 0,
+					clientX,
+				}),
+			);
+		});
+	}
+
+	it("keeps small pointer movements as a normal tab click", () => {
+		const { inactive, onActivate, onReorder } = setup();
+		pointer(inactive, "pointerdown", 180);
+		pointer(inactive, "pointermove", 178);
+		pointer(inactive, "pointerup", 178);
+		act(() => inactive.click());
+		expect(onActivate).toHaveBeenCalledWith("b");
+		expect(onReorder).not.toHaveBeenCalled();
+		expect(inactive.parentElement?.style.transform).toBe("");
+	});
+
+	it("previews beneath the active tab and reorders and activates only on release", () => {
+		const { active, inactive, onActivate, onReorder } = setup();
+		pointer(inactive, "pointerdown", 180);
+		pointer(inactive, "pointermove", 80);
+		expect(inactive.parentElement?.style.transform).toBe("translateX(-100px)");
+		expect(active.parentElement?.style.transform).toBe("translateX(120px)");
+		expect(active.parentElement?.classList.contains("z-30")).toBe(true);
+		expect(inactive.parentElement?.classList.contains("z-20")).toBe(true);
+		expect(tabs()).toEqual([active, inactive]);
+		expect(onReorder).not.toHaveBeenCalled();
+		expect(onActivate).not.toHaveBeenCalled();
+
+		pointer(inactive, "pointerup", 80);
+		act(() => inactive.click());
+		expect(onReorder).toHaveBeenCalledExactlyOnceWith("b", 0);
+		expect(onActivate).toHaveBeenCalledExactlyOnceWith("b");
+		expect(inactive.parentElement?.style.transform).toBe("");
+	});
+
+	it("activates a dragged tab released in its original position", () => {
+		const { inactive, onActivate, onReorder } = setup();
+		pointer(inactive, "pointerdown", 180);
+		pointer(inactive, "pointermove", 160);
+		pointer(inactive, "pointerup", 160);
+		act(() => inactive.click());
+		expect(onReorder).not.toHaveBeenCalled();
+		expect(onActivate).toHaveBeenCalledExactlyOnceWith("b");
+	});
+
+	it.each([
+		"Escape",
+		"pointercancel",
+	])("cancels with %s without reordering", (cancel) => {
+		const { active, inactive, onActivate, onReorder } = setup();
+		pointer(inactive, "pointerdown", 180);
+		pointer(inactive, "pointermove", 60);
+		if (cancel === "Escape") {
+			act(() =>
+				inactive.dispatchEvent(
+					new KeyboardEvent("keydown", {
+						key: "Escape",
+						bubbles: true,
+					}),
+				),
+			);
+		} else {
+			pointer(inactive, cancel, 60);
+		}
+		pointer(inactive, "pointerup", 60);
+		act(() => inactive.click());
+		expect(onReorder).not.toHaveBeenCalled();
+		expect(onActivate).not.toHaveBeenCalled();
+		expect(active.parentElement?.style.transform).toBe("");
+		expect(inactive.parentElement?.style.transform).toBe("");
+	});
+});
+
 function mockResize(initialWidth: number) {
 	let width = initialWidth;
 	let callback: ResizeObserverCallback;

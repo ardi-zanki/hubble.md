@@ -7,6 +7,7 @@ import {
 	activateTab,
 	closeTab,
 	renameCurrentMarkdownFile,
+	reorderTab,
 } from "../store/actions";
 import { currentPathStore, tabsStore } from "../store/state";
 import { tabLabels } from "../store/tabs";
@@ -50,6 +51,7 @@ export function DocumentTabs({
 			activeTabId={onChangelog ? null : tabs.activeTabId}
 			onActivate={(id) => void activateTab(id)}
 			onClose={(id) => void closeTab(id)}
+			onReorder={reorderTab}
 			onNewTab={onNewTab}
 			newTabTitle={newTabTitle}
 			onRename={

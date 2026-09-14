@@ -24,7 +24,7 @@ export {
 	TabStrip,
 	type TabStripItem,
 	type TabStripProps,
-} from "./components/TabStrip";
+} from "./components/tabbar/TabStrip";
 export { WorkspaceSwitcherMenu } from "./components/WorkspaceSwitcherMenu";
 export {
 	clearActiveEditor,

@@ -8,6 +8,7 @@ import {
 	withClosedTab,
 	withOpenedTab,
 	withoutTabsMatching,
+	withReorderedTab,
 	withRewrittenTabPaths,
 } from "./tabs";
 
@@ -154,5 +155,27 @@ describe("tab labels", () => {
 
 	it("drops the extension, since every note carries one", () => {
 		expect(tabLabels(strip({ a: "/w/plan.md" }, "a"))).toEqual({ a: "plan" });
+	});
+});
+
+describe("reordering tabs", () => {
+	const before = strip({ a: "/w/a.md", b: "/w/b.md", c: "/w/c.md" }, "b");
+
+	it.each([
+		["a", 2, ["b", "c", "a"]],
+		["c", 0, ["c", "a", "b"]],
+		["b", -5, ["b", "a", "c"]],
+		["b", 10, ["a", "c", "b"]],
+	] as const)("moves %s to %i without changing selection", (id, index, order) => {
+		const after = withReorderedTab(before, id, index);
+		expect(after.order).toEqual(order);
+		expect(after.activeTabId).toBe(before.activeTabId);
+		expect(after.byId).toBe(before.byId);
+		expect(before.order).toEqual(["a", "b", "c"]);
+	});
+
+	it("ignores a missing tab or unchanged position", () => {
+		expect(withReorderedTab(before, "missing", 0)).toBe(before);
+		expect(withReorderedTab(before, "b", 1)).toBe(before);
 	});
 });

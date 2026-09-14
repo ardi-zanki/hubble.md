@@ -9,9 +9,10 @@ import {
 } from "react";
 import MingcuteAddLine from "~icons/mingcute/add-line";
 import MingcuteCloseLine from "~icons/mingcute/close-line";
-import { cn } from "../lib/utils";
-import { Button } from "../primitives/button";
+import { cn } from "../../lib/utils";
+import { Button } from "../../primitives/button";
 import { animateTabs } from "./animateTabs";
+import { useTabDrag } from "./useTabDrag";
 
 const NO_DRAG_STYLE = {
 	WebkitAppRegion: "no-drag",
@@ -37,6 +38,7 @@ export type TabStripProps = {
 	collapseTargetRef?: RefObject<HTMLElement | null>;
 	onActivate: (id: string) => void;
 	onClose: (id: string) => void;
+	onReorder?: (id: string, toIndex: number) => void;
 	onNewTab?: () => void;
 	newTabTitle?: string;
 	onRename?: (id: string, nextName: string) => void;
@@ -56,6 +58,7 @@ export function TabStrip({
 	collapseTargetRef,
 	onActivate,
 	onClose,
+	onReorder,
 	onNewTab,
 	newTabTitle = "New tab",
 	onRename,
@@ -68,6 +71,12 @@ export function TabStrip({
 	const collapsedRef = useRef(false);
 	const previousCollapsed = useRef(false);
 	const tabCount = tabs.length;
+	const tabDrag = useTabDrag(
+		tabs.map((tab) => tab.id),
+		collapsed || editingId !== null,
+		onActivate,
+		onReorder,
+	);
 
 	useEffect(() => {
 		const update = (next: boolean) => {
@@ -185,6 +194,17 @@ export function TabStrip({
 						aria-label="Open notes"
 						aria-hidden={collapsed || undefined}
 						inert={collapsed}
+						onPointerMove={tabDrag.move}
+						onPointerUp={tabDrag.finish}
+						onPointerCancel={tabDrag.cancel}
+						onLostPointerCapture={tabDrag.cancel}
+						onClickCapture={tabDrag.click}
+						onKeyDownCapture={(event) => {
+							if (event.key !== "Escape" || !tabDrag.drag) return;
+							tabDrag.cancel();
+							event.preventDefault();
+							event.stopPropagation();
+						}}
 						onKeyDown={onKeyDown}
 						// Keep the measured width while hidden so collapsing cannot trigger a resize loop.
 						className={cn(
@@ -203,6 +223,14 @@ export function TabStrip({
 									className={cn(
 										"@container/tab group relative isolate flex h-8 min-w-0 max-w-48 flex-1 items-center overflow-hidden pb-1",
 										active
+											? "z-30"
+											: tabDrag.drag?.id === tab.id
+												? "z-20"
+												: "z-10",
+										tabDrag.drag &&
+											tabDrag.drag.id !== tab.id &&
+											"transition-transform duration-150 ease-snappy motion-reduce:transition-none",
+										active
 											? "text-foreground"
 											: "text-muted-foreground hover:text-foreground before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:bottom-1 before:-z-10 before:rounded-md hover:before:bg-muted/60",
 										!active &&
@@ -211,7 +239,12 @@ export function TabStrip({
 												: onNewTab) &&
 											"after:pointer-events-none after:absolute after:right-0 after:top-1 after:h-5 after:w-px after:bg-border",
 									)}
-									style={NO_DRAG_STYLE}
+									style={{
+										...NO_DRAG_STYLE,
+										transform: tabDrag.drag
+											? `translateX(${tabDrag.offset(index)}px)`
+											: undefined,
+									}}
 								>
 									{active ? (
 										<TabOutline flushStart={flushStart && index === 0} />
@@ -242,6 +275,8 @@ export function TabStrip({
 											aria-selected={active}
 											tabIndex={index === anchor ? 0 : -1}
 											title={tab.title}
+											onPointerDown={(event) => tabDrag.start(event, tab.id)}
+											onDragStart={(event) => event.preventDefault()}
 											onClick={() => onActivate(tab.id)}
 											onDoubleClick={() => {
 												if (active) beginRename(tab);
@@ -251,7 +286,7 @@ export function TabStrip({
 												event.preventDefault();
 												onClose(tab.id);
 											}}
-											className="min-w-0 flex-1 overflow-hidden px-[min(1.25rem,20cqw)] py-0.5 text-start text-xs before:absolute before:inset-0 group-data-[selected=true]:pr-10 @min-[96px]/tab:pr-10"
+											className="min-w-0 flex-1 touch-none overflow-hidden px-[min(1.25rem,20cqw)] py-0.5 text-start text-xs before:absolute before:inset-0 group-data-[selected=true]:pr-10 @min-[96px]/tab:pr-10"
 										>
 											<span className="block truncate">{tab.label}</span>
 										</button>

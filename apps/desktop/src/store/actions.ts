@@ -108,6 +108,7 @@ import {
 	tabsFromSession,
 	withBackgroundTab,
 	withClosedTab,
+	withReorderedTab,
 	withRewrittenTabPaths,
 } from "./tabs";
 import { createTitleManager } from "./titleManagement";
@@ -1591,6 +1592,13 @@ export async function activateTab(id: TabId) {
 		history: "none",
 		launchExternal: false,
 		tab: id,
+	});
+}
+
+export function reorderTab(id: TabId, toIndex: number) {
+	appStore.set((state) => {
+		const tabs = withReorderedTab(state.tabs, id, toIndex);
+		return tabs === state.tabs ? state : { ...state, tabs };
 	});
 }
 

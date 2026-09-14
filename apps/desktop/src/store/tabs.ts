@@ -121,6 +121,24 @@ export function withBackgroundTab(tabs: TabsState, path: string): TabsState {
 	};
 }
 
+export function withReorderedTab(
+	tabs: TabsState,
+	id: TabId,
+	toIndex: number,
+): TabsState {
+	const fromIndex = tabs.order.indexOf(id);
+	if (fromIndex < 0 || !Number.isFinite(toIndex)) return tabs;
+	const destination = Math.max(
+		0,
+		Math.min(tabs.order.length - 1, Math.trunc(toIndex)),
+	);
+	if (fromIndex === destination) return tabs;
+	const order = [...tabs.order];
+	order.splice(fromIndex, 1);
+	order.splice(destination, 0, id);
+	return { ...tabs, order };
+}
+
 /**
  * The Tab to focus once `id` closes: its right neighbour, falling back to its
  * left. Null when `id` was the only Tab open.
