@@ -9,13 +9,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 
-- Open several notes at once as tabs in the top bar. A sidebar click reuses the current tab; `Cmd/Ctrl`-click opens a new tab in the background; `+` and `Cmd/Ctrl+T` open the file palette in a new tab. Crowded tabs shrink like Chrome, then the strip scrolls with dashed overflow edges. Each tab keeps its own back and forward history and its own scroll position, and `Cmd/Ctrl+W` closes a tab before closing the window. Thanks [@MonisMS](https://github.com/MonisMS)! [#282](https://github.com/bholmesdev/hubble.md/pull/282)
+- [#282](https://github.com/bholmesdev/hubble.md/pull/282) Hubble now supports tabs! Works how you'd expect from Obsidian, Notion, or Google Chrome, with a horizontal tabbar and a set of familiar commands:
+  - `cmd+t` opens the file palette to search for files or create a new note
+  - `ctrl+t` and `ctrl+shift+t` walk through opened tabs
+  - `cmd+shift+A` opens the "All Tabs" menu to see all tabs at a glance. Especially useful on narrow screens
+- HTML Apps can open web links in the system browser and email links in the default email app, from plain `<a>` links or the new `hubble.links.open(url)` API. Thanks [@marcodlk](https://github.com/marcodlk)! [#274](https://github.com/bholmesdev/hubble.md/pull/274)
 
 ### Changed
 
+- The app window now appears about 200ms sooner on launch, already in the right theme, instead of staying hidden behind a bouncing dock icon until the whole app had loaded. Thanks [@zcuric](https://github.com/zcuric)! [#281](https://github.com/bholmesdev/hubble.md/pull/281)
+- The desktop download is smaller: the app bundle dropped from 131 MB to 56 MB and the app code itself is half the size, so updates download faster. Thanks [@zcuric](https://github.com/zcuric)! [#281](https://github.com/bholmesdev/hubble.md/pull/281)
+
 ### Fixed
 
-- Typing and immediately opening another note no longer loses the last few characters. The open note is now saved before navigating rather than as the editor closes.
+- Typing and immediately opening another note no longer loses the last few characters. The open note is now saved before navigating rather than as the editor closes. [#282](https://github.com/bholmesdev/hubble.md/pull/282)
+- Opening a Markdown file from Finder now brings Hubble to the front, and opens a window when the app is running with none open. Thanks [@HDPark95](https://github.com/HDPark95)! [#289](https://github.com/bholmesdev/hubble.md/pull/289)
 
 ## [0.1.28] - 2026-08-19
 
