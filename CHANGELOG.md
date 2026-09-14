@@ -13,6 +13,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Fixed
 
+- macOS desktop downloads publish successfully on current release runners. [#292](https://github.com/bholmesdev/hubble.md/pull/292)
+
 ## [0.2.0] - 2026-09-14
 
 ### Added
