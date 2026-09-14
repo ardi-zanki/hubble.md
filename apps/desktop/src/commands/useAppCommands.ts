@@ -32,6 +32,7 @@ import {
 	goForward,
 	openChangelog,
 	openWorkspaceWithSidebar,
+	reopenClosedTab,
 	requestChatAboutNote,
 	setSidebarOpen,
 	setThemePreference,
@@ -79,6 +80,7 @@ function toRegistryContext(context: AppCommandContext): RegistryContext {
 		canGoForward: canGoForward(),
 		hasTabs: tabsStore.get().order.length > 0,
 		hasMultipleTabs: tabsStore.get().order.length > 1,
+		hasClosedTabs: tabsStore.get().closed.length > 0,
 	};
 }
 
@@ -251,6 +253,12 @@ function defineCommands(
 			isEnabled: () => tabsStore.get().order.length > 0,
 			run: closeAllTabs,
 		}),
+		fromRegistry(
+			"app.reopen-closed-tab",
+			"Navigate",
+			["tab", "restore", "undo"],
+			reopenClosedTab,
+		),
 		fromRegistry("app.next-tab", "Navigate", ["tab", "switch"], () =>
 			activateAdjacentTab(1),
 		),

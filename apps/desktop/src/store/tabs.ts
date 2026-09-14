@@ -10,19 +10,26 @@ export type Tab = { path: string };
 
 export type TabId = string;
 
+export const MAX_CLOSED_TABS = 40;
+
+export type ClosedTab = { path: string; index: number };
+
 export type TabsState = {
+	closed: ClosedTab[];
 	order: TabId[];
 	activeTabId: TabId | null;
 	byId: Record<TabId, Tab>;
 };
 
 export type TabSession = {
+	closed?: ClosedTab[];
 	paths: string[];
 	activePath: string | null;
 };
 
 export function tabSession(tabs: TabsState): TabSession {
 	return {
+		closed: tabs.closed,
 		paths: tabs.order.map((id) => tabs.byId[id].path),
 		activePath: tabs.activeTabId
 			? (tabs.byId[tabs.activeTabId]?.path ?? null)
@@ -37,6 +44,7 @@ export function tabsFromSession(session?: TabSession): TabsState {
 	}
 	return {
 		...tabs,
+		closed: session?.closed ?? [],
 		activeTabId: session?.activePath
 			? (findTabByPath(tabs, session.activePath) ?? tabs.order[0] ?? null)
 			: (tabs.order[0] ?? null),
@@ -51,6 +59,7 @@ export function tabsFromSession(session?: TabSession): TabsState {
 export type TabTarget = TabId | "new";
 
 export const emptyTabs = (): TabsState => ({
+	closed: [],
 	order: [],
 	activeTabId: null,
 	byId: {},
@@ -101,7 +110,12 @@ export function withOpenedTab(
 	const activeAt = tabs.activeTabId ? tabs.order.indexOf(tabs.activeTabId) : -1;
 	const order = [...tabs.order];
 	order.splice(activeAt < 0 ? order.length : activeAt + 1, 0, id);
-	return { order, activeTabId: id, byId: { ...tabs.byId, [id]: { path } } };
+	return {
+		...tabs,
+		order,
+		activeTabId: id,
+		byId: { ...tabs.byId, [id]: { path } },
+	};
 }
 
 /**
@@ -116,6 +130,7 @@ export function withBackgroundTab(tabs: TabsState, path: string): TabsState {
 	const order = [...tabs.order];
 	order.splice(activeAt < 0 ? order.length : activeAt + 1, 0, id);
 	return {
+		...tabs,
 		order,
 		activeTabId: tabs.activeTabId,
 		byId: { ...tabs.byId, [id]: { path } },
@@ -154,6 +169,7 @@ export function withClosedTab(tabs: TabsState, id: TabId): TabsState {
 	if (!tabs.byId[id]) return tabs;
 	const { [id]: _closed, ...byId } = tabs.byId;
 	return {
+		...tabs,
 		order: tabs.order.filter((other) => other !== id),
 		activeTabId:
 			tabs.activeTabId === id ? nextActiveTabId(tabs, id) : tabs.activeTabId,

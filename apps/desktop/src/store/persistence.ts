@@ -9,6 +9,7 @@ import {
 	type SortMode,
 } from "./state";
 import {
+	MAX_CLOSED_TABS,
 	type TabSession,
 	type TabsState,
 	tabSession,
@@ -173,15 +174,25 @@ export function serialize(state: DesktopState): Persisted {
 	};
 }
 
+const closedTabSchema = z.object({
+	path: z.string().min(1),
+	index: z.number().int().nonnegative(),
+});
+
 const tabSessionSchema = z
 	.object({
 		paths: z
 			.array(z.string().min(1).catch(""))
 			.transform((paths) => [...new Set(paths.filter(Boolean))]),
 		activePath: z.string().nullable().catch(null),
+		closed: z
+			.array(closedTabSchema)
+			.catch([])
+			.transform((closed) => closed.slice(-MAX_CLOSED_TABS)),
 	})
 	.transform(
-		({ paths, activePath }): TabSession => ({
+		({ paths, activePath, closed }): TabSession => ({
+			closed,
 			paths,
 			activePath:
 				activePath && paths.includes(activePath)

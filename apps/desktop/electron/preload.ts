@@ -160,6 +160,8 @@ const desktopApi = {
 	onMenuGoBack: (callback) => subscribe("desktop:menu-go-back", callback),
 	onMenuGoForward: (callback) => subscribe("desktop:menu-go-forward", callback),
 	onMenuCloseTab: (callback) => subscribe("desktop:menu-close-tab", callback),
+	onMenuReopenClosedTab: (callback) =>
+		subscribe("desktop:menu-reopen-closed-tab", callback),
 	onMenuNextTab: (callback) => subscribe("desktop:menu-next-tab", callback),
 	onMenuPreviousTab: (callback) =>
 		subscribe("desktop:menu-previous-tab", callback),

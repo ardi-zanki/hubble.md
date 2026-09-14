@@ -164,6 +164,7 @@ let menuState: MenuState = {
 	canGoForward: false,
 	hasTabs: false,
 	hasMultipleTabs: false,
+	hasClosedTabs: false,
 };
 let updateState: DesktopUpdateState = {
 	isSupported: supportsAutoUpdates,
@@ -976,6 +977,9 @@ function buildMenu() {
 					sendToRenderer("desktop:menu-go-forward"),
 				),
 				{ type: "separator" },
+				commandMenuItem("app.reopen-closed-tab", () =>
+					sendToRenderer("desktop:menu-reopen-closed-tab"),
+				),
 				commandMenuItem("app.previous-tab", () =>
 					sendToRenderer("desktop:menu-previous-tab"),
 				),
@@ -1981,6 +1985,7 @@ function registerIpc() {
 			canGoForward: state.canGoForward === true,
 			hasTabs: state.hasTabs === true,
 			hasMultipleTabs: state.hasMultipleTabs === true,
+			hasClosedTabs: state.hasClosedTabs === true,
 		};
 		buildMenu();
 	});

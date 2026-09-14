@@ -15,6 +15,7 @@ import {
 /** Fixed ids keep assertions readable; only `withOpenedTab` mints real ones. */
 function strip(paths: Record<string, string>, activeTabId: string | null) {
 	return {
+		closed: [],
 		order: Object.keys(paths),
 		activeTabId,
 		byId: Object.fromEntries(

@@ -2447,6 +2447,7 @@ describe("desktop loadPath", () => {
 		appStore.set((current) => ({
 			...current,
 			tabs: {
+				...current.tabs,
 				order: [...current.tabs.order, "tab-second"],
 				activeTabId: "tab-second",
 				byId: {
@@ -2939,6 +2940,61 @@ describe("desktop tabs", () => {
 				.order.map((id) => second.tabsStore.get().byId[id].path),
 		).toEqual(["/workspace/a.md"]);
 		expect(second.viewerStore.get().currentPath).toBe("/workspace/a.md");
+	});
+
+	it("reopens closed tabs in order and restores their position after relaunch", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const app = await loadStoreActions(api);
+		await app.openTabForPath("/workspace/a.md");
+		await app.openTabForPath("/workspace/b.md");
+		await app.openTabForPath("/workspace/c.md");
+		await app.closeTab(app.tabsStore.get().order[1]);
+		await app.closeActiveTab();
+		const [, written] = vi.mocked(localStorage.setItem).mock.lastCall ?? [];
+		const restored = await loadStoreActions(api, written);
+		await restored.restoreTabs();
+		await Promise.all([restored.reopenClosedTab(), restored.reopenClosedTab()]);
+		const tabs = restored.tabsStore.get();
+		expect(tabs.order.map((id) => tabs.byId[id].path)).toEqual([
+			"/workspace/a.md",
+			"/workspace/b.md",
+			"/workspace/c.md",
+		]);
+		expect(restored.viewerStore.get().currentPath).toBe("/workspace/b.md");
+		expect(tabs.closed).toEqual([]);
+	});
+
+	it("keeps a closed tab when saving the current document fails", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const app = await loadStoreActions(api);
+		await app.openTabForPath("/workspace/a.md");
+		await app.openTabForPath("/workspace/b.md");
+		await app.closeActiveTab();
+		app.viewerStore.set((state) => ({ ...state, content: "unsaved edit" }));
+		api.writeFileText.mockRejectedValue(new Error("disk full"));
+		await app.reopenClosedTab();
+		expect(app.viewerStore.get().currentPath).toBe("/workspace/a.md");
+		expect(app.tabsStore.get().closed).toEqual([
+			{ path: "/workspace/b.md", index: 1 },
+		]);
+	});
+
+	it("skips missing closed files and reopens the changelog without disk access", async () => {
+		const api = createDesktopApi();
+		const app = await loadStoreActions(api);
+		await app.openChangelog();
+		await app.closeActiveTab();
+		await app.openTabForPath("/workspace/missing.md");
+		await app.closeActiveTab();
+		api.pathExists.mockResolvedValue(false);
+		api.readFileText.mockClear();
+		await app.reopenClosedTab();
+		expect(app.viewerStore.get().currentPath).toBe("hubble://changelog");
+		expect(app.tabsStore.get().closed).toEqual([]);
+		expect(api.pathExists).not.toHaveBeenCalledWith("hubble://changelog");
+		expect(api.readFileText).not.toHaveBeenCalled();
 	});
 
 	it("starts empty when no tab session has been saved", async () => {

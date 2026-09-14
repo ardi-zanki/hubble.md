@@ -8,6 +8,7 @@ export type CommandContext = {
 	canGoForward?: boolean;
 	hasTabs?: boolean;
 	hasMultipleTabs?: boolean;
+	hasClosedTabs?: boolean;
 };
 
 export type CommandDefinition = {
@@ -85,6 +86,11 @@ export const commandRegistry = {
 		defaultBinding: "CmdOrCtrl+W",
 		label: "Close Tab",
 		isEnabled: (context) => context.hasTabs === true,
+	},
+	"app.reopen-closed-tab": {
+		defaultBinding: "CmdOrCtrl+Shift+T",
+		label: "Reopen Closed Tab",
+		isEnabled: (context) => context.hasClosedTabs === true,
 	},
 	"app.next-tab": {
 		defaultBinding: "Ctrl+Tab",

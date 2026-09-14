@@ -26,6 +26,7 @@ const descriptions: Record<CommandId, string> = {
 	"app.all-tabs": "Show or hide the list of open tabs.",
 	"app.new-tab": "Open the file search in a new tab.",
 	"app.close-tab": "Close the current tab.",
+	"app.reopen-closed-tab": "Restore the most recently closed tab.",
 	"app.next-tab": "Switch to the next tab.",
 	"app.previous-tab": "Switch to the previous tab.",
 	"app.settings": "Open Hubble settings.",

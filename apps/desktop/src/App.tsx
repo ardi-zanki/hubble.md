@@ -84,6 +84,7 @@ import {
 	refreshFiles,
 	refreshFilesDebounced,
 	reloadFromDiskConflict,
+	reopenClosedTab,
 	requestChatAboutNote,
 	restoreTabs,
 	savePathContent,
@@ -419,6 +420,7 @@ function App() {
 			canGoForward: menuCanGoForward,
 			hasTabs: tabs.order.length > 0,
 			hasMultipleTabs: tabs.order.length > 1,
+			hasClosedTabs: tabs.closed.length > 0,
 		});
 	}, [
 		hasWorkspace,
@@ -427,6 +429,7 @@ function App() {
 		state.currentPath,
 		state.viewMode,
 		tabs.order.length,
+		tabs.closed.length,
 	]);
 
 	useEffect(() => {
@@ -559,6 +562,7 @@ function App() {
 			desktopApi.onMenuGoBack(() => void goBack()),
 			desktopApi.onMenuGoForward(() => void goForward()),
 			desktopApi.onMenuCloseTab(() => void closeActiveTab()),
+			desktopApi.onMenuReopenClosedTab(() => void reopenClosedTab()),
 			desktopApi.onMenuNextTab(() => void activateAdjacentTab(1)),
 			desktopApi.onMenuPreviousTab(() => void activateAdjacentTab(-1)),
 			desktopApi.onMenuToggleSourceMode(() => {

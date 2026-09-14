@@ -15,7 +15,7 @@ import {
 	isChangelogPath,
 	prepareChangelogMarkdown,
 } from "../lib/changelogNote";
-import { keyedQueue, takeLatest } from "../lib/concurrency";
+import { keyedQueue, sequential, takeLatest } from "../lib/concurrency";
 import {
 	absoluteWorkspacePath,
 	basename,
@@ -101,6 +101,7 @@ import {
 import {
 	emptyTabs,
 	findTabByPath,
+	MAX_CLOSED_TABS,
 	nextActiveTabId,
 	type TabId,
 	type TabTarget,
@@ -997,7 +998,11 @@ async function leaveCurrentDocument(nextPath?: string): Promise<boolean> {
 	// The editor's scroll container is shared between notes and resets as soon
 	// as the next one renders, so where the user was has to be read now.
 	captureScroll(currentPath);
-	await savePathContent(currentPath, content);
+	try {
+		await savePathContent(currentPath, content, { throwOnError: true });
+	} catch {
+		return false;
+	}
 	if (viewerStore.get().externalChange.kind !== "conflict") return true;
 	// Refusing without saying so reads as a dead click, and the banner offering
 	// the choice can be off screen behind the sidebar.
@@ -1624,7 +1629,16 @@ export async function closeTab(id: TabId) {
 	const next = wasActive ? nextActiveTabId(tabs, id) : null;
 
 	dropHistory(id);
-	appStore.set((state) => ({ ...state, tabs: withClosedTab(state.tabs, id) }));
+	appStore.set((state) => ({
+		...state,
+		tabs: {
+			...withClosedTab(state.tabs, id),
+			closed: [
+				...state.tabs.closed,
+				{ path: tabs.byId[id].path, index: tabs.order.indexOf(id) },
+			].slice(-MAX_CLOSED_TABS),
+		},
+	}));
 
 	if (!wasActive) return;
 	const nextPath = next ? tabsStore.get().byId[next]?.path : null;
@@ -1640,6 +1654,53 @@ export async function closeTab(id: TabId) {
 		...state,
 		document: emptyDoc(),
 	}));
+}
+
+const reopenClosedTabInOrder = sequential(async (request: number) => {
+	while (request === workspaceRequest) {
+		const stack = tabsStore.get().closed;
+		const closed = stack[stack.length - 1];
+		if (!closed) return;
+		if (!isChangelogPath(closed.path)) {
+			let exists: boolean;
+			try {
+				exists = await desktopApi.pathExists(closed.path);
+			} catch {
+				return;
+			}
+			if (request !== workspaceRequest) return;
+			if (!exists) {
+				tabsStore.set((tabs) => ({
+					...tabs,
+					closed: tabs.closed.filter((entry) => entry !== closed),
+				}));
+				continue;
+			}
+		}
+		const existing = findTabByPath(tabsStore.get(), closed.path);
+		if (existing) await activateTab(existing);
+		else await loadPath(closed.path, { tab: "new", launchExternal: false });
+		if (request !== workspaceRequest) return;
+		const tabs = tabsStore.get();
+		const active = tabs.activeTabId;
+		if (
+			!active ||
+			!pathEquals(tabs.byId[active].path, closed.path) ||
+			!pathEquals(viewerStore.get().currentPath ?? "", closed.path) ||
+			viewerStore.get().status !== "ready"
+		)
+			return;
+		tabsStore.set((current) => ({
+			...withReorderedTab(current, active, closed.index),
+			closed: current.closed.filter((entry) => entry !== closed),
+		}));
+		return;
+	}
+});
+
+/** Keep failed opens on the stack; only a shown document consumes its entry. */
+export function reopenClosedTab() {
+	return reopenClosedTabInOrder(workspaceRequest);
 }
 
 /**
