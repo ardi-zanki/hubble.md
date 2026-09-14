@@ -27,6 +27,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import MingcuteAddLine from "~icons/mingcute/add-line";
 import MingcuteAzSortAscendingLettersLine from "~icons/mingcute/az-sort-ascending-letters-line";
 import MingcuteCheckLine from "~icons/mingcute/check-line";
 import MingcuteCodeLine from "~icons/mingcute/code-line";
@@ -447,7 +448,10 @@ export function Sidebar({
 	onCollapse?: () => void;
 	onSortModeChange: (mode: SidebarSortMode) => void;
 	onSelectFile: (path: string) => void;
-	onOpenFileInNewTab?: (path: string) => void;
+	onOpenFileInNewTab?: (
+		path: string,
+		options?: { background: boolean },
+	) => void;
 	onOpenFileInDefaultApp?: (path: string) => void;
 	onRevealFile?: (path: string) => void;
 	onCopyFilePath?: (path: string) => void;
@@ -607,7 +611,7 @@ export function Sidebar({
 		}
 		if (clickMode === "new-tab" && onOpenFileInNewTab && row.kind === "file") {
 			event.preventDefault();
-			onOpenFileInNewTab(row.file.path);
+			onOpenFileInNewTab(row.file.path, { background: true });
 			return;
 		}
 		updateSelection(row, "replace");
@@ -1058,6 +1062,7 @@ export function Sidebar({
 										if (
 											row.kind === "file" &&
 											!onRevealFile &&
+											!onOpenFileInNewTab &&
 											!onOpenFileInDefaultApp &&
 											!onCopyFilePath &&
 											!onRenameFile &&
@@ -1234,7 +1239,8 @@ export function Sidebar({
 											</button>
 										)}
 										{row.kind === "file" &&
-											(onRevealFile ||
+											(onOpenFileInNewTab ||
+												onRevealFile ||
 												onOpenFileInDefaultApp ||
 												onCopyFilePath ||
 												onRenameFile ||
@@ -1249,6 +1255,7 @@ export function Sidebar({
 														setOpenActionsPath(open ? row.file.path : null)
 													}
 													onRevealFile={onRevealFile}
+													onOpenFileInNewTab={onOpenFileInNewTab}
 													onOpenFileInDefaultApp={onOpenFileInDefaultApp}
 													onCopyFilePath={onCopyFilePath}
 													revealLabel={revealLabel}
@@ -2052,6 +2059,7 @@ function FileActionsMenu({
 	onOpenChange,
 	selection,
 	onRevealFile,
+	onOpenFileInNewTab,
 	onOpenFileInDefaultApp,
 	onCopyFilePath,
 	revealLabel,
@@ -2068,6 +2076,10 @@ function FileActionsMenu({
 	onOpenChange: (open: boolean) => void;
 	selection: SidebarActionSelection;
 	onRevealFile?: (path: string) => void;
+	onOpenFileInNewTab?: (
+		path: string,
+		options?: { background: boolean },
+	) => void;
 	onOpenFileInDefaultApp?: (path: string) => void;
 	onCopyFilePath?: (path: string) => void;
 	revealLabel?: string;
@@ -2100,6 +2112,14 @@ function FileActionsMenu({
 	}
 	return (
 		<ActionsMenu label={label} open={open} onOpenChange={onOpenChange}>
+			{onOpenFileInNewTab && (
+				<ActionItem
+					icon={<MingcuteAddLine />}
+					onClick={() => onOpenFileInNewTab(file.path)}
+				>
+					Open in new tab
+				</ActionItem>
+			)}
 			{onOpenFileInDefaultApp && (
 				<ActionItem
 					icon={<MingcuteExternalLinkLine />}
