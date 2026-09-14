@@ -803,6 +803,7 @@ export async function restoreTabs() {
 	const workspacePath = workspaceStore.get().workspacePath;
 	const missing = await Promise.all(
 		tabs.order.map(async (id) => {
+			if (isChangelogPath(tabs.byId[id].path)) return null;
 			try {
 				return (await desktopApi.pathExists(tabs.byId[id].path)) ? null : id;
 			} catch {
@@ -1452,7 +1453,9 @@ const { run: loadInternalPath, invalidate: invalidateLoadPath } = takeLatest(
 
 		try {
 			let content = "";
-			if (fileKind === "viewer") {
+			if (isChangelogPath(path)) {
+				content = prepareChangelogMarkdown(changelogRaw);
+			} else if (fileKind === "viewer") {
 				if (!(await desktopApi.pathExists(path))) throw new Error("ENOENT");
 			} else {
 				content = await desktopApi.readFileText(path);
@@ -1514,6 +1517,10 @@ const { run: loadInternalPath, invalidate: invalidateLoadPath } = takeLatest(
 );
 
 export async function loadPath(path: string, options?: LoadPathOptions) {
+	if (isChangelogPath(path)) {
+		await loadInternalPath(path, options);
+		return;
+	}
 	if (
 		isCodeFile(path) &&
 		codeFileOpenModeStore.get() === "default-app" &&
@@ -1582,10 +1589,6 @@ export async function activateTab(id: TabId) {
 	// Clicking the Tab already in front would re-read from disk and throw away
 	// undo for nothing. Switching notes costs undo; clicking where you already
 	// are should not.
-	//
-	// The check looks at the note on screen, not just the Active Tab, because
-	// the changelog covers the editor without a Tab of its own: its Tab stays
-	// active while its note is hidden, and activating it has to reload.
 	const showing = viewerStore.get().currentPath;
 	if (tabs.activeTabId === id && pathEquals(showing ?? "", tab.path)) return;
 	await loadPath(tab.path, {
@@ -1676,24 +1679,11 @@ export async function activateAdjacentTab(delta: number) {
 	await activateTab(next);
 }
 
-/**
- * Opens the app changelog as an ephemeral note. It never touches disk or
- * tab state, and the stack index stays put so back returns to the note the
- * user was on. Returns whether it opened.
- */
+/** Opens the app changelog in its own Tab, reusing it when already open. */
 export async function openChangelog(): Promise<boolean> {
-	const current = viewerStore.get();
-	if (isChangelogPath(current.currentPath)) return true;
-	if (!(await leaveCurrentDocument())) return false;
-	// An in-flight loadPath must not resolve over the changelog.
-	invalidateLoadPath();
-	viewerStore.set((state) => ({
-		...state,
-		currentPath: CHANGELOG_PATH,
-		...cleanFileState(prepareChangelogMarkdown(changelogRaw)),
-		viewMode: "rich",
-	}));
-	return true;
+	if (isChangelogPath(viewerStore.get().currentPath)) return true;
+	await openTabForPath(CHANGELOG_PATH);
+	return isChangelogPath(viewerStore.get().currentPath);
 }
 
 async function navigateHistory(delta: -1 | 1) {
@@ -1704,10 +1694,6 @@ async function navigateHistory(delta: -1 | 1) {
 
 	const current = viewerStore.get();
 	if (current.externalChange.kind === "conflict") return;
-	// The changelog note is never pushed, so back re-opens the entry the user
-	// was on (`entries[index]`, not `index - 1`). Forward never gets here:
-	// canGoForward is false on the changelog.
-	const fromChangelog = isChangelogPath(current.currentPath);
 
 	// Block concurrent history ops for the whole leave (save + load).
 	historyStore.set((state) => ({ ...state, isNavigating: true }));
@@ -1715,10 +1701,10 @@ async function navigateHistory(delta: -1 | 1) {
 		if (!(await leaveCurrentDocument())) return;
 
 		let working = activeHistory();
-		let nextIndex = working.index + (fromChangelog ? 0 : delta);
+		let nextIndex = working.index + delta;
 		while (nextIndex >= 0 && nextIndex < working.entries.length) {
 			const target = working.entries[nextIndex];
-			if (await desktopApi.pathExists(target)) {
+			if (isChangelogPath(target) || (await desktopApi.pathExists(target))) {
 				setHistory({ entries: working.entries, index: nextIndex });
 				await loadPath(target, {
 					history: "none",

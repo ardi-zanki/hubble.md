@@ -1,8 +1,6 @@
-import { isChangelogPath } from "../lib/changelogNote";
 import { pathInFolder, replacePathPrefix } from "../lib/filePath";
 import {
 	activeTabIdStore,
-	currentPathStore,
 	type HistoryStack,
 	type HistoryState,
 	historyStore,
@@ -176,21 +174,15 @@ export function pruneHistory(path: string, isFolder = false) {
 export function canGoBack(
 	history = historyStore.get(),
 	tabId = activeTabIdStore.get(),
-	onChangelog = isChangelogPath(currentPathStore.get()),
 ) {
 	const stack = stackFor(history, tabId);
-	// The changelog note is never pushed, so back means "return to the current
-	// entry" and stays enabled whenever one exists.
-	if (onChangelog) return stack.index >= 0;
 	return stack.index > 0;
 }
 
 export function canGoForward(
 	history = historyStore.get(),
 	tabId = activeTabIdStore.get(),
-	onChangelog = isChangelogPath(currentPathStore.get()),
 ) {
-	if (onChangelog) return false;
 	const { index, entries } = stackFor(history, tabId);
 	return index >= 0 && index < entries.length - 1;
 }

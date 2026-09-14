@@ -2941,6 +2941,30 @@ describe("desktop tabs", () => {
 		expect(second.viewerStore.get().currentPath).toBe("/workspace/a.md");
 	});
 
+	it("restores the changelog tab without checking disk", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		const app = await loadStoreActions(
+			api,
+			JSON.stringify({
+				tabSessions: {
+					"": {
+						paths: ["/workspace/a.md", "hubble://changelog"],
+						activePath: "hubble://changelog",
+					},
+				},
+			}),
+		);
+
+		await app.restoreTabs();
+
+		expect(app.viewerStore.get().currentPath).toBe("hubble://changelog");
+		expect(app.viewerStore.get().content).toContain("What's new in Hubble");
+		expect(api.pathExists).toHaveBeenCalledWith("/workspace/a.md");
+		expect(api.pathExists).not.toHaveBeenCalledWith("hubble://changelog");
+		expect(api.readFileText).not.toHaveBeenCalledWith("hubble://changelog");
+	});
+
 	it("starts empty when no tab session has been saved", async () => {
 		const api = createDesktopApi();
 		api.pathExists.mockResolvedValue(true);
@@ -3258,7 +3282,7 @@ describe("desktop tabs", () => {
 		expect(api.readFileText).not.toHaveBeenCalled();
 	});
 
-	it("reloads the active tab when the changelog is covering it", async () => {
+	it("opens the changelog as a tab", async () => {
 		const api = createDesktopApi();
 		api.pathExists.mockResolvedValue(true);
 		api.readFileText.mockImplementation(
@@ -3268,16 +3292,23 @@ describe("desktop tabs", () => {
 			await loadStoreActions(api);
 
 		await loadPath("/workspace/a.md");
-		const only = appStore.get().tabs.activeTabId;
-		if (!only) throw new Error("expected a tab");
+		const noteTab = appStore.get().tabs.activeTabId;
+		if (!noteTab) throw new Error("expected a tab");
 		expect(await openChangelog()).toBe(true);
-		expect(viewerStore.get().currentPath).not.toBe("/workspace/a.md");
+		const changelogTab = appStore.get().tabs.activeTabId;
 
-		// The changelog has no tab of its own, so its tab stayed active while
-		// its note was off screen. Activating it must bring the note back.
-		await activateTab(only);
+		expect(changelogTab).not.toBe(noteTab);
+		expect(viewerStore.get().currentPath).toBe("hubble://changelog");
+		expect(appStore.get().tabs.order).toEqual([noteTab, changelogTab]);
+		expect(changelogTab && appStore.get().tabs.byId[changelogTab].path).toBe(
+			"hubble://changelog",
+		);
+		expect(api.readFileText).not.toHaveBeenCalledWith("hubble://changelog");
 
+		await activateTab(noteTab);
 		expect(viewerStore.get().currentPath).toBe("/workspace/a.md");
+		expect(await openChangelog()).toBe(true);
+		expect(appStore.get().tabs.order).toEqual([noteTab, changelogTab]);
 	});
 
 	it("closes the other tabs without disturbing the one in front", async () => {

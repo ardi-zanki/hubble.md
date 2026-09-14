@@ -73,7 +73,7 @@ _Avoid_: buffer, pane, window.
 
 The Tab whose note is currently in the editor. Back and forward act on the Active Tab's trail, so each Tab navigates independently.
 
-The [[Markdown File]] on screen is normally the Active Tab's, with one exception: the app changelog takes over the editor without a Tab of its own, so while it is showing no Tab is selected.
+The editor shows the Active Tab's content. The app changelog opens in its own read-only Tab, using bundled content instead of a file on disk.
 
 ### Asset
 

@@ -9,7 +9,7 @@ import {
 	renameCurrentMarkdownFile,
 	reorderTab,
 } from "../store/actions";
-import { currentPathStore, tabsStore } from "../store/state";
+import { tabsStore } from "../store/state";
 import { tabLabels } from "../store/tabs";
 
 /**
@@ -30,15 +30,13 @@ export function DocumentTabs({
 	collapseTargetRef: RefObject<HTMLButtonElement | null>;
 }) {
 	const tabs = useStoreValue(tabsStore);
-	// The changelog takes over the editor without a Tab of its own, so it is
-	// the one time the Active Tab is not what the user is reading. Showing it
-	// as selected would point at a note that is not on screen.
-	const onChangelog = useStoreValue(currentPathStore, isChangelogPath);
 	const labels = tabLabels(tabs);
 	const items: TabStripItem[] = tabs.order.map((id) => ({
 		id,
 		label: labels[id] ?? "",
-		title: tabs.byId[id]?.path ?? "",
+		title: isChangelogPath(tabs.byId[id]?.path)
+			? "What's new"
+			: (tabs.byId[id]?.path ?? ""),
 		name: fileStem(tabs.byId[id]?.path ?? ""),
 	}));
 
@@ -48,14 +46,16 @@ export function DocumentTabs({
 			flushStart={flushStart}
 			onCollapsedChange={onCollapsedChange}
 			collapseTargetRef={collapseTargetRef}
-			activeTabId={onChangelog ? null : tabs.activeTabId}
+			activeTabId={tabs.activeTabId}
 			onActivate={(id) => void activateTab(id)}
 			onClose={(id) => void closeTab(id)}
 			onReorder={reorderTab}
 			onNewTab={onNewTab}
 			newTabTitle={newTabTitle}
 			onRename={
-				onChangelog
+				isChangelogPath(
+					tabs.activeTabId ? tabs.byId[tabs.activeTabId]?.path : null,
+				)
 					? undefined
 					: (_id, nextName) => void renameCurrentMarkdownFile(nextName)
 			}

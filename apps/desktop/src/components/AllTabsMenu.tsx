@@ -7,11 +7,7 @@ import MingcuteDownLine from "~icons/mingcute/down-line";
 import { isChangelogPath } from "../lib/changelogNote";
 import { basename, dirname, relativeWorkspacePath } from "../lib/filePath";
 import { activateTab } from "../store/actions";
-import {
-	currentPathStore,
-	tabsStore,
-	workspacePathStore,
-} from "../store/state";
+import { tabsStore, workspacePathStore } from "../store/state";
 
 const noDragStyle = { WebkitAppRegion: "no-drag" } as CSSProperties;
 
@@ -26,7 +22,6 @@ export function AllTabsMenu({
 }) {
 	const tabs = useStoreValue(tabsStore);
 	const workspacePath = useStoreValue(workspacePathStore);
-	const onChangelog = useStoreValue(currentPathStore, isChangelogPath);
 	const title = useCommandShortcutLabel("Show all tabs", "app.all-tabs");
 
 	return (
@@ -72,17 +67,24 @@ export function AllTabsMenu({
 							</div>
 						) : (
 							<Menu.RadioGroup
-								value={onChangelog ? "" : (tabs.activeTabId ?? "")}
+								value={tabs.activeTabId ?? ""}
 								onValueChange={(id) => void activateTab(id)}
 							>
 								{tabs.order.map((id) => {
 									const path = tabs.byId[id].path;
+									const isChangelog = isChangelogPath(path);
+									const name = isChangelog ? "What's new" : basename(path);
+									const folder = isChangelog
+										? null
+										: dirname(
+												relativeWorkspacePath(path, workspacePath ?? null),
+											);
 									return (
 										<Menu.RadioItem
 											key={id}
 											value={id}
 											closeOnClick
-											title={path}
+											title={isChangelog ? name : path}
 											className="flex h-11 cursor-pointer items-center gap-2 rounded-sm px-2 outline-hidden select-none data-highlighted:bg-accent"
 										>
 											<span className="size-4 shrink-0">
@@ -91,11 +93,9 @@ export function AllTabsMenu({
 												</Menu.RadioItemIndicator>
 											</span>
 											<span className="min-w-0 flex-1">
-												<span className="block truncate">{basename(path)}</span>
+												<span className="block truncate">{name}</span>
 												<span className="block truncate text-[11px] text-muted-foreground">
-													{dirname(
-														relativeWorkspacePath(path, workspacePath ?? null),
-													)}
+													{folder}
 												</span>
 											</span>
 										</Menu.RadioItem>

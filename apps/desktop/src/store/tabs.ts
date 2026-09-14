@@ -1,3 +1,4 @@
+import { isChangelogPath } from "../lib/changelogNote";
 import { basename, dirname, fileStem, pathEquals } from "../lib/filePath";
 
 /**
@@ -196,7 +197,10 @@ export function withoutTabsMatching(
  * that makes an unqualified strip unreadable.
  */
 export function tabLabels(tabs: TabsState): Record<TabId, string> {
-	const stems = tabs.order.map((id) => fileStem(tabs.byId[id]?.path ?? ""));
+	const stems = tabs.order.map((id) => {
+		const path = tabs.byId[id]?.path ?? "";
+		return isChangelogPath(path) ? "What's new" : fileStem(path);
+	});
 	return Object.fromEntries(
 		tabs.order.map((id, at) => {
 			const stem = stems[at];
