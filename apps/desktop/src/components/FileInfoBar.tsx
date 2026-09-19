@@ -369,7 +369,6 @@ function ActionsMenu({
 										>
 											<MingcuteDeleteLine className="size-3 shrink-0" />
 											<span className="min-w-0 flex-1">Delete</span>
-											<ShortcutHint commandId="app.delete" />
 										</Menu.Item>
 									</>
 								) : null}
