@@ -575,6 +575,50 @@ describe("desktop tabs", () => {
 		expect(viewerStore.get().currentPath).toBe("/workspace/c.md");
 	});
 
+	it("closes other tabs around a chosen tab", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		api.readFileText.mockImplementation(
+			async (path: string) => `content:${path}`,
+		);
+		const { appStore, closeOtherTabs, loadPath, openTabForPath, viewerStore } =
+			await loadStoreActions(api);
+
+		await loadPath("/workspace/a.md");
+		await openTabForPath("/workspace/b.md");
+		const kept = appStore.get().tabs.activeTabId;
+		await openTabForPath("/workspace/c.md");
+		if (!kept) throw new Error("expected a tab");
+		await closeOtherTabs(kept);
+
+		expect(appStore.get().tabs.order).toEqual([kept]);
+		expect(viewerStore.get().currentPath).toBe("/workspace/b.md");
+	});
+
+	it("closes only tabs to the left of a chosen tab", async () => {
+		const api = createDesktopApi();
+		api.pathExists.mockResolvedValue(true);
+		api.readFileText.mockImplementation(
+			async (path: string) => `content:${path}`,
+		);
+		const { appStore, closeTabsToLeft, loadPath, openTabForPath, viewerStore } =
+			await loadStoreActions(api);
+
+		await loadPath("/workspace/a.md");
+		await openTabForPath("/workspace/b.md");
+		const target = appStore.get().tabs.activeTabId;
+		await openTabForPath("/workspace/c.md");
+		if (!target) throw new Error("expected a tab");
+		await closeTabsToLeft(target);
+
+		const tabs = appStore.get().tabs;
+		expect(tabs.order.map((id) => tabs.byId[id].path)).toEqual([
+			"/workspace/b.md",
+			"/workspace/c.md",
+		]);
+		expect(viewerStore.get().currentPath).toBe("/workspace/c.md");
+	});
+
 	it("closes every tab and empties the editor", async () => {
 		const api = createDesktopApi();
 		api.pathExists.mockResolvedValue(true);

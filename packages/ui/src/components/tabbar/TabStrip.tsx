@@ -1,3 +1,4 @@
+import { ContextMenu } from "@base-ui/react/context-menu";
 import {
 	type CSSProperties,
 	type KeyboardEvent as ReactKeyboardEvent,
@@ -39,6 +40,8 @@ export type TabStripProps = {
 	collapseTargetRef?: RefObject<HTMLElement | null>;
 	onActivate: (id: string) => void;
 	onClose: (id: string) => void;
+	onCloseOthers?: (id: string) => void;
+	onCloseLeft?: (id: string) => void;
 	onReorder?: (id: string, toIndex: number) => void;
 	onNewTab?: () => void;
 	newTabTitle?: string;
@@ -57,6 +60,8 @@ export function TabStrip({
 	collapseTargetRef,
 	onActivate,
 	onClose,
+	onCloseOthers,
+	onCloseLeft,
 	onReorder,
 	onNewTab,
 	newTabTitle = "New tab",
@@ -217,103 +222,114 @@ export function TabStrip({
 							const active = tab.id === activeTabId;
 							const editing = editingId === tab.id;
 							return (
-								<div
-									key={tab.id}
-									data-tab-item
-									data-selected={active ? "true" : undefined}
-									className={cn(
-										"@container/tab group relative isolate flex h-8 min-w-0 max-w-48 flex-1 items-center overflow-hidden pb-1",
-										active
-											? "z-30"
-											: tabDrag.drag?.id === tab.id
-												? "z-20"
-												: "z-10",
-										tabDrag.drag &&
-											tabDrag.drag.id !== tab.id &&
-											"transition-transform duration-150 ease-snappy motion-reduce:transition-none",
-										active
-											? "text-foreground"
-											: "text-muted-foreground hover:text-foreground before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:bottom-1 before:-z-10 before:rounded-md hover:before:bg-muted/60",
-										!active &&
-											(index < tabs.length - 1
-												? tabs[index + 1].id !== activeTabId
-												: onNewTab) &&
-											"after:pointer-events-none after:absolute after:right-0 after:top-1 after:h-5 after:w-px after:bg-border",
-									)}
-									style={{
-										...NO_DRAG_STYLE,
-										transform: tabDrag.drag
-											? `translateX(${tabDrag.offset(index)}px)`
-											: undefined,
-									}}
-								>
-									{index === 0 && !active && showStartDivider ? (
-										<span
-											aria-hidden="true"
-											className="pointer-events-none absolute top-1 left-0 h-5 w-px bg-border"
-										/>
-									) : null}
-									{active ? (
-										<TabOutline flushStart={flushStart && index === 0} />
-									) : null}
-									{editing ? (
-										<input
-											ref={renameInputRef}
-											className="h-5 min-w-0 flex-1 select-text rounded-sm bg-transparent px-[min(1.25rem,20cqw)] text-xs text-foreground outline-none group-data-[selected=true]:pr-10 @min-[96px]/tab:pr-10"
-											value={draft}
-											aria-label={`Rename ${tab.label}`}
-											onBlur={() => commitRename(tab.id)}
-											onChange={(event) => setDraft(event.target.value)}
-											onKeyDown={(event) => {
-												event.stopPropagation();
-												if (event.key === "Enter") {
+								<ContextMenu.Root key={tab.id}>
+									<ContextMenu.Trigger
+										data-tab-item
+										data-selected={active ? "true" : undefined}
+										className={cn(
+											"@container/tab group relative isolate flex h-8 min-w-0 max-w-48 flex-1 items-center overflow-hidden pb-1",
+											active
+												? "z-30"
+												: tabDrag.drag?.id === tab.id
+													? "z-20"
+													: "z-10",
+											tabDrag.drag &&
+												tabDrag.drag.id !== tab.id &&
+												"transition-transform duration-150 ease-snappy motion-reduce:transition-none",
+											active
+												? "text-foreground"
+												: "text-muted-foreground hover:text-foreground before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:bottom-1 before:-z-10 before:rounded-md hover:before:bg-muted/60",
+											!active &&
+												(index < tabs.length - 1
+													? tabs[index + 1].id !== activeTabId
+													: onNewTab) &&
+												"after:pointer-events-none after:absolute after:right-0 after:top-1 after:h-5 after:w-px after:bg-border",
+										)}
+										style={{
+											...NO_DRAG_STYLE,
+											transform: tabDrag.drag
+												? `translateX(${tabDrag.offset(index)}px)`
+												: undefined,
+										}}
+									>
+										{index === 0 && !active && showStartDivider ? (
+											<span
+												aria-hidden="true"
+												className="pointer-events-none absolute top-1 left-0 h-5 w-px bg-border"
+											/>
+										) : null}
+										{active ? (
+											<TabOutline flushStart={flushStart && index === 0} />
+										) : null}
+										{editing ? (
+											<input
+												ref={renameInputRef}
+												className="h-5 min-w-0 flex-1 select-text rounded-sm bg-transparent px-[min(1.25rem,20cqw)] text-xs text-foreground outline-none group-data-[selected=true]:pr-10 @min-[96px]/tab:pr-10"
+												value={draft}
+												aria-label={`Rename ${tab.label}`}
+												onBlur={() => commitRename(tab.id)}
+												onChange={(event) => setDraft(event.target.value)}
+												onKeyDown={(event) => {
+													event.stopPropagation();
+													if (event.key === "Enter") {
+														event.preventDefault();
+														commitRename(tab.id);
+													} else if (event.key === "Escape") {
+														event.preventDefault();
+														cancelRename();
+													}
+												}}
+											/>
+										) : (
+											<button
+												type="button"
+												role="tab"
+												aria-selected={active}
+												tabIndex={index === anchor ? 0 : -1}
+												title={tab.title}
+												onPointerDown={(event) => tabDrag.start(event, tab.id)}
+												onDragStart={(event) => event.preventDefault()}
+												onClick={() => onActivate(tab.id)}
+												onDoubleClick={() => {
+													if (active) beginRename(tab);
+												}}
+												onAuxClick={(event) => {
+													if (event.button !== 1) return;
 													event.preventDefault();
-													commitRename(tab.id);
-												} else if (event.key === "Escape") {
-													event.preventDefault();
-													cancelRename();
-												}
-											}}
-										/>
-									) : (
+													onClose(tab.id);
+												}}
+												className="min-w-0 flex-1 touch-none overflow-hidden px-[min(1.25rem,20cqw)] py-0.5 text-start text-xs before:absolute before:inset-0 group-data-[selected=true]:pr-10 @min-[96px]/tab:pr-10"
+											>
+												<span className="block truncate">{tab.label}</span>
+											</button>
+										)}
+										{/* Keep the selected tab closable; narrow inactive tabs prioritize the title. */}
 										<button
 											type="button"
-											role="tab"
-											aria-selected={active}
-											tabIndex={index === anchor ? 0 : -1}
-											title={tab.title}
-											onPointerDown={(event) => tabDrag.start(event, tab.id)}
-											onDragStart={(event) => event.preventDefault()}
-											onClick={() => onActivate(tab.id)}
-											onDoubleClick={() => {
-												if (active) beginRename(tab);
-											}}
-											onAuxClick={(event) => {
-												if (event.button !== 1) return;
-												event.preventDefault();
-												onClose(tab.id);
-											}}
-											className="min-w-0 flex-1 touch-none overflow-hidden px-[min(1.25rem,20cqw)] py-0.5 text-start text-xs before:absolute before:inset-0 group-data-[selected=true]:pr-10 @min-[96px]/tab:pr-10"
+											tabIndex={-1}
+											aria-label={`Close ${tab.label}`}
+											onClick={() => onClose(tab.id)}
+											className={cn(
+												"absolute top-1.25 right-4 rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100",
+												active
+													? "block opacity-100"
+													: "hidden opacity-0 @min-[96px]/tab:block",
+											)}
 										>
-											<span className="block truncate">{tab.label}</span>
+											<MingcuteCloseLine className="size-3.5" />
 										</button>
-									)}
-									{/* Keep the selected tab closable; narrow inactive tabs prioritize the title. */}
-									<button
-										type="button"
-										tabIndex={-1}
-										aria-label={`Close ${tab.label}`}
-										onClick={() => onClose(tab.id)}
-										className={cn(
-											"absolute top-1.25 right-4 rounded p-0.5 text-muted-foreground hover:bg-background hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100",
-											active
-												? "block opacity-100"
-												: "hidden opacity-0 @min-[96px]/tab:block",
-										)}
-									>
-										<MingcuteCloseLine className="size-3.5" />
-									</button>
-								</div>
+									</ContextMenu.Trigger>
+									<TabMenu
+										onCloseOthers={
+											onCloseOthers ? () => onCloseOthers(tab.id) : undefined
+										}
+										onCloseLeft={
+											onCloseLeft ? () => onCloseLeft(tab.id) : undefined
+										}
+										disableOthers={tabs.length === 1}
+										disableLeft={index === 0}
+									/>
+								</ContextMenu.Root>
 							);
 						})}
 					</div>
@@ -336,6 +352,46 @@ export function TabStrip({
 				</Button>
 			) : null}
 		</div>
+	);
+}
+
+function TabMenu({
+	onCloseOthers,
+	onCloseLeft,
+	disableOthers,
+	disableLeft,
+}: {
+	onCloseOthers?: () => void;
+	onCloseLeft?: () => void;
+	disableOthers: boolean;
+	disableLeft: boolean;
+}) {
+	if (!onCloseOthers && !onCloseLeft) return null;
+	return (
+		<ContextMenu.Portal>
+			<ContextMenu.Positioner className="isolate z-50 outline-none">
+				<ContextMenu.Popup className="z-50 w-44 origin-(--transform-origin) rounded-sm border border-border bg-popover p-1 text-[11px] text-popover-foreground outline-hidden transition-[transform,opacity] data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95">
+					{onCloseOthers ? (
+						<ContextMenu.Item
+							disabled={disableOthers}
+							onClick={onCloseOthers}
+							className="flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 outline-hidden select-none data-disabled:cursor-default data-disabled:opacity-50 data-highlighted:bg-accent"
+						>
+							Close other tabs
+						</ContextMenu.Item>
+					) : null}
+					{onCloseLeft ? (
+						<ContextMenu.Item
+							disabled={disableLeft}
+							onClick={onCloseLeft}
+							className="flex w-full cursor-pointer items-center rounded-sm px-2 py-1.5 outline-hidden select-none data-disabled:cursor-default data-disabled:opacity-50 data-highlighted:bg-accent"
+						>
+							Close tabs to the left
+						</ContextMenu.Item>
+					) : null}
+				</ContextMenu.Popup>
+			</ContextMenu.Positioner>
+		</ContextMenu.Portal>
 	);
 }
 

@@ -753,6 +753,7 @@ export const {
 	closeTab,
 	reopenClosedTab,
 	closeOtherTabs,
+	closeTabsToLeft,
 	closeAllTabs,
 	closeActiveTab,
 	activateAdjacentTab,

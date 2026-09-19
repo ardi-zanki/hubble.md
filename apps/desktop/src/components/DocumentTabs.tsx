@@ -5,7 +5,9 @@ import { isChangelogPath } from "../lib/changelogNote";
 import { fileStem, relativeWorkspacePath } from "../lib/filePath";
 import {
 	activateTab,
+	closeOtherTabs,
 	closeTab,
+	closeTabsToLeft,
 	renameCurrentMarkdownFile,
 	reorderTab,
 } from "../store/actions";
@@ -54,6 +56,8 @@ export function DocumentTabs({
 			activeTabId={tabs.activeTabId}
 			onActivate={(id) => void activateTab(id)}
 			onClose={(id) => void closeTab(id)}
+			onCloseOthers={(id) => void closeOtherTabs(id)}
+			onCloseLeft={(id) => void closeTabsToLeft(id)}
 			onReorder={reorderTab}
 			onNewTab={onNewTab}
 			newTabTitle={newTabTitle}

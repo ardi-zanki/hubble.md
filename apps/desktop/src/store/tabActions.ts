@@ -200,12 +200,30 @@ export function createTabActions({
 		return reopenClosedTabInOrder(getWorkspaceRequest());
 	}
 
-	async function closeOtherTabs() {
-		const { order, activeTabId } = tabsStore.get();
-		if (!activeTabId) return;
-		for (const id of order) {
-			if (id !== activeTabId) await closeTab(id);
+	async function closeOtherTabs(keepId?: TabId) {
+		let tabs = tabsStore.get();
+		const keep = keepId ?? tabs.activeTabId;
+		if (!keep || !tabs.order.includes(keep)) return;
+		if (tabs.activeTabId !== keep) {
+			await activateTab(keep);
+			if (tabsStore.get().activeTabId !== keep) return;
+			tabs = tabsStore.get();
 		}
+		for (const id of tabs.order) {
+			if (id !== keep) await closeTab(id);
+		}
+	}
+
+	async function closeTabsToLeft(id: TabId) {
+		const tabs = tabsStore.get();
+		const index = tabs.order.indexOf(id);
+		if (index <= 0) return;
+		const closing = tabs.order.slice(0, index);
+		if (tabs.activeTabId && closing.includes(tabs.activeTabId)) {
+			await activateTab(id);
+			if (tabsStore.get().activeTabId !== id) return;
+		}
+		for (const closingId of closing) await closeTab(closingId);
 	}
 
 	/** Close every tab and clear the editor. */
@@ -247,6 +265,7 @@ export function createTabActions({
 		closeTab,
 		reopenClosedTab,
 		closeOtherTabs,
+		closeTabsToLeft,
 		closeAllTabs,
 		closeActiveTab,
 		activateAdjacentTab,
