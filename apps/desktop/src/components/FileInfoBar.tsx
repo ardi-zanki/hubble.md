@@ -16,6 +16,7 @@ import MingcuteArrowLeftLine from "~icons/mingcute/arrow-left-line";
 import MingcuteArrowRightLine from "~icons/mingcute/arrow-right-line";
 import MingcuteCodeLine from "~icons/mingcute/code-line";
 import MingcuteCopy2Line from "~icons/mingcute/copy-2-line";
+import MingcuteDeleteLine from "~icons/mingcute/delete-line";
 import MingcuteExternalLinkLine from "~icons/mingcute/external-link-line";
 import MingcuteFolderOpenLine from "~icons/mingcute/folder-open-line";
 import MingcuteMore2Line from "~icons/mingcute/more-2-line";
@@ -25,6 +26,7 @@ import type { AgentClient } from "../desktopApi/types";
 import { isChangelogPath } from "../lib/changelogNote";
 import { copyText } from "../lib/clipboard";
 import {
+	basename,
 	dirname,
 	hasHtmlExtension,
 	hasMarkdownExtension,
@@ -37,6 +39,7 @@ import {
 import { useCompactWindow } from "../lib/layout";
 import { revealFileLabel } from "../lib/revealFile";
 import {
+	deleteSidebarItems,
 	goBack,
 	goForward,
 	openPathInDefaultApp,
@@ -48,6 +51,7 @@ import {
 import { useHistoryNav } from "../store/hooks";
 import {
 	currentPathStore,
+	isInWorkspace,
 	reviewThreadsStore,
 	titleGenerationPreviewStore,
 	viewerStore,
@@ -153,6 +157,9 @@ export function FileInfoBar({
 					{(compact || actionPath) && (
 						<ActionsMenu
 							path={actionPath}
+							canDelete={Boolean(
+								actionPath && isInWorkspace(actionPath, workspacePath ?? null),
+							)}
 							showTerminal={compact}
 							workspacePath={
 								workspacePath && actionPath && isEditableFile(actionPath)
@@ -199,10 +206,12 @@ function NavigationControls() {
 
 function ActionsMenu({
 	path,
+	canDelete,
 	workspacePath,
 	showTerminal,
 }: {
 	path: string | null;
+	canDelete: boolean;
 	workspacePath: string | null;
 	showTerminal: boolean;
 }) {
@@ -247,6 +256,12 @@ function ActionsMenu({
 				description: error instanceof Error ? error.message : String(error),
 			});
 		}
+	}
+
+	function deleteFile() {
+		if (!path || !canDelete || !window.confirm(`Delete ${basename(path)}?`))
+			return;
+		void deleteSidebarItems([{ kind: "file", path }]);
 	}
 
 	return (
@@ -345,6 +360,18 @@ function ActionsMenu({
 									<span className="min-w-0 flex-1">Copy file path</span>
 									<ShortcutHint commandId="app.copy-path" />
 								</Menu.Item>
+								{canDelete ? (
+									<>
+										<Menu.Separator className="my-1 h-px bg-border" />
+										<Menu.Item
+											className={`${menuItemClass} text-destructive`}
+											onClick={deleteFile}
+										>
+											<MingcuteDeleteLine className="size-3 shrink-0" />
+											<span className="min-w-0 flex-1">Delete</span>
+										</Menu.Item>
+									</>
+								) : null}
 							</>
 						)}
 					</Menu.Popup>
