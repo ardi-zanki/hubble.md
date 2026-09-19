@@ -9,6 +9,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com).
 
 ### Added
 
+- Tabs now have right-click actions to close other tabs or tabs to the left, and open files can be deleted from the file bar overflow menu. [#294](https://github.com/bholmesdev/hubble.md/pull/294)
+
 ### Changed
 
 ### Fixed
